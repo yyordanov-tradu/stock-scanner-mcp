@@ -1,0 +1,10 @@
+{
+  "name": "stock-scanner",
+  "description": "Stock and crypto market data for Claude Code -- technical indicators, news, filings, fundamentals, and crypto metrics from free APIs",
+  "version": "0.1.0",
+  "author": {
+    "name": "Yordan Yordanov"
+  },
+  "license": "MIT",
+  "keywords": ["stocks", "crypto", "trading", "market-data", "technical-analysis"]
+}
