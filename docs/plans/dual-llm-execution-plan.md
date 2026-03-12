@@ -14,7 +14,7 @@
 | 06 | Config & Registry | Gemini | ✅ Done |
 | 07 | MCP Server Entry Point | Claude | ✅ Done |
 | 08 | TradingView Stock Scanner | Claude | Pending |
-| 09 | TradingView Crypto Scanner | Gemini | ⏳ Next |
+| 09 | TradingView Crypto Scanner | Gemini | ⌛ Reviewing |
 | 10 | SEC EDGAR | Claude | Pending |
 | 11 | CoinGecko | Gemini | Pending |
 | 12 | Finnhub | Claude | Pending |
@@ -111,4 +111,5 @@ Author LLM completes task
 | 2026-03-12 23:05 | Gemini | 07 | PR_REVIEWED | PR #7 — APPROVED |
 | 2026-03-12 23:10 | Claude | 07 | MERGED | PR #7 merged — Phase 1 Foundation Complete |
 | 2026-03-12 23:15 | Gemini | 09 | START | Starting TradingView Crypto Scanner |
+| 2026-03-12 23:25 | Gemini | 09 | PR_OPENED | PR #8 — TradingView Crypto Scanner module |
 | 2026-03-12 23:20 | Claude | 08 | START | Beginning TradingView Stock Scanner module |
