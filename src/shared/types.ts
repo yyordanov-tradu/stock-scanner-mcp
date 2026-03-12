@@ -3,6 +3,7 @@ import { z } from "zod";
 export interface ToolResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  [key: string]: unknown; // Index signature for MCP compatibility
 }
 
 export interface ToolDefinition {
