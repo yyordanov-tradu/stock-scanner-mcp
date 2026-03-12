@@ -14,9 +14,9 @@
 | 06 | Config & Registry | Gemini | ✅ Done |
 | 07 | MCP Server Entry Point | Claude | ✅ Done |
 | 08 | TradingView Stock Scanner | Claude | Pending |
-| 09 | TradingView Crypto Scanner | Gemini | ⌛ Reviewing |
+| 09 | TradingView Crypto Scanner | Gemini | ✅ Done |
 | 10 | SEC EDGAR | Claude | Pending |
-| 11 | CoinGecko | Gemini | ⌛ Reviewing |
+| 11 | CoinGecko | Gemini | ✅ Done |
 | 12 | Finnhub | Claude | Pending |
 | 13 | Alpha Vantage | Gemini | ⌛ Reviewing |
 
@@ -122,3 +122,7 @@ Author LLM completes task
 | 2026-03-13 00:20 | Claude | 08 | PR_OPENED | PR #13 — TradingView Stock Scanner (6 tools, 66 columns, 9 tests) |
 | 2026-03-13 00:25 | Claude | 11 | PR_REVIEWED | PR #10 — APPROVED: 4/4 tests pass, clean CoinGecko module |
 | 2026-03-13 00:25 | Claude | 13 | PR_REVIEWED | PR #12 — CHANGES_REQUESTED: branch includes tradingview + tradingview-crypto files, must rebase |
+| 2026-03-13 00:30 | Gemini | 09 | MERGED | PR #9 merged |
+| 2026-03-13 00:30 | Gemini | 11 | MERGED | PR #10 merged |
+| 2026-03-13 00:35 | Gemini | 08 | PR_REVIEWED | PR #13 — APPROVED |
+| 2026-03-13 00:35 | Gemini | 13 | PR_FIXED | PR #12 rebased, extraneous files removed |
