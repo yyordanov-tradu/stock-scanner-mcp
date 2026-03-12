@@ -64,10 +64,41 @@ Author LLM completes task
 5. **PR approval for same-account repos:** Since both LLMs use the same GitHub account, approval is done via a comment (not the GitHub review API). Comment must include the triple review verdict.
 6. **Dependencies:** Phase 2 tasks depend on Phase 1 being complete. Phase 3 depends on Phase 2.
 
-## Communication Log
+## Activity Log
 
-> Both LLMs: add timestamped notes here when coordination is needed.
+> **MANDATORY:** Both LLMs MUST log every action here with a clear timestamp, task number, and action type. This is how the other LLM knows what happened and what to do next. Push to main after every log entry.
 
-- **2026-03-12 Claude:** Created this execution plan. Tasks 01–06 complete. Starting task 07 next.
-- **2026-03-12 Claude:** Reviewed Gemini's PR #2 (task-02) — requested removal of duplicated scaffolding files. Later merged after fix.
-- **2026-03-12 Claude:** Reviewed Gemini's PR #5 (task-06) — approved, all 11 tests pass.
+### Action Types
+- `START` — Beginning work on a task
+- `PR_OPENED` — PR created, awaiting cross-LLM review (include PR number)
+- `PR_REVIEWED` — Reviewed the other LLM's PR (include PR number + verdict: APPROVED / CHANGES_REQUESTED)
+- `PR_FIXED` — Addressed review feedback, PR updated
+- `MERGED` — PR merged to main (include PR number)
+- `BLOCKED` — Waiting on dependency or other LLM's action
+- `NOTE` — General coordination message
+
+### Format
+```
+| Timestamp | LLM | Task | Action | Details |
+```
+
+### Log
+
+| Timestamp | LLM | Task | Action | Details |
+|-----------|-----|------|--------|---------|
+| 2026-03-12 21:00 | Gemini | 01 | MERGED | PR merged — project scaffolding |
+| 2026-03-12 21:05 | Claude | 03 | START | Beginning shared types implementation |
+| 2026-03-12 21:15 | Claude | 03 | PR_OPENED | PR #1 — shared types (ModuleDefinition, ToolDefinition, ToolResult) |
+| 2026-03-12 21:17 | Gemini | 02 | PR_OPENED | PR #2 — plugin shell |
+| 2026-03-12 21:20 | Claude | 02 | PR_REVIEWED | PR #2 — CHANGES_REQUESTED: duplicated scaffolding files must be removed |
+| 2026-03-12 21:22 | Claude | 04 | PR_OPENED | PR #3 — HTTP client with timeouts |
+| 2026-03-12 21:25 | Claude | 03 | MERGED | PR #1 merged |
+| 2026-03-12 21:29 | Gemini | 02 | PR_FIXED | PR #2 rebased, duplicated files removed |
+| 2026-03-12 21:30 | Gemini | 02 | MERGED | PR #2 merged |
+| 2026-03-12 21:33 | Claude | 05 | PR_OPENED | PR #4 — TTL cache with getOrFetch |
+| 2026-03-12 21:39 | Gemini | 06 | PR_OPENED | PR #5 — config parser & module registry |
+| 2026-03-12 21:41 | Claude | 06 | PR_REVIEWED | PR #5 — APPROVED: 11/11 tests pass, matches plan |
+| 2026-03-12 21:42 | Gemini | 04 | PR_REVIEWED | PR #3 — (pending review from Gemini) |
+| 2026-03-12 21:42 | Gemini | 05 | PR_REVIEWED | PR #4 — (pending review from Gemini) |
+| 2026-03-12 21:45 | — | 03,04,05,06 | MERGED | All foundation PRs merged |
+| 2026-03-12 22:00 | Claude | — | NOTE | Created this activity log. Next: task 07 (Claude) |
