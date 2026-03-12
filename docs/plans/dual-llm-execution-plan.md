@@ -49,11 +49,13 @@ Author LLM completes task
     → TDD: write test → fail → implement → pass
     → Triple review (Senior Engineer + Architect + QA) — all must APPROVE
     → Open PR with review notes in body
+    → Log: PR_OPENED in activity log, push to main
     → Other LLM reviews the PR
-        → If APPROVED: comment with approval, user merges
+        → If APPROVED: comment with approval
         → If CHANGES REQUESTED: author fixes, re-reviews
-    → After merge: author updates this file's status table
-    → Before starting next task: check for open PRs from other LLM
+    → Author merges own PR after receiving APPROVED (no user approval needed)
+    → Author updates status table + logs MERGED in activity log, pushes to main
+    → Before starting next task: check for open PRs from other LLM to review
 ```
 
 ### Rules
@@ -63,6 +65,8 @@ Author LLM completes task
 4. **Branch naming:** `task/XX-description` (e.g., `task/07-mcp-server`).
 5. **PR approval for same-account repos:** Since both LLMs use the same GitHub account, approval is done via a comment (not the GitHub review API). Comment must include the triple review verdict.
 6. **Dependencies:** Phase 2 tasks depend on Phase 1 being complete. Phase 3 depends on Phase 2.
+7. **Self-merge after approval:** Once the other LLM posts an APPROVED comment on your PR, you are authorized to merge it to main yourself. No user approval needed. After merging: update this file's status table + activity log, then pick up your next task.
+8. **Workflow per task:** START → implement (TDD) → triple review → PR_OPENED → wait for other LLM's review → if APPROVED: merge → MERGED → update this file → check for other LLM's PRs → next task.
 
 ## Activity Log
 
