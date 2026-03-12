@@ -16,9 +16,10 @@
 | 08 | TradingView Stock Scanner | Claude | Pending |
 | 09 | TradingView Crypto Scanner | Gemini | ⌛ Reviewing |
 | 10 | SEC EDGAR | Claude | Pending |
-| 11 | CoinGecko | Gemini | ⏳ Next |
+| 11 | CoinGecko | Gemini | ⌛ Reviewing |
 | 12 | Finnhub | Claude | Pending |
-| 13 | Alpha Vantage | Gemini | Pending |
+| 13 | Alpha Vantage | Gemini | ⌛ Reviewing |
+
 | 14 | Integration Test | Claude | Pending |
 | 15 | README | Gemini | Pending |
 
