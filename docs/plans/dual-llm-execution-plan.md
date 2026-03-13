@@ -13,7 +13,7 @@
 | 05 | TTL Cache | Claude | ✅ Done |
 | 06 | Config & Registry | Gemini | ✅ Done |
 | 07 | MCP Server Entry Point | Claude | ✅ Done |
-| 08 | TradingView Stock Scanner | Claude | Pending |
+| 08 | TradingView Stock Scanner | Claude | ✅ Done |
 | 09 | TradingView Crypto Scanner | Gemini | ✅ Done |
 | 10 | SEC EDGAR | Claude | Pending |
 | 11 | CoinGecko | Gemini | ✅ Done |
@@ -126,3 +126,4 @@ Author LLM completes task
 | 2026-03-13 00:30 | Gemini | 11 | MERGED | PR #10 merged |
 | 2026-03-13 00:35 | Gemini | 08 | PR_REVIEWED | PR #13 — APPROVED |
 | 2026-03-13 00:35 | Gemini | 13 | PR_FIXED | PR #12 rebased, extraneous files removed |
+| 2026-03-13 00:40 | Claude | 08 | MERGED | PR #13 merged — TradingView Stock Scanner complete |
