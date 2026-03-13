@@ -92,39 +92,7 @@ const companyFactsTool: ToolDefinition = {
   handler: async (params) => {
     try {
       const facts = await getCompanyFacts(params.ticker as string);
-      // Summarize to most useful metrics to avoid output bloat
-      const summary: Record<string, any> = {
-        entityName: facts.entityName,
-        cik: facts.cik,
-        ticker: facts.ticker,
-        metrics: {} as Record<string, any>,
-      };
-
-      const usGaap = facts.facts["us-gaap"] || {};
-      const keyMetrics: Record<string, string[]> = {
-        Revenue: ["SalesRevenueNet", "Revenues", "TotalRevenues"],
-        NetIncome: ["NetIncomeLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"],
-        Assets: ["Assets"],
-        Liabilities: ["Liabilities"],
-        EPS: ["EarningsPerShareBasic", "EarningsPerShareDiluted"],
-        Cash: ["CashAndCashEquivalentsAtCarryingValue"],
-      };
-
-      for (const [label, names] of Object.entries(keyMetrics)) {
-        for (const name of names) {
-          if (usGaap[name]) {
-            const units = usGaap[name].units;
-            const unitKey = Object.keys(units)[0];
-            const values = [...units[unitKey]];
-            // Sort by end date to get the absolute latest
-            values.sort((a: any, b: any) => b.end.localeCompare(a.end));
-            summary.metrics[label] = values[0];
-            break; // Found one for this label
-          }
-        }
-      }
-
-      return successResult(JSON.stringify(summary, null, 2));
+      return successResult(JSON.stringify(facts, null, 2));
     } catch (err) {
       return errorResult(err instanceof Error ? err.message : String(err));
     }

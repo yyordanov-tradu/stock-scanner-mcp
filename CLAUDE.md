@@ -91,6 +91,21 @@ npm test
 | finnhub | FINNHUB_API_KEY | When key set |
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
 
+## Dual-LLM Development
+
+This project uses two LLMs to ensure best quality:
+
+- **Claude (Anthropic)** — Reviews Gemini's work; also implements features independently.
+- **Gemini (Google)** — Reviews Claude's work; also implements features independently.
+
+Each reviews the other's PRs and code to catch issues a single LLM might miss.
+
+### Coordination
+
+- Planned work is coordinated via markdown files in `docs/duo-planning/`.
+- Before starting any planned work, always check `docs/duo-planning/` for existing plans or assignments.
+- Both LLMs communicate through these files — update them as work progresses.
+
 ## Development Rules
 
 - All HTTP calls must have explicit timeouts (5s connect, 10s read)
