@@ -17,6 +17,16 @@ export interface EdgarSearchParams {
   limit?: number;
 }
 
+export interface InsiderTransaction {
+  reporter: string;
+  title: string;
+  date: string;
+  security: string;
+  type: "BUY" | "SELL" | "OPTION_EXERCISE" | "GRANT" | "TAX_WITHHOLDING" | "OTHER";
+  shares: number;
+  price: number;
+}
+
 export interface EdgarFiling {
   accessionNumber: string;
   filedAt: string;
@@ -25,6 +35,7 @@ export interface EdgarFiling {
   ticker: string;
   description: string;
   documentUrl: string;
+  parsedTransactions?: InsiderTransaction[];
 }
 
 export async function searchFilings(
@@ -76,6 +87,9 @@ export async function searchFilings(
       documentUrl: `https://www.sec.gov/Archives/edgar/data/${cik}/${hit._id}.txt`,
     };
   });
+
+  // EFTS results aren't guaranteed sorted by date
+  filings.sort((a, b) => b.filedAt.localeCompare(a.filedAt));
 
   cache.set(url, filings);
   return filings;
@@ -178,15 +192,145 @@ export async function getCompanyFacts(ticker: string): Promise<CompanyFacts> {
   return result;
 }
 
+interface SecSubmissionsResponse {
+  cik: string;
+  name: string;
+  filings: {
+    recent: {
+      accessionNumber: string[];
+      filingDate: string[];
+      form: string[];
+      primaryDocument: string[];
+      primaryDocDescription: string[];
+    };
+  };
+}
+
+function mapTransactionCode(code: string): InsiderTransaction["type"] {
+  switch (code) {
+    case "P": return "BUY";
+    case "S": return "SELL";
+    case "M": return "OPTION_EXERCISE";
+    case "A": return "GRANT";
+    case "F": return "TAX_WITHHOLDING";
+    default: return "OTHER";
+  }
+}
+
+async function parseForm4Filing(filing: EdgarFiling): Promise<InsiderTransaction[]> {
+  try {
+    const docContent = await httpGet<string>(filing.documentUrl, {
+      headers: { "User-Agent": SEC_USER_AGENT },
+      responseType: "text",
+    });
+
+    if (!docContent.includes("<ownershipDocument")) return [];
+
+    const reporter = docContent.match(/<rptOwnerName>([^<]+)<\/rptOwnerName>/)?.[1] ?? "Unknown";
+    const title = docContent.match(/<rptOwnerOfficerTitle>([^<]+)<\/rptOwnerOfficerTitle>/)?.[1] ?? "N/A";
+
+    const transactions: InsiderTransaction[] = [];
+    
+    // Non-derivative and Derivative transactions
+    const transRegex = /<(non)?DerivativeTransaction>([\s\S]*?)<\/(non)?DerivativeTransaction>/g;
+    let match;
+    while ((match = transRegex.exec(docContent)) !== null) {
+      const trans = match[2];
+      const security = trans.match(/<securityTitle>\s*<value>([^<]+)<\/value>/)?.[1] ?? "Unknown";
+      const transDate = trans.match(/<transactionDate>\s*<value>([^<]+)<\/value>/)?.[1] ?? filing.filedAt;
+      const transCode = trans.match(/<transactionCode>([^<]+)<\/transactionCode>/)?.[1] ?? 
+                        trans.match(/<transactionAcquiredDisposedCode>\s*<value>([^<]+)<\/value>/)?.[1] ?? "";
+      const shares = trans.match(/<transactionShares>\s*<value>([^<]+)<\/value>/)?.[1];
+      const price = trans.match(/<transactionPricePerShare>\s*<value>([^<]+)<\/value>/)?.[1];
+
+      transactions.push({
+        reporter,
+        title,
+        date: transDate,
+        security,
+        type: mapTransactionCode(transCode),
+        shares: shares ? parseFloat(shares) : 0,
+        price: price ? parseFloat(price) : 0,
+      });
+    }
+
+    if (transactions.length === 0) {
+      console.error(`Warning: No transactions parsed for Form 4 ${filing.accessionNumber}`);
+    }
+
+    return transactions;
+  } catch (err) {
+    console.error(`Failed to parse Form 4 ${filing.accessionNumber}:`, err);
+    return [];
+  }
+}
+
 /**
  * Get recent insider trades (Forms 3, 4, 5) for a ticker.
  */
 export async function getInsiderTrades(ticker: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
-    query: ticker,
-    forms: ["3", "3/A", "4", "4/A", "5", "5/A"],
-    limit,
+  const cik = await getCikForTicker(ticker);
+  if (!cik) throw new Error(`Could not find CIK for ticker ${ticker}`);
+
+  const cacheKey = `insider-trades-v2:${cik}:${limit}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as EdgarFiling[];
+
+  const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
+  const data = await httpGet<SecSubmissionsResponse>(url, {
+    headers: { "User-Agent": SEC_USER_AGENT },
   });
+
+  const filings: EdgarFiling[] = [];
+  const recent = data.filings.recent;
+  const count = recent.form.length;
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoffStr = thirtyDaysAgo.toISOString().split("T")[0];
+
+  for (let i = 0; i < count && filings.length < limit; i++) {
+    const form = recent.form[i];
+    const filingDate = recent.filingDate[i];
+
+    // Enforce 30-day window for insider trades to keep data relevant
+    if (filingDate < cutoffStr && filings.length > 0) break;
+
+    if (form === "3" || form === "4" || form === "5") {
+      const accession = recent.accessionNumber[i];
+      const primaryDoc = recent.primaryDocument[i];
+      const accNoDashes = accession.replace(/-/g, "");
+      const rawDoc = primaryDoc.replace(/^xsl[^/]+\//, "");
+      const docUrl = `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accNoDashes}/${rawDoc}`;
+
+      filings.push({
+        accessionNumber: accession,
+        filedAt: filingDate,
+        formType: form,
+        entityName: data.name,
+        ticker: ticker.toUpperCase(),
+        description: recent.primaryDocDescription[i] || "",
+        documentUrl: docUrl,
+      });
+    }
+  }
+
+  // Parallel parse Form 4s
+  const form4s = filings.filter(f => f.formType === "4");
+  const results = await Promise.allSettled(form4s.map(f => parseForm4Filing(f)));
+  
+  let form4Idx = 0;
+  for (let i = 0; i < filings.length; i++) {
+    if (filings[i].formType === "4") {
+      const result = results[form4Idx++];
+      if (result.status === "fulfilled") {
+        filings[i].parsedTransactions = result.value;
+      }
+    }
+  }
+
+  cache.set(cacheKey, filings);
+  return filings;
 }
 
 /**
