@@ -4,7 +4,7 @@ import { STOCK_COLUMNS, STOCK_TIMEFRAMES } from "./columns.js";
 export interface ScanFilter {
   left: string;
   operation: string;
-  right: number | string;
+  right: number | string | number[];
 }
 
 export interface ScanRequest {
@@ -24,9 +24,12 @@ export interface ScanRow {
 const API_URL = "https://scanner.tradingview.com/america/scan";
 
 const META_COLUMNS = new Set([
-  "name", "description", "type", "subtype", "exchange", "currency_code",
+  "name", "description", "type", "subtype", "exchange",
   "sector", "update_mode", "pricescale", "minmov", "fractional",
   "minmove2", "number_of_employees", "market_cap_basic",
+  "earnings_release_date", "earnings_release_next_date",
+  "dividend_yield_recent", "return_on_equity_fq", "total_revenue_fq",
+  "net_income_fq", "total_assets_fq", "total_debt_fq",
 ]);
 
 function applyTimeframeSuffix(columns: string[], timeframe: string): string[] {
@@ -50,14 +53,13 @@ export async function scanStocks(request: ScanRequest): Promise<ScanRow[]> {
   if (request.tickers) {
     body.symbols = { tickers: request.tickers };
   } else {
-    body.filter2 = {
-      operator: "and",
-      operands: (request.filters ?? []).map((f) => ({
+    if (request.filters && request.filters.length > 0) {
+      body.filter = request.filters.map((f) => ({
         left: f.left,
         operation: f.operation,
         right: f.right,
-      })),
-    };
+      }));
+    }
     if (request.exchange) {
       body.markets = [request.exchange];
     }

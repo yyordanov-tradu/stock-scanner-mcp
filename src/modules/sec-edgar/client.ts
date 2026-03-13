@@ -3,7 +3,7 @@ import { TtlCache } from "../../shared/cache.js";
 
 const EFTS_BASE = "https://efts.sec.gov/LATEST/search-index";
 const USER_AGENT =
-  "stock-scanner-mcp/0.1.0 (https://github.com/stock-scanner-mcp)";
+  "StockScanner contact@example.com";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const cache = new TtlCache<unknown>(CACHE_TTL);

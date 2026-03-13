@@ -13,7 +13,7 @@ const scanTool: ToolDefinition = {
         z.object({
           left: z.string().describe("Column name (e.g. 'close', 'RSI', 'volume')"),
           operation: z.string().describe("Comparison: 'greater', 'less', 'in_range', 'equal'"),
-          right: z.union([z.number(), z.string()]).describe("Value to compare against"),
+          right: z.union([z.number(), z.string(), z.array(z.number())]).describe("Value to compare against"),
         }),
       )
       .optional()
@@ -29,7 +29,7 @@ const scanTool: ToolDefinition = {
     try {
       const rows = await scanCrypto({
         filters: params.filters as
-          | Array<{ left: string; operation: string; right: number | string }>
+          | Array<{ left: string; operation: string; right: number | string | number[] }>
           | undefined,
         columns: params.columns as string[] | undefined,
         timeframe: params.timeframe as string | undefined,

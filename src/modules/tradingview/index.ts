@@ -18,7 +18,7 @@ export function createTradingviewModule(): ModuleDefinition {
           filters: z.array(z.object({
             left: z.string(),
             operation: z.enum(["greater", "less", "equal", "in_range", "not_in_range", "crosses", "crosses_above", "crosses_below"]),
-            right: z.union([z.number(), z.string()]),
+            right: z.union([z.number(), z.string(), z.array(z.number())]),
           })).optional().describe("Scanner filters"),
           columns: z.array(z.string()).optional().describe("Columns to return (default: all 66)"),
           timeframe: z.string().optional().describe("Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"),
@@ -43,7 +43,7 @@ export function createTradingviewModule(): ModuleDefinition {
           try {
             const rows = await scanStocks({
               tickers: input.tickers,
-              columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description", "currency_code"],
+              columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description"],
             });
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {

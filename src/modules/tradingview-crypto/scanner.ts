@@ -3,7 +3,7 @@ import { CRYPTO_COLUMNS, CRYPTO_TIMEFRAMES } from "./columns.js";
 
 export interface CryptoScanRequest {
   tickers?: string[];
-  filters?: Array<{ left: string; operation: string; right: number | string }>;
+  filters?: Array<{ left: string; operation: string; right: number | string | number[] }>;
   columns?: string[];
   timeframe?: string;
   limit?: number;
@@ -38,14 +38,13 @@ export async function scanCrypto(request: CryptoScanRequest): Promise<CryptoScan
   if (request.tickers) {
     body.symbols = { tickers: request.tickers };
   } else {
-    body.filter2 = {
-      operator: "and",
-      operands: (request.filters ?? []).map((f) => ({
+    if (request.filters && request.filters.length > 0) {
+      body.filter = request.filters.map((f) => ({
         left: f.left,
         operation: f.operation,
         right: f.right,
-      })),
-    };
+      }));
+    }
   }
 
   const response = await httpPost<{
