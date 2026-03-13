@@ -79,6 +79,17 @@ describe("httpGet", () => {
     expect(result).toEqual(mockResponse);
   });
 
+  it("returns raw text when responseType is text", async () => {
+    const mockText = "<?xml version='1.0'?><root>data</root>";
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      text: async () => mockText,
+    });
+
+    const result = await httpGet("https://example.com/file.xml", { responseType: "text" });
+    expect(result).toBe(mockText);
+  });
+
   it("passes custom headers", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
