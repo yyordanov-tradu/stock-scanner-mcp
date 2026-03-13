@@ -2,6 +2,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { parseConfig } from "./config.js";
 import { resolveEnabledModules } from "./registry.js";
 import type { ModuleDefinition } from "./shared/types.js";
@@ -65,8 +66,8 @@ async function main() {
 
   server.registerPrompt("analyze_stock", {
     description: "Analyze a stock ticker — includes crypto correlation check for crypto-related companies",
-    inputSchema: {
-      ticker: { type: "string", description: "Stock ticker symbol (e.g. AAPL, CIFR, MARA)" },
+    argsSchema: {
+      ticker: z.string().describe("Stock ticker symbol (e.g. AAPL, CIFR, MARA)"),
     },
   }, async ({ ticker }) => {
     return {
@@ -100,9 +101,9 @@ async function main() {
 
   server.registerPrompt("intraday_candidates", {
     description: "Find intraday trading candidates with custom price range and filters",
-    inputSchema: {
-      min_price: { type: "string", description: "Minimum stock price (default: 10)" },
-      max_price: { type: "string", description: "Maximum stock price (default: 50)" },
+    argsSchema: {
+      min_price: z.string().optional().describe("Minimum stock price (default: 10)"),
+      max_price: z.string().optional().describe("Maximum stock price (default: 50)"),
     },
   }, async ({ min_price, max_price }) => {
     const min = min_price || "10";

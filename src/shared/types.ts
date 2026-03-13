@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const SEC_USER_AGENT = "StockScanner contact@example.com";
+
 export interface ToolResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
