@@ -25,6 +25,7 @@ export interface EdgarFiling {
   ticker: string;
   description: string;
   documentUrl: string;
+  parsedTransactions?: any[];
 }
 
 export async function searchFilings(
@@ -76,6 +77,9 @@ export async function searchFilings(
       documentUrl: `https://www.sec.gov/Archives/edgar/data/${cik}/${hit._id}.txt`,
     };
   });
+
+  // EFTS results aren't guaranteed sorted by date
+  filings.sort((a, b) => b.filedAt.localeCompare(a.filedAt));
 
   cache.set(url, filings);
   return filings;
@@ -182,31 +186,113 @@ export async function getCompanyFacts(ticker: string): Promise<CompanyFacts> {
  * Get recent insider trades (Forms 3, 4, 5) for a ticker.
  */
 export async function getInsiderTrades(ticker: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
-    query: ticker,
-    forms: ["3", "3/A", "4", "4/A", "5", "5/A"],
-    limit,
+  const cik = await getCikForTicker(ticker);
+  if (!cik) throw new Error(`Could not find CIK for ticker ${ticker}`);
+
+  const cacheKey = `insider-trades:${cik}:${limit}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as EdgarFiling[];
+
+  // Using submissions API for guaranteed recent and sorted filings
+  const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
+  const data = await httpGet<any>(url, {
+    headers: { "User-Agent": SEC_USER_AGENT },
   });
+
+  const filings: EdgarFiling[] = [];
+  if (data.filings?.recent) {
+    const recent = data.filings.recent;
+    const count = recent.form.length;
+    
+    for (let i = 0; i < count && filings.length < limit; i++) {
+      const form = recent.form[i];
+      if (form === "3" || form === "4" || form === "5") {
+        const accession = recent.accessionNumber[i];
+        const primaryDoc = recent.primaryDocument[i];
+        const date = recent.filingDate[i];
+        const accNoDashes = accession.replace(/-/g, "");
+        const rawDoc = primaryDoc.replace(/^xsl[^/]+\//, "");
+        const docUrl = `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accNoDashes}/${rawDoc}`;
+
+        const filing: EdgarFiling = {
+          accessionNumber: accession,
+          filedAt: date,
+          formType: form,
+          entityName: data.name,
+          ticker: ticker.toUpperCase(),
+          description: recent.primaryDocDescription[i] || "",
+          documentUrl: docUrl,
+        };
+
+        // Parse Form 4 specifically for transaction details
+        if (form === "4") {
+          try {
+            const docContent = await httpGet<string>(docUrl, {
+              headers: { "User-Agent": SEC_USER_AGENT },
+              responseType: "text"
+            });
+            
+            if (docContent.includes("<ownershipDocument")) {
+              const reporter = docContent.match(/<rptOwnerName>([^<]+)<\/rptOwnerName>/)?.[1];
+              const title = docContent.match(/<rptOwnerOfficerTitle>([^<]+)<\/rptOwnerOfficerTitle>/)?.[1];
+              
+              const transactions: any[] = [];
+              const transRegex = /<nonDerivativeTransaction>([\s\S]*?)<\/nonDerivativeTransaction>/g;
+              let match;
+              while ((match = transRegex.exec(docContent)) !== null) {
+                const trans = match[1];
+                const security = trans.match(/<securityTitle>\s*<value>([^<]+)<\/value>/)?.[1];
+                const transDate = trans.match(/<transactionDate>\s*<value>([^<]+)<\/value>/)?.[1];
+                const transCode = trans.match(/<transactionAcquiredDisposedCode>\s*<value>([^<]+)<\/value>/)?.[1];
+                const shares = trans.match(/<transactionShares>\s*<value>([^<]+)<\/value>/)?.[1];
+                const price = trans.match(/<transactionPricePerShare>\s*<value>([^<]+)<\/value>/)?.[1];
+                
+                transactions.push({
+                  reporter,
+                  title,
+                  date: transDate,
+                  security,
+                  type: transCode === 'A' ? 'BUY' : 'SELL',
+                  shares: shares ? parseFloat(shares) : 0,
+                  price: price ? parseFloat(price) : 0,
+                });
+              }
+              filing.parsedTransactions = transactions;
+            }
+          } catch (err) {
+            // Log but continue
+            console.error(`Failed to parse Form 4 ${accession}:`, err);
+          }
+        }
+        filings.push(filing);
+      }
+    }
+  }
+
+  cache.set(cacheKey, filings);
+  return filings;
 }
 
 /**
  * Get recent institutional holdings reports (Form 13F) for a ticker or manager.
  */
 export async function getInstitutionalHoldings(query: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
+  const filings = await searchFilings({
     query,
     forms: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"],
     limit,
   });
+  return filings.sort((a, b) => b.filedAt.localeCompare(a.filedAt));
 }
 
 /**
  * Get recent significant ownership filings (13D, 13G) for a ticker.
  */
 export async function getOwnershipFilings(ticker: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
+  const filings = await searchFilings({
     query: ticker,
     forms: ["SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A"],
     limit,
   });
+  return filings.sort((a, b) => b.filedAt.localeCompare(a.filedAt));
 }

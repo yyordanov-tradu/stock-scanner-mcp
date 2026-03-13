@@ -1,6 +1,7 @@
 export interface HttpOptions {
   timeoutMs?: number;
   headers?: Record<string, string>;
+  responseType?: "json" | "text";
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -56,7 +57,11 @@ export async function httpGet<T = unknown>(
   url: string,
   options: HttpOptions = {},
 ): Promise<T> {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, headers = {} } = options;
+  const {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    headers = {},
+    responseType = "json",
+  } = options;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -74,6 +79,9 @@ export async function httpGet<T = unknown>(
       );
     }
 
+    if (responseType === "text") {
+      return (await response.text()) as T;
+    }
     return (await response.json()) as T;
   } catch (err) {
     throw sanitizeError(err);

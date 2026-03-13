@@ -101,7 +101,7 @@ const companyFactsTool: ToolDefinition = {
 
 const insiderTradesTool: ToolDefinition = {
   name: "edgar_insider_trades",
-  description: "Monitor legal stock trades made by company executives and directors (Forms 3, 4, 5). Large buys or sales by insiders are key indicators of internal sentiment.",
+  description: "Monitor legal stock trades made by company executives and directors (Forms 3, 4, 5). Returns detailed transaction data including insider names, titles, buy/sell type, share amounts, and prices.",
   inputSchema: {
     ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     limit: z.number().optional().describe("Max results (default: 10)"),
