@@ -5,19 +5,35 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { parseConfig } from "./config.js";
 import { resolveEnabledModules } from "./registry.js";
 import type { ModuleDefinition } from "./shared/types.js";
+import { createTradingviewModule } from "./modules/tradingview/index.js";
+import { createTradingviewCryptoModule } from "./modules/tradingview-crypto/index.js";
+import { createSecEdgarModule } from "./modules/sec-edgar/index.js";
+import { createCoingeckoModule } from "./modules/coingecko/index.js";
+import { createFinnhubModule } from "./modules/finnhub/index.js";
+import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
 
-// Modules will be imported here as they are built
-// import { createTradingviewModule } from "./modules/tradingview/index.js";
-
-function buildModules(_defaultExchange: string): ModuleDefinition[] {
-  return [
-    // Modules added here as implemented
+function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
+  const modules: ModuleDefinition[] = [
+    createTradingviewModule(),
+    createTradingviewCryptoModule(),
+    createSecEdgarModule(),
+    createCoingeckoModule(),
   ];
+
+  if (env.FINNHUB_API_KEY) {
+    modules.push(createFinnhubModule(env.FINNHUB_API_KEY));
+  }
+
+  if (env.ALPHA_VANTAGE_API_KEY) {
+    modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
+  }
+
+  return modules;
 }
 
 async function main() {
   const config = parseConfig(process.argv.slice(2));
-  const allModules = buildModules(config.defaultExchange);
+  const allModules = buildModules(config.env);
   const enabled = resolveEnabledModules(allModules, config.env, config.enabledModules);
 
   const server = new McpServer({
