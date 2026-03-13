@@ -61,6 +61,77 @@ async function main() {
     console.error(`Registered ${mod.tools.length} tools from ${mod.name}`);
   }
 
+  // -- MCP Prompts: analysis workflows & usage rules --
+
+  server.registerPrompt("analyze_stock", {
+    description: "Analyze a stock ticker — includes crypto correlation check for crypto-related companies",
+    inputSchema: {
+      ticker: { type: "string", description: "Stock ticker symbol (e.g. AAPL, CIFR, MARA)" },
+    },
+  }, async ({ ticker }) => {
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: [
+              `Analyze the stock ${ticker}. Follow these steps:`,
+              "",
+              "1. Get a real-time quote using tradingview_quote",
+              "2. Get daily and hourly technicals using tradingview_technicals",
+              "3. Get recent company news using finnhub_company_news (last 7 days)",
+              "",
+              "IMPORTANT — Crypto correlation rule:",
+              "If the company is crypto-related (Bitcoin miners like MARA/CIFR/RIOT/CLSK/HUT/IREN,",
+              "crypto exchanges like COIN, blockchain companies, or any firm with significant",
+              "crypto/Bitcoin exposure), you MUST also:",
+              "  - Fetch BTC price via crypto_quote (BINANCE:BTCUSDT)",
+              "  - Note BTC's daily % change and trend",
+              "  - Comment on the correlation between BTC price action and this stock's move",
+              "",
+              "4. Summarize: price action, key technicals, news catalysts, and (if applicable) BTC correlation.",
+            ].join("\n"),
+          },
+        },
+      ],
+    };
+  });
+
+  server.registerPrompt("intraday_candidates", {
+    description: "Find intraday trading candidates with custom price range and filters",
+    inputSchema: {
+      min_price: { type: "string", description: "Minimum stock price (default: 10)" },
+      max_price: { type: "string", description: "Maximum stock price (default: 50)" },
+    },
+  }, async ({ min_price, max_price }) => {
+    const min = min_price || "10";
+    const max = max_price || "50";
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: [
+              `Find intraday trading candidates in the $${min}–$${max} price range:`,
+              "",
+              "1. Use tradingview_scan with filters: price in range, average_volume_30d > 1M, positive EPS TTM, volume > 500K",
+              "2. Get technicals (daily + hourly) for the top results",
+              "3. Rank by: ATR (higher = more intraday range), volume, and technical setup",
+              "",
+              "IMPORTANT — Crypto correlation rule:",
+              "If any candidate is crypto-related (Bitcoin miners, crypto exchanges, blockchain companies),",
+              "also fetch BTC price via crypto_quote (BINANCE:BTCUSDT) and note the correlation.",
+              "",
+              "4. Present top 5 candidates with: price, EPS, P/E, ATR, volume, volatility %, technical signal, and setup type.",
+            ].join("\n"),
+          },
+        },
+      ],
+    };
+  });
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(
