@@ -5,6 +5,21 @@ export interface HttpOptions {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+const SENSITIVE_PARAMS = /([?&])(apikey|api_key|token|secret|key)=[^&]*/gi;
+
+function sanitizeUrl(url: string): string {
+  return url.replace(SENSITIVE_PARAMS, "$1$2=REDACTED");
+}
+
+function sanitizeError(err: unknown): Error {
+  if (err instanceof Error) {
+    const sanitized = new Error(sanitizeUrl(err.message));
+    sanitized.stack = err.stack;
+    return sanitized;
+  }
+  return new Error(sanitizeUrl(String(err)));
+}
+
 export async function httpPost<T = unknown>(
   url: string,
   body: unknown,
@@ -30,6 +45,8 @@ export async function httpPost<T = unknown>(
     }
 
     return (await response.json()) as T;
+  } catch (err) {
+    throw sanitizeError(err);
   } finally {
     clearTimeout(timer);
   }
@@ -58,6 +75,8 @@ export async function httpGet<T = unknown>(
     }
 
     return (await response.json()) as T;
+  } catch (err) {
+    throw sanitizeError(err);
   } finally {
     clearTimeout(timer);
   }

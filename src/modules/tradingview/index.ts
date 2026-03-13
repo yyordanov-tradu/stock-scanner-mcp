@@ -27,7 +27,7 @@ export function createTradingviewModule(): ModuleDefinition {
         handler: async (input): Promise<ToolResult> => {
           try {
             const rows = await scanStocks(input);
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Scan failed: ${(e as Error).message}`);
           }
@@ -45,7 +45,7 @@ export function createTradingviewModule(): ModuleDefinition {
               tickers: input.tickers,
               columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description", "currency_code"],
             });
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Quote failed: ${(e as Error).message}`);
           }
@@ -72,7 +72,7 @@ export function createTradingviewModule(): ModuleDefinition {
               columns: technicalCols,
               timeframe: input.timeframe,
             });
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Technicals failed: ${(e as Error).message}`);
           }
@@ -92,7 +92,7 @@ export function createTradingviewModule(): ModuleDefinition {
               columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
               limit: input.limit ?? 20,
             });
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Top gainers failed: ${(e as Error).message}`);
           }
@@ -112,7 +112,7 @@ export function createTradingviewModule(): ModuleDefinition {
               columns: ["volume", "close", "change", "name", "description", "market_cap_basic"],
               limit: input.limit ?? 20,
             });
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Top volume failed: ${(e as Error).message}`);
           }
@@ -133,7 +133,7 @@ export function createTradingviewModule(): ModuleDefinition {
               filters: [{ left: "volume", operation: "greater", right: 1_000_000 }],
               limit: input.limit ?? 20,
             });
-            return successResult(rows);
+            return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Volume breakout failed: ${(e as Error).message}`);
           }

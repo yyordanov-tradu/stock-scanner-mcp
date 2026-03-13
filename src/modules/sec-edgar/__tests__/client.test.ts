@@ -83,16 +83,17 @@ describe("getCompanyFilings", () => {
     vi.restoreAllMocks();
   });
 
-  it("searches by ticker", async () => {
+  it("uses ticker as search query, not as tickers filter param", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ hits: { hits: [] } }),
     });
 
-    await getCompanyFilings({ ticker: "AAPL" });
+    await getCompanyFilings({ ticker: "APLD" });
 
-    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(calledUrl).toContain("tickers=AAPL");
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("q=APLD");
+    expect(calledUrl).not.toContain("tickers=");
   });
 });
 

@@ -94,4 +94,36 @@ describe("httpGet", () => {
       }),
     );
   });
+
+  it("strips apikey query parameter from error messages", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      text: async () => "invalid key",
+    });
+
+    try {
+      await httpGet("https://api.example.com/query?function=QUOTE&symbol=AAPL&apikey=SECRET_KEY_123");
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).not.toContain("SECRET_KEY_123");
+      expect(msg).toContain("HTTP 403");
+    }
+  });
+
+  it("strips apikey from network error messages", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("fetch failed: https://api.example.com/query?apikey=MY_SECRET&symbol=AAPL"),
+    );
+
+    try {
+      await httpGet("https://api.example.com/query?apikey=MY_SECRET&symbol=AAPL");
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).not.toContain("MY_SECRET");
+    }
+  });
 });

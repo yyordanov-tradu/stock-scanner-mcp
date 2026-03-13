@@ -90,8 +90,7 @@ export async function getCompanyFilings(
   params: CompanyFilingsParams,
 ): Promise<EdgarFiling[]> {
   return searchFilings({
-    query: "*",
-    tickers: [params.ticker],
+    query: params.ticker,
     forms: params.forms,
     limit: params.limit,
   });

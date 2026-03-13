@@ -113,4 +113,28 @@ describe("createTradingviewModule", () => {
       "tradingview_volume_breakout",
     ]);
   });
+
+  it("tool handlers return valid JSON strings, not [object Object]", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { s: "NASDAQ:AAPL", d: [150.5, 1.2, 50000] },
+        ],
+      }),
+    }));
+
+    const { createTradingviewModule } = await import("../index.js");
+    const mod = createTradingviewModule();
+
+    for (const tool of mod.tools) {
+      const result = await tool.handler({ tickers: ["NASDAQ:AAPL"], limit: 5 });
+      const text = result.content[0].text;
+      expect(text).not.toContain("[object Object]");
+      // Must be valid JSON
+      expect(() => JSON.parse(text)).not.toThrow();
+    }
+
+    vi.restoreAllMocks();
+  });
 });
