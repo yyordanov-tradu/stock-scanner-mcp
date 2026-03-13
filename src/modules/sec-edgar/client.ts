@@ -1,9 +1,10 @@
 import { httpGet } from "../../shared/http.js";
 import { TtlCache } from "../../shared/cache.js";
+import { getCikForTicker } from "./cik-mapper.js";
 
 const EFTS_BASE = "https://efts.sec.gov/LATEST/search-index";
-const USER_AGENT =
-  "StockScanner contact@example.com";
+const DATA_BASE = "https://data.sec.gov/api/xbrl/companyfacts";
+const USER_AGENT = "StockScanner contact@example.com";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const cache = new TtlCache<unknown>(CACHE_TTL);
@@ -93,5 +94,72 @@ export async function getCompanyFilings(
     query: params.ticker,
     forms: params.forms,
     limit: params.limit,
+  });
+}
+
+export interface CompanyFacts {
+  ticker: string;
+  cik: string;
+  entityName: string;
+  facts: Record<string, any>;
+}
+
+/**
+ * Get structured financial facts for a company using the SEC XBRL API.
+ */
+export async function getCompanyFacts(ticker: string): Promise<CompanyFacts> {
+  const cik = await getCikForTicker(ticker);
+  if (!cik) throw new Error(`Could not find CIK for ticker ${ticker}`);
+
+  const cacheKey = `facts:${cik}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as CompanyFacts;
+
+  const url = `${DATA_BASE}/CIK${cik}.json`;
+  const data = await httpGet<any>(url, {
+    headers: { "User-Agent": USER_AGENT },
+  });
+
+  const result: CompanyFacts = {
+    ticker: ticker.toUpperCase(),
+    cik,
+    entityName: data.entityName,
+    facts: data.facts,
+  };
+
+  cache.set(cacheKey, result);
+  return result;
+}
+
+/**
+ * Get recent insider trades (Forms 3, 4, 5) for a ticker.
+ */
+export async function getInsiderTrades(ticker: string, limit = 10): Promise<EdgarFiling[]> {
+  return searchFilings({
+    query: ticker,
+    forms: ["3", "3/A", "4", "4/A", "5", "5/A"],
+    limit,
+  });
+}
+
+/**
+ * Get recent institutional holdings reports (Form 13F) for a ticker or manager.
+ */
+export async function getInstitutionalHoldings(query: string, limit = 10): Promise<EdgarFiling[]> {
+  return searchFilings({
+    query,
+    forms: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"],
+    limit,
+  });
+}
+
+/**
+ * Get recent significant ownership filings (13D, 13G) for a ticker.
+ */
+export async function getOwnershipFilings(ticker: string, limit = 10): Promise<EdgarFiling[]> {
+  return searchFilings({
+    query: ticker,
+    forms: ["SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A"],
+    limit,
   });
 }

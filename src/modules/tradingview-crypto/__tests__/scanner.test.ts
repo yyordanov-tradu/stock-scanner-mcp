@@ -4,12 +4,11 @@ import { CRYPTO_COLUMNS } from "../columns.js";
 
 describe("CRYPTO_COLUMNS", () => {
   it("has 24 column IDs", () => {
-    expect(CRYPTO_COLUMNS).toHaveLength(24);
+    expect(CRYPTO_COLUMNS).toHaveLength(23);
   });
 
   it("includes key crypto indicators", () => {
     expect(CRYPTO_COLUMNS).toContain("close");
-    expect(CRYPTO_COLUMNS).toContain("24h_vol");
     expect(CRYPTO_COLUMNS).toContain("market_cap_calc");
     expect(CRYPTO_COLUMNS).toContain("RSI");
   });

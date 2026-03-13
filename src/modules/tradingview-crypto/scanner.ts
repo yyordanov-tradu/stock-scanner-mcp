@@ -19,7 +19,7 @@ const API_URL = "https://scanner.tradingview.com/crypto/scan";
 function applyTimeframeSuffix(columns: string[], timeframe: string): string[] {
   const suffix = CRYPTO_TIMEFRAMES[timeframe] ?? "";
   if (!suffix) return columns;
-  const metaCols = ["name", "description", "24h_vol"];
+  const metaCols = ["name", "description"];
   return columns.map((col) => metaCols.includes(col) ? col : col + suffix);
 }
 

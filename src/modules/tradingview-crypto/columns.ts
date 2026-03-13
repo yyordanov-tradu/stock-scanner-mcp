@@ -20,7 +20,6 @@ export const CRYPTO_COLUMNS: string[] = [
   "SMA20",
   "SMA50",
   "SMA200",
-  "24h_vol",
   "description",
   "name",
 ];
