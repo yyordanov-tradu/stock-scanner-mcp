@@ -13,12 +13,12 @@ import {
 const searchTool: ToolDefinition = {
   name: "edgar_search",
   description:
-    "Search SEC EDGAR filings by keyword. Returns accession numbers, filing dates, form types, and entity names. Rate limit: 10 requests/second.",
+    "Search SEC EDGAR filings by keyword. Best for finding mentions of specific trends, technologies, or events across all companies. Returns metadata including accession numbers, form types, and direct sec.gov links.",
   inputSchema: {
     query: z
       .string()
       .describe(
-        "Search query (e.g. 'artificial intelligence', 'revenue growth')",
+        "Keyword or phrase to search for (e.g. 'lithium mining', 'share repurchase program')",
       ),
     dateRange: z
       .string()
@@ -56,9 +56,9 @@ const searchTool: ToolDefinition = {
 const companyFilingsTool: ToolDefinition = {
   name: "edgar_company_filings",
   description:
-    "Get recent SEC filings for a specific company by ticker symbol.",
+    "Retrieve the most recent official filings for a specific company. Use this to find a company's latest 10-K (annual), 10-Q (quarterly), or 8-K (current events) reports.",
   inputSchema: {
-    ticker: z.string().describe("Company ticker symbol (e.g. 'AAPL')"),
+    ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     forms: z
       .array(z.string())
       .optional()
@@ -85,9 +85,9 @@ const companyFilingsTool: ToolDefinition = {
 const companyFactsTool: ToolDefinition = {
   name: "edgar_company_facts",
   description:
-    "Get key financial metrics (Revenue, Net Income, Assets, etc.) directly from SEC XBRL data.",
+    "Retrieve high-fidelity financial metrics (Revenue, Net Income, EPS, Assets, Liabilities) directly from SEC XBRL data. This is more reliable than extracting numbers from text filings.",
   inputSchema: {
-    ticker: z.string().describe("Company ticker symbol (e.g. 'AAPL')"),
+    ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
   },
   handler: async (params) => {
     try {
@@ -133,9 +133,9 @@ const companyFactsTool: ToolDefinition = {
 
 const insiderTradesTool: ToolDefinition = {
   name: "edgar_insider_trades",
-  description: "Get recent insider trades (Forms 3, 4, 5) for a company.",
+  description: "Monitor legal stock trades made by company executives and directors (Forms 3, 4, 5). Large buys or sales by insiders are key indicators of internal sentiment.",
   inputSchema: {
-    ticker: z.string().describe("Company ticker symbol (e.g. 'AAPL')"),
+    ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     limit: z.number().optional().describe("Max results (default: 10)"),
   },
   handler: async (params) => {
@@ -154,11 +154,11 @@ const insiderTradesTool: ToolDefinition = {
 const institutionalHoldingsTool: ToolDefinition = {
   name: "edgar_institutional_holdings",
   description:
-    "Get recent 13F filings (institutional manager holdings) for a ticker or manager name.",
+    "Track 'big money' moves by searching Form 13F filings. Use to find what hedge funds and institutional managers (e.g. 'Berkshire Hathaway') are holding or what firms own a specific ticker.",
   inputSchema: {
     query: z
       .string()
-      .describe("Ticker (e.g. 'AAPL') or manager name (e.g. 'Berkshire Hathaway')"),
+      .describe("Stock ticker (e.g. 'AAPL') or institutional manager name (e.g. 'Berkshire Hathaway')"),
     limit: z.number().optional().describe("Max results (default: 10)"),
   },
   handler: async (params) => {
@@ -177,9 +177,9 @@ const institutionalHoldingsTool: ToolDefinition = {
 const ownershipFilingsTool: ToolDefinition = {
   name: "edgar_ownership_filings",
   description:
-    "Get recent significant ownership filings (13D, 13G) for a company.",
+    "Monitor significant changes in company ownership (5%+ stakes). Use 13D and 13G filings to identify activist investors (e.g. Carl Icahn, Ryan Cohen) entering or exiting a stock.",
   inputSchema: {
-    ticker: z.string().describe("Company ticker symbol (e.g. 'AAPL')"),
+    ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     limit: z.number().optional().describe("Max results (default: 10)"),
   },
   handler: async (params) => {
