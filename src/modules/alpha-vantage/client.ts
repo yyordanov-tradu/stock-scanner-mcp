@@ -6,6 +6,19 @@ const CACHE_TTL = 60 * 1000; // 1 minute
 
 const cache = new TtlCache<unknown>(CACHE_TTL);
 
+function checkAvResponse(data: any) {
+  if (!data) return;
+  if (data["Note"]) {
+    throw new Error(`Alpha Vantage Rate Limit: ${data["Note"]}`);
+  }
+  if (data["Information"]) {
+    throw new Error(`Alpha Vantage Info: ${data["Information"]}`);
+  }
+  if (data["Error Message"]) {
+    throw new Error(`Alpha Vantage Error: ${data["Error Message"]}`);
+  }
+}
+
 export interface StockQuote {
   symbol: string;
   open: number;
@@ -39,7 +52,12 @@ export async function getQuote(apiKey: string, symbol: string): Promise<StockQuo
     };
   }>(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`);
 
+  checkAvResponse(data);
   const gq = data["Global Quote"];
+  if (!gq || !gq["01. symbol"]) {
+    throw new Error(`Stock quote not found for ${symbol}`);
+  }
+
   const quote: StockQuote = {
     symbol: gq["01. symbol"],
     open: parseFloat(gq["02. open"]),
@@ -78,7 +96,12 @@ export async function getDailyPrices(apiKey: string, symbol: string, limit: numb
     }>;
   }>(`${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(symbol)}&outputsize=compact&apikey=${apiKey}`);
 
+  checkAvResponse(data);
   const timeSeries = data["Time Series (Daily)"];
+  if (!timeSeries) {
+    throw new Error(`Daily prices not found for ${symbol}`);
+  }
+
   const prices: DailyPrice[] = Object.entries(timeSeries)
     .slice(0, limit)
     .map(([date, values]) => ({
@@ -122,6 +145,11 @@ export async function getOverview(apiKey: string, symbol: string): Promise<Compa
   const data = await httpGet<Record<string, string>>(
     `${BASE_URL}?function=OVERVIEW&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`,
   );
+
+  checkAvResponse(data);
+  if (!data || !data.Symbol) {
+    throw new Error(`Company overview not found for ${symbol}`);
+  }
 
   const overview: CompanyOverview = {
     symbol: data.Symbol,
@@ -175,6 +203,7 @@ export async function getEarningsHistory(
     `${BASE_URL}?function=EARNINGS&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`,
   );
 
+  checkAvResponse(data);
   const result: CompanyEarnings = {
     symbol: data.symbol,
     annualEarnings: (data.annualEarnings || []).slice(0, 4),
@@ -202,6 +231,7 @@ export async function getDividendHistory(
     `${BASE_URL}?function=DIVIDENDS&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`,
   );
 
+  checkAvResponse(data);
   const result: DividendHistory = {
     symbol: data.symbol,
     data: (data.data || []).slice(0, 20),
