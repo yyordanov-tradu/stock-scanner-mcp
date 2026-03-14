@@ -150,6 +150,9 @@ export async function getOverview(apiKey: string, symbol: string): Promise<Compa
   if (!data || !data.Symbol) {
     throw new Error(`Company overview not found for ${symbol}`);
   }
+  if (!data.MarketCapitalization && !data.Name) {
+    throw new Error(`Alpha Vantage returned empty overview for ${symbol} (possible rate limit)`);
+  }
 
   const overview: CompanyOverview = {
     symbol: data.Symbol,
