@@ -95,6 +95,35 @@ describe("getCompanyFilings", () => {
     expect(calledUrl).toContain("q=APLD");
     expect(calledUrl).not.toContain("tickers=");
   });
+
+  it("backfills empty ticker field from input param", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        hits: {
+          hits: [
+            {
+              _id: "0001234567-24-000001",
+              _source: {
+                file_num: "001-12345",
+                file_date: "2024-03-15",
+                form_type: "10-K",
+                entity_name: "Applied Digital Corp",
+                tickers: "",
+                display_names: ["Applied Digital Corp"],
+                file_description: "Annual report",
+              },
+            },
+          ],
+        },
+      }),
+    });
+
+    const filings = await getCompanyFilings({ ticker: "apld" });
+
+    expect(filings).toHaveLength(1);
+    expect(filings[0].ticker).toBe("APLD");
+  });
 });
 
 describe("createSecEdgarModule", () => {

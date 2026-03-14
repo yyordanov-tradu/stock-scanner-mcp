@@ -82,6 +82,18 @@ describe("scanStocks", () => {
     expect(callBody.range).toEqual([0, 10]);
   });
 
+  it("uses custom sort when provided", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    await scanStocks({ columns: ["change", "close"], sort: { sortBy: "change", sortOrder: "asc" } });
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.sort).toEqual({ sortBy: "change", sortOrder: "asc" });
+  });
+
   it("applies timeframe suffix for non-daily timeframes", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
@@ -103,12 +115,13 @@ describe("createTradingviewModule", () => {
     const mod = createTradingviewModule();
     expect(mod.name).toBe("tradingview");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(6);
+    expect(mod.tools).toHaveLength(7);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "tradingview_scan",
       "tradingview_quote",
       "tradingview_technicals",
       "tradingview_top_gainers",
+      "tradingview_top_losers",
       "tradingview_top_volume",
       "tradingview_volume_breakout",
     ]);

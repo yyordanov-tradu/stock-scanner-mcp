@@ -92,6 +92,27 @@ export function createTradingviewModule(): ModuleDefinition {
         }, metadata),
       },
       {
+        name: "tradingview_top_losers",
+        description: "Get today's top losing stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
+        inputSchema: {
+          exchange: z.string().optional().describe("Exchange (default: all US)"),
+          limit: z.number().optional().describe("Max results (default 20)"),
+        },
+        handler: withMetadata(async (input) => {
+          const filters = [
+            { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
+          ];
+          const rows = await scanStocks({
+            exchange: input.exchange,
+            columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
+            filters,
+            limit: input.limit ?? 20,
+            sort: { sortBy: "change", sortOrder: "asc" },
+          });
+          return successResult(JSON.stringify(rows, null, 2));
+        }, metadata),
+      },
+      {
         name: "tradingview_top_volume",
         description: "Get stocks with the highest trading volume today. Defaults to major US exchanges.",
         inputSchema: {
