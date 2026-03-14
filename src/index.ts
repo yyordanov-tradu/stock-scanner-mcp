@@ -39,8 +39,60 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
   return modules;
 }
 
+function printHelp(): void {
+  const help = `
+stock-scanner-mcp v${pkg.version}
+
+MCP server providing Claude Code with stock and crypto market data.
+
+USAGE
+  npx stock-scanner-mcp [options]
+
+OPTIONS
+  --help, -h              Show this help message
+  --modules <list>        Comma-separated modules to enable (default: all available)
+  --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
+
+MODULES (25 tools total)
+  tradingview        6 tools  Stock scanning, quotes, technicals       (no key)
+  tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
+  sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
+  coingecko          3 tools  Crypto market data and trending          (no key)
+  finnhub            3 tools  Market news and earnings calendar        (FINNHUB_API_KEY)
+  alpha-vantage      3 tools  Stock quotes and company fundamentals    (ALPHA_VANTAGE_API_KEY)
+
+SETUP (Claude Code)
+  Add to ~/.claude.json or .mcp.json:
+
+  {
+    "mcpServers": {
+      "stock-scanner": {
+        "command": "npx",
+        "args": ["-y", "stock-scanner-mcp"],
+        "env": {
+          "FINNHUB_API_KEY": "your-key",
+          "ALPHA_VANTAGE_API_KEY": "your-key"
+        }
+      }
+    }
+  }
+
+DOCS
+  https://github.com/yyordanov-tradu/stock-scanner-mcp
+`.trimStart();
+
+  console.log(help);
+}
+
 async function main() {
-  const config = parseConfig(process.argv.slice(2));
+  const args = process.argv.slice(2);
+
+  if (args.includes("--help") || args.includes("-h")) {
+    printHelp();
+    process.exit(0);
+  }
+
+  const config = parseConfig(args);
   const allModules = buildModules(config.env);
   const enabled = resolveEnabledModules(allModules, config.env, config.enabledModules);
 
