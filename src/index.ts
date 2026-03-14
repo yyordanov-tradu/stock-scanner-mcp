@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { parseConfig } from "./config.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
 import { resolveEnabledModules } from "./registry.js";
 import type { ModuleDefinition } from "./shared/types.js";
 import { createTradingviewModule } from "./modules/tradingview/index.js";
@@ -39,7 +46,7 @@ async function main() {
 
   const server = new McpServer({
     name: "stock-scanner",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   for (const mod of enabled) {

@@ -1,0 +1,14 @@
+# Source
+src/
+docs/
+.claude/
+
+# Config
+tsconfig.json
+vitest.config.ts
+.github/
+
+# Dev artifacts
+node_modules/
+coverage/
+*.tsbuildinfo
