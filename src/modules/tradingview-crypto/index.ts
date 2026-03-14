@@ -3,6 +3,13 @@ import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
 import { successResult, errorResult } from "../../shared/types.js";
 import { scanCrypto } from "./scanner.js";
 
+const MAJOR_EXCHANGES = ["BINANCE", "COINBASE", "KRAKEN", "OKX", "BYBIT", "BITSTAMP"];
+
+const MAJOR_ONLY_FILTERS = [
+  { left: "exchange", operation: "in_range", right: MAJOR_EXCHANGES },
+  { left: "volume", operation: "greater", right: 10000 }, // $10k min volume to filter junk
+];
+
 const scanTool: ToolDefinition = {
   name: "crypto_scan",
   description:
@@ -13,11 +20,12 @@ const scanTool: ToolDefinition = {
         z.object({
           left: z.string().describe("Column name (e.g. 'close', 'RSI', 'volume')"),
           operation: z.string().describe("Comparison: 'greater', 'less', 'in_range', 'equal'"),
-          right: z.union([z.number(), z.string(), z.array(z.number())]).describe("Value to compare against"),
+          right: z.union([z.number(), z.string(), z.array(z.number()), z.array(z.string())]).describe("Value to compare against"),
         }),
       )
       .optional()
       .describe("Filter conditions combined with AND"),
+    major_only: z.boolean().optional().describe("Only include major exchanges (default: true)"),
     columns: z.array(z.string()).optional().describe("Columns to return (default: all 24)"),
     timeframe: z
       .string()
@@ -27,10 +35,14 @@ const scanTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const majorOnly = (params.major_only as boolean) ?? true;
+      let filters = (params.filters as any[]) || [];
+      if (majorOnly) {
+        filters = [...MAJOR_ONLY_FILTERS, ...filters];
+      }
+
       const rows = await scanCrypto({
-        filters: params.filters as
-          | Array<{ left: string; operation: string; right: number | string | number[] }>
-          | undefined,
+        filters,
         columns: params.columns as string[] | undefined,
         timeframe: params.timeframe as string | undefined,
         limit: Math.min((params.limit as number) ?? 50, 200),
@@ -113,14 +125,22 @@ const technicalsTool: ToolDefinition = {
 
 const topGainersTool: ToolDefinition = {
   name: "crypto_top_gainers",
-  description: "Get top gaining cryptocurrency pairs by percentage change.",
+  description: "Get top gaining cryptocurrency pairs by percentage change. Defaults to major exchanges and volume > $10k.",
   inputSchema: {
+    exchange: z.string().optional().describe("Specific exchange (e.g. BINANCE)"),
     limit: z.number().optional().describe("Number of results (default: 20, max: 50)"),
   },
   handler: async (params) => {
     try {
+      const filters: any[] = [{ left: "change", operation: "greater", right: 0 }];
+      if (params.exchange) {
+        filters.push({ left: "exchange", operation: "equal", right: params.exchange });
+      } else {
+        filters.push(...MAJOR_ONLY_FILTERS);
+      }
+
       const rows = await scanCrypto({
-        filters: [{ left: "change", operation: "greater", right: 0 }],
+        filters,
         columns: [
           "close",
           "change",

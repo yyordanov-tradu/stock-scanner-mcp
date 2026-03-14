@@ -8,6 +8,10 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 
 const SENSITIVE_PARAMS = /([?&])(apikey|api_key|token|secret|key)=[^&]*/gi;
 
+const DEFAULT_HEADERS = {
+  "User-Agent": "stock-scanner-mcp/0.1.0 (+https://github.com/yyordanov-tradu/stock-scanner-mcp)",
+};
+
 function sanitizeUrl(url: string): string {
   return url.replace(SENSITIVE_PARAMS, "$1$2=REDACTED");
 }
@@ -33,7 +37,11 @@ export async function httpPost<T = unknown>(
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
+      headers: {
+        "Content-Type": "application/json",
+        ...DEFAULT_HEADERS,
+        ...headers,
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -68,7 +76,10 @@ export async function httpGet<T = unknown>(
   try {
     const response = await fetch(url, {
       method: "GET",
-      headers,
+      headers: {
+        ...DEFAULT_HEADERS,
+        ...headers,
+      },
       signal: controller.signal,
     });
 

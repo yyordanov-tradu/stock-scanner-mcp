@@ -80,16 +80,20 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_top_gainers",
-        description: "Get today's top gaining stocks by percentage change on a given exchange.",
+        description: "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
         handler: async (input): Promise<ToolResult> => {
           try {
+            const filters = [
+              { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
+            ];
             const rows = await scanStocks({
               exchange: input.exchange,
               columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
+              filters,
               limit: input.limit ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));
@@ -100,16 +104,22 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_top_volume",
-        description: "Get stocks with the highest trading volume today.",
+        description: "Get stocks with the highest trading volume today. Defaults to major US exchanges.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
+          include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
         handler: async (input): Promise<ToolResult> => {
           try {
+            const filters = [];
+            if (!input.include_otc) {
+              filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
+            }
             const rows = await scanStocks({
               exchange: input.exchange,
               columns: ["volume", "close", "change", "name", "description", "market_cap_basic"],
+              filters,
               limit: input.limit ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));
@@ -120,7 +130,7 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_volume_breakout",
-        description: "Find stocks with unusual volume (current volume significantly above average).",
+        description: "Find stocks with unusual volume (current volume significantly above average). Defaults to major exchanges.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange filter"),
           limit: z.number().optional().describe("Max results (default 20)"),
@@ -130,7 +140,10 @@ export function createTradingviewModule(): ModuleDefinition {
             const rows = await scanStocks({
               exchange: input.exchange,
               columns: ["volume", "close", "change", "name", "description", "market_cap_basic", "RSI", "MACD.macd"],
-              filters: [{ left: "volume", operation: "greater", right: 1_000_000 }],
+              filters: [
+                { left: "volume", operation: "greater", right: 1_000_000 },
+                { left: "market_cap_basic", operation: "greater", right: 100_000_000 }
+              ],
               limit: input.limit ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));

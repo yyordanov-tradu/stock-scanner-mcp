@@ -157,12 +157,25 @@ export async function getCompanyFacts(ticker: string): Promise<CompanyFacts> {
 
   const usGaap = data.facts["us-gaap"] || {};
   const keyMetricsMap: Record<string, string[]> = {
-    Revenue: ["SalesRevenueNet", "Revenues", "TotalRevenues"],
-    NetIncome: ["NetIncomeLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"],
+    Revenue: [
+      "SalesRevenueNet",
+      "Revenues",
+      "TotalRevenues",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "NetRevenueV2",
+    ],
+    NetIncome: [
+      "NetIncomeLoss",
+      "NetIncomeLossAvailableToCommonStockholdersBasic",
+      "ProfitLoss",
+    ],
     Assets: ["Assets"],
     Liabilities: ["Liabilities"],
     EPS: ["EarningsPerShareBasic", "EarningsPerShareDiluted"],
-    Cash: ["CashAndCashEquivalentsAtCarryingValue"],
+    Cash: [
+      "CashAndCashEquivalentsAtCarryingValue",
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+    ],
   };
 
   const summarizedMetrics: Record<string, CompanyMetricValue> = {};

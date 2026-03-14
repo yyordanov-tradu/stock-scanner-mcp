@@ -26,7 +26,10 @@ describe("httpPost", () => {
       "https://scanner.tradingview.com/america/scan",
       expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "User-Agent": expect.stringContaining("stock-scanner-mcp"),
+        }),
         signal: expect.any(AbortSignal),
       }),
     );
@@ -101,7 +104,10 @@ describe("httpGet", () => {
     expect(fetch).toHaveBeenCalledWith(
       "https://example.com",
       expect.objectContaining({
-        headers: { "X-Token": "abc" },
+        headers: expect.objectContaining({
+          "X-Token": "abc",
+          "User-Agent": expect.stringContaining("stock-scanner-mcp"),
+        }),
       }),
     );
   });

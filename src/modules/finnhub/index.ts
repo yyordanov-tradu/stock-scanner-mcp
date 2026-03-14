@@ -59,20 +59,32 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const earningsCalendarTool: ToolDefinition = {
     name: "finnhub_earnings_calendar",
-    description:
-      "Get upcoming or historical earnings announcements for a date range.",
+    description: "Get upcoming or historical earnings reports within a date range.",
     inputSchema: {
       from: z.string().describe("Start date (YYYY-MM-DD)"),
       to: z.string().describe("End date (YYYY-MM-DD)"),
+      symbol: z.string().optional().describe("Filter by specific symbol"),
+      limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
     },
     handler: async (params) => {
       try {
-        const events = await getEarningsCalendar(
+        const apiKey = process.env.FINNHUB_API_KEY!;
+        const results = await getEarningsCalendar(
           apiKey,
           params.from as string,
           params.to as string,
         );
-        return successResult(JSON.stringify(events, null, 2));
+
+        let filtered = results;
+        if (params.symbol) {
+          const s = (params.symbol as string).toUpperCase();
+          filtered = results.filter(r => r.symbol === s);
+        }
+
+        const limit = Math.min((params.limit as number) ?? 20, 100);
+        const capped = filtered.slice(0, limit);
+
+        return successResult(JSON.stringify(capped, null, 2));
       } catch (err) {
         return errorResult(err instanceof Error ? err.message : String(err));
       }
