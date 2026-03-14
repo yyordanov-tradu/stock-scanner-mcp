@@ -53,13 +53,13 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
 
-MODULES (25 tools total)
-  tradingview        6 tools  Stock scanning, quotes, technicals       (no key)
+MODULES (30 tools total)
+  tradingview        7 tools  Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
-  finnhub            3 tools  Market news and earnings calendar        (FINNHUB_API_KEY)
-  alpha-vantage      3 tools  Stock quotes and company fundamentals    (ALPHA_VANTAGE_API_KEY)
+  finnhub            5 tools  Market news, earnings, short interest    (FINNHUB_API_KEY)
+  alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)
 
 SETUP (Claude Code)
   Add to ~/.claude.json or .mcp.json:

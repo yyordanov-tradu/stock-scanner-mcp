@@ -1,12 +1,13 @@
 import { z } from "zod";
-import type { ModuleDefinition } from "../../shared/types.js";
-import { successResult } from "../../shared/types.js";
+import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
+import { successResult, errorResult } from "../../shared/types.js";
 import {
   getMarketNews,
   getCompanyNews,
   getEarningsCalendar,
   getAnalystRecommendations,
   getPriceTarget,
+  getShortInterest,
 } from "./client.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
@@ -14,7 +15,7 @@ import { withMetadata } from "../../shared/utils.js";
 export function createFinnhubModule(apiKey: string): ModuleDefinition {
   const metadata = { source: "finnhub", dataDelay: "real-time" };
 
-  const marketNewsTool = {
+  const marketNewsTool: ToolDefinition = {
     name: "finnhub_market_news",
     description: "Get latest market news by category (general, forex, crypto, merger).",
     inputSchema: z.object({
@@ -31,7 +32,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
-  const companyNewsTool = {
+  const companyNewsTool: ToolDefinition = {
     name: "finnhub_company_news",
     description: "Get recent news for a specific company by ticker symbol.",
     inputSchema: z.object({
@@ -53,7 +54,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
-  const earningsCalendarTool = {
+  const earningsCalendarTool: ToolDefinition = {
     name: "finnhub_earnings_calendar",
     description: "Get upcoming or historical earnings reports within a date range.",
     inputSchema: z.object({
@@ -68,7 +69,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
         params.from as string,
         params.to as string,
       );
-
+      
       let filtered = results;
       if (params.symbol) {
         const s = resolveTicker(params.symbol as string).ticker;
@@ -82,7 +83,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
-  const analystRatingsTool = {
+  const analystRatingsTool: ToolDefinition = {
     name: "finnhub_analyst_ratings",
     description: "Get analyst consensus recommendations and price targets for a stock.",
     inputSchema: z.object({
@@ -90,7 +91,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }),
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
-
+      
       const [recs, target] = await Promise.all([
         getAnalystRecommendations(apiKey, symbol),
         getPriceTarget(apiKey, symbol),
@@ -105,16 +106,30 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
+  const shortInterestTool: ToolDefinition = {
+    name: "finnhub_short_interest",
+    description: "Get short interest and other key financial metrics for a stock.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
+      const symbol = resolveTicker(params.symbol as string).ticker;
+      const metrics = await getShortInterest(apiKey, symbol);
+      return successResult(JSON.stringify(metrics, null, 2));
+    }, metadata),
+  };
+
   return {
     name: "finnhub",
     description:
-      "Finnhub market and company news, plus earnings calendar and analyst ratings",
+      "Finnhub market and company news, plus earnings calendar, analyst ratings and short interest",
     requiredEnvVars: ["FINNHUB_API_KEY"],
     tools: [
-      marketNewsTool,
-      companyNewsTool,
-      earningsCalendarTool,
-      analystRatingsTool
+      marketNewsTool, 
+      companyNewsTool, 
+      earningsCalendarTool, 
+      analystRatingsTool,
+      shortInterestTool,
     ],
   };
 }

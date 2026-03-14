@@ -118,14 +118,14 @@ describe("getOverview", () => {
 });
 
 describe("createAlphaVantageModule", () => {
-  it("returns module with 4 tools and requires ALPHA_VANTAGE_API_KEY", async () => {
+  it("returns module with 5 tools and requires ALPHA_VANTAGE_API_KEY", async () => {
     const { createAlphaVantageModule } = await import("../index.js");
     const mod = createAlphaVantageModule("test-key");
     expect(mod.name).toBe("alpha-vantage");
     expect(mod.requiredEnvVars).toEqual(["ALPHA_VANTAGE_API_KEY"]);
-    expect(mod.tools).toHaveLength(4);
+    expect(mod.tools).toHaveLength(5);
     expect(mod.tools.map((t) => t.name)).toEqual([
-      "alphavantage_quote", "alphavantage_daily", "alphavantage_overview", "alphavantage_earnings_history",
+      "alphavantage_quote", "alphavantage_daily", "alphavantage_overview", "alphavantage_earnings_history", "alphavantage_dividend_history",
     ]);
   });
 });

@@ -184,3 +184,32 @@ export async function getPriceTarget(
   cache.set(cacheKey, data);
   return data;
 }
+
+export async function getShortInterest(
+  apiKey: string,
+  symbol: string,
+): Promise<any> {
+  const cacheKey = `short-interest:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  // Finnhub Basic Financials endpoint often includes some short metrics
+  const data = await httpGet<any>(
+    `${BASE_URL}/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  const result = {
+    symbol: data.symbol,
+    metric: {
+      "52WeekHigh": data.metric?.["52WeekHigh"],
+      "52WeekLow": data.metric?.["52WeekLow"],
+      "shortInterest": data.metric?.["shortInterest"],
+      "shortRatio": data.metric?.["shortRatio"],
+      "shortPercentOfFloat": data.metric?.["shortPercentOfFloat"],
+    }
+  };
+
+  cache.set(cacheKey, result);
+  return result;
+}

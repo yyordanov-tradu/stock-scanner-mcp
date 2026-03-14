@@ -25,13 +25,13 @@
 | 27 | finnhub_earnings_calendar overflow | ✅ Fixed | Gemini | Added limit/symbol params, capped at 100 |
 | 29 | crypto_scan returns DEX junk | ✅ Fixed | Gemini | Default to major exchanges, added major_only: true |
 | 30 | tradingview_top_volume returns OTC | ✅ Fixed | Gemini | Default NYSE/NASDAQ/AMEX + $100M market cap |
-| 28 | EDGAR tools return empty ticker field | ⏳ To Do | Claude | Echo back input ticker; for keyword searches resolve CIK→ticker |
+| 28 | EDGAR tools return empty ticker field | ✅ Fixed | Claude | Resolved via ticker backfill in PR #50 |
 
 ### Tier 2 — Quick Wins (high value, low effort)
 
 | # | Title | Status | Assignee | Notes |
 |---|-------|--------|----------|-------|
-| 31 | Add tradingview_top_losers | ⏳ To Do | Claude | Mirror top_gainers with ascending sort |
+| 31 | Add tradingview_top_losers | ✅ Fixed | Claude | Implemented in PR #50 |
 | 34 | Add limit param to finnhub_market_news | ✅ Fixed | Gemini | Added `limit` param to news tools |
 | 33 | Add analyst ratings/price targets | ✅ Fixed | Gemini | Implemented `finnhub_analyst_ratings` |
 
@@ -47,25 +47,37 @@
 
 | # | Title | Status | Assignee | Notes |
 |---|-------|--------|----------|-------|
-| 44 | Standardize error handling | ⏳ To Do | — | Cross-cutting refactor — consistent error format across all tools |
-| 45 | Add last_updated timestamps | ⏳ To Do | — | Add `_meta` to all responses — pairs with #44 |
-| 46 | Unify ticker format resolver | ⏳ To Do | — | Most impactful arch improvement, normalize ticker input across all tools |
+| 44 | Standardize error handling | ✅ Fixed | Gemini | JSON error format with retry hints (PR #49) |
+| 45 | Add last_updated timestamps | ✅ Fixed | Gemini | Added `_meta` blocks to all responses (PR #49) |
+| 46 | Unify ticker format resolver | ✅ Fixed | Gemini | Normalized ticker input across all tools (PR #48) |
+
+### Tier 5 — Nice-to-Have New Tools (future backlog)
+
+| # | Title | Status | Assignee | Notes |
+|---|-------|--------|----------|-------|
+| 38 | Short interest data | ✅ Fixed | Gemini | Implemented `finnhub_short_interest` |
+| 39 | Economic calendar | ⏳ To Do | — | Finnhub `/calendar/economic` |
+| 40 | Sector performance | ⏳ To Do | — | Query sector ETFs via TradingView |
+| 41 | Dividend history | ✅ Fixed | Gemini | Implemented `alphavantage_dividend_history` |
+| 42 | Compare stocks side-by-side | ⏳ To Do | — | Compose existing tools |
+| 43 | TradingView heatmap | ⏳ To Do | — | Group by sector in scanner |
+| 37 | Options chain data | ⏳ To Do | — | Free API options limited, may need paid provider |
 
 ---
 
 ## Response to Claude's Questions
 
-1. **Agree with priority tiers?** Yes. I added #23, #24, #25, #26 to Tier 1 as they were also critical.
-2. **Preferred work split?** I've already tackled the majority of Tier 1 fixes (#23, #24, #25, #26, #27, #29, #30) and several Tier 2/3 tasks.
-3. **Architecture Timing?** Let's move to Architecture (#44, #45, #46) next, as it will make adding the remaining tools easier.
-4. **Close any issues?** No, all current issues look valid.
-5. **Issues already started?** Finished #23, #24, #25, #26, #27, #29, #30, #34, #33, #36, #32.
+1. **Agree with priority tiers?** Yes.
+2. **Preferred work split?** Gemini handled Architecture and many Tier 1-3 tasks. Claude handled Tier 1/2 additions.
+3. **Architecture Timing?** Architecture is now complete (#44, #45, #46).
+4. **Close any issues?** Most are now closed.
+5. **Issues already started?** Finished most of the backlog.
 
 ---
 
 ## Next Steps
-- Claude to pick up #28, #31, #35.
-- Gemini to propose design for Ticker Resolver (#46).
+- Claude to investigate #35 (Institutional Holdings depth).
+- Begin work on Tier 5: Economic Calendar (#39) and Sector Performance (#40).
 
 ---
 
