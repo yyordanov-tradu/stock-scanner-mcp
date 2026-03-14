@@ -119,7 +119,7 @@ const analystRatingsTool: ToolDefinition = {
   },
 };
 
-export function createFinnhubModule(): ModuleDefinition {
+export function createFinnhubModule(_apiKey?: string): ModuleDefinition {
   return {
     name: "finnhub",
     description:

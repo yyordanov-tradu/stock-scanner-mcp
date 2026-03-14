@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ModuleDefinition, ToolResult } from "../../shared/types.js";
+import type { ModuleDefinition, ToolDefinition, ToolResult } from "../../shared/types.js";
 import { errorResult, successResult } from "../../shared/types.js";
 import { scanStocks } from "./scanner.js";
 import { STOCK_COLUMNS } from "./columns.js";
@@ -13,7 +13,7 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_scan",
         description: "Scan US stocks with custom filters (price > X, RSI < 30, etc.). Returns up to `limit` rows with the requested columns.",
-        inputSchema: z.object({
+        inputSchema: {
           exchange: z.string().optional().describe("Exchange filter, e.g. NASDAQ, NYSE, AMEX"),
           filters: z.array(z.object({
             left: z.string(),
@@ -23,10 +23,10 @@ export function createTradingviewModule(): ModuleDefinition {
           columns: z.array(z.string()).optional().describe("Columns to return (default: all 66)"),
           timeframe: z.string().optional().describe("Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"),
           limit: z.number().optional().describe("Max rows (default 50)"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
-            const rows = await scanStocks(input);
+            const rows = await scanStocks(input as Record<string, unknown> & Parameters<typeof scanStocks>[0]);
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
             return errorResult(`Scan failed: ${(e as Error).message}`);
@@ -36,13 +36,13 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_quote",
         description: "Get a real-time quote for one or more stock tickers (e.g. NASDAQ:AAPL). Returns price, change, volume, market cap.",
-        inputSchema: z.object({
+        inputSchema: {
           tickers: z.array(z.string()).describe("Fully-qualified tickers, e.g. ['NASDAQ:AAPL', 'NYSE:MSFT']"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
             const rows = await scanStocks({
-              tickers: input.tickers,
+              tickers: input.tickers as string[],
               columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description"],
             });
             return successResult(JSON.stringify(rows, null, 2));
@@ -54,10 +54,10 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_technicals",
         description: "Get technical indicators (RSI, MACD, moving averages, pivot points, etc.) for one or more stock tickers.",
-        inputSchema: z.object({
+        inputSchema: {
           tickers: z.array(z.string()).describe("Fully-qualified tickers"),
           timeframe: z.string().optional().describe("Timeframe (default: 1d)"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
             const technicalCols = [
@@ -68,9 +68,9 @@ export function createTradingviewModule(): ModuleDefinition {
               "Pivot.M.Classic.S1", "Pivot.M.Classic.Middle", "Pivot.M.Classic.R1",
             ];
             const rows = await scanStocks({
-              tickers: input.tickers,
+              tickers: input.tickers as string[],
               columns: technicalCols,
-              timeframe: input.timeframe,
+              timeframe: input.timeframe as string | undefined,
             });
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
@@ -81,20 +81,20 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_top_gainers",
         description: "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
-        inputSchema: z.object({
+        inputSchema: {
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
             const filters = [
               { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
             ];
             const rows = await scanStocks({
-              exchange: input.exchange,
+              exchange: input.exchange as string | undefined,
               columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
               filters,
-              limit: input.limit ?? 20,
+              limit: (input.limit as number | undefined) ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
@@ -105,11 +105,11 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_top_volume",
         description: "Get stocks with the highest trading volume today. Defaults to major US exchanges.",
-        inputSchema: z.object({
+        inputSchema: {
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
             const filters = [];
@@ -117,10 +117,10 @@ export function createTradingviewModule(): ModuleDefinition {
               filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
             }
             const rows = await scanStocks({
-              exchange: input.exchange,
+              exchange: input.exchange as string | undefined,
               columns: ["volume", "close", "change", "name", "description", "market_cap_basic"],
               filters,
-              limit: input.limit ?? 20,
+              limit: (input.limit as number | undefined) ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
@@ -131,20 +131,20 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_volume_breakout",
         description: "Find stocks with unusual volume (current volume significantly above average). Defaults to major exchanges.",
-        inputSchema: z.object({
+        inputSchema: {
           exchange: z.string().optional().describe("Exchange filter"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        }),
+        },
         handler: async (input): Promise<ToolResult> => {
           try {
             const rows = await scanStocks({
-              exchange: input.exchange,
+              exchange: input.exchange as string | undefined,
               columns: ["volume", "close", "change", "name", "description", "market_cap_basic", "RSI", "MACD.macd"],
               filters: [
                 { left: "volume", operation: "greater", right: 1_000_000 },
                 { left: "market_cap_basic", operation: "greater", right: 100_000_000 }
               ],
-              limit: input.limit ?? 20,
+              limit: (input.limit as number | undefined) ?? 20,
             });
             return successResult(JSON.stringify(rows, null, 2));
           } catch (e) {
