@@ -113,3 +113,32 @@ Each reviews the other's PRs and code to catch issues a single LLM might miss.
 - Response payloads truncated to control token usage
 - In-memory TTL cache for rate-limited APIs
 - Tool descriptions must be clear enough for the LLM to know when to use them
+
+## Pre-Flight Checklist (MANDATORY)
+
+**Before starting ANY new feature, bug fix, or creating a worktree, you MUST complete ALL of these steps in order. No exceptions.**
+
+1. **Check for open PRs and merge/review status:**
+   ```bash
+   gh pr list --state open
+   ```
+   If there are open PRs that should be merged first, flag them to the user before proceeding.
+
+2. **Pull latest main:**
+   ```bash
+   git checkout main && git pull origin main
+   ```
+
+3. **Check for Gemini PRs/comments** (dual-LLM coordination):
+   - Review any open PRs from Gemini that may conflict with your planned work
+   - Check `docs/duo-planning/` for in-progress assignments
+
+4. **Run tests on main to confirm clean baseline:**
+   ```bash
+   npm test
+   ```
+   If tests fail on main, fix them before starting new work.
+
+5. **Only then** create your feature branch or worktree.
+
+**Why:** Multiple LLMs work on this repo concurrently. Skipping these steps leads to merge conflicts, duplicated work, and building on stale code. This has happened before.
