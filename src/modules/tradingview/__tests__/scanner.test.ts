@@ -3,8 +3,8 @@ import { scanStocks } from "../scanner.js";
 import { STOCK_COLUMNS, STOCK_TIMEFRAMES } from "../columns.js";
 
 describe("STOCK_COLUMNS", () => {
-  it("has 66 column IDs", () => {
-    expect(STOCK_COLUMNS).toHaveLength(66);
+  it("has 73 column IDs", () => {
+    expect(STOCK_COLUMNS).toHaveLength(73);
   });
 
   it("includes key indicators", () => {
@@ -66,8 +66,8 @@ describe("scanStocks", () => {
 
     const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
     expect(callBody.markets).toEqual(["NYSE"]);
-    expect(callBody.filter2.operands).toHaveLength(1);
-    expect(callBody.filter2.operands[0].left).toBe("close");
+    expect(callBody.filter).toHaveLength(1);
+    expect(callBody.filter[0].left).toBe("close");
   });
 
   it("respects limit parameter", async () => {

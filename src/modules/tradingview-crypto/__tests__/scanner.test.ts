@@ -66,7 +66,8 @@ describe("scanCrypto", () => {
     await scanCrypto({ filters: [{ left: "change", operation: "greater", right: 5 }] });
 
     const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
-    expect(callBody.filter2.operands[0].left).toBe("change");
+    expect(callBody.filter).toHaveLength(1);
+    expect(callBody.filter[0].left).toBe("change");
   });
 });
 

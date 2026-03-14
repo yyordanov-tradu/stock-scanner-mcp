@@ -39,7 +39,7 @@ describe("searchFilings", () => {
       expect.stringContaining("efts.sec.gov"),
       expect.objectContaining({
         headers: expect.objectContaining({
-          "User-Agent": expect.stringContaining("stock-scanner-mcp"),
+          "User-Agent": expect.stringContaining("StockScanner"),
         }),
       }),
     );
@@ -98,15 +98,19 @@ describe("getCompanyFilings", () => {
 });
 
 describe("createSecEdgarModule", () => {
-  it("returns module with 2 tools and no required env vars", async () => {
+  it("returns module with 6 tools and no required env vars", async () => {
     const { createSecEdgarModule } = await import("../index.js");
     const mod = createSecEdgarModule();
     expect(mod.name).toBe("sec-edgar");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(2);
+    expect(mod.tools).toHaveLength(6);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "edgar_search",
       "edgar_company_filings",
+      "edgar_company_facts",
+      "edgar_insider_trades",
+      "edgar_institutional_holdings",
+      "edgar_ownership_filings",
     ]);
   });
 });
