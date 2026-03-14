@@ -137,4 +137,23 @@ describe("createTradingviewModule", () => {
 
     vi.restoreAllMocks();
   });
+
+  it("resolves simple tickers to exchange-qualified tickers in quote tool", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    }));
+
+    const { createTradingviewModule } = await import("../index.js");
+    const mod = createTradingviewModule();
+    const quoteTool = mod.tools.find(t => t.name === "tradingview_quote")!;
+
+    await quoteTool.handler({ tickers: ["AAPL", "NYSE:IBM"] });
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.symbols.tickers).toContain("NASDAQ:AAPL");
+    expect(callBody.symbols.tickers).toContain("NYSE:IBM");
+
+    vi.restoreAllMocks();
+  });
 });

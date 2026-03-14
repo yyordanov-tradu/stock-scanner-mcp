@@ -9,6 +9,7 @@ import {
   getInstitutionalHoldings,
   getOwnershipFilings,
 } from "./client.js";
+import { resolveTicker } from "../../shared/resolver.js";
 
 const searchTool: ToolDefinition = {
   name: "edgar_search",
@@ -39,11 +40,12 @@ const searchTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const resolvedTickers = (params.tickers as string[] | undefined)?.map(t => resolveTicker(t).ticker);
       const filings = await searchFilings({
         query: params.query as string,
         dateRange: params.dateRange as string | undefined,
         forms: params.forms as string[] | undefined,
-        tickers: params.tickers as string[] | undefined,
+        tickers: resolvedTickers,
         limit: Math.min((params.limit as number) ?? 20, 50),
       });
       return successResult(JSON.stringify(filings, null, 2));
@@ -70,12 +72,15 @@ const companyFilingsTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const ticker = resolveTicker(params.ticker as string).ticker;
       const filings = await getCompanyFilings({
-        ticker: params.ticker as string,
+        ticker,
         forms: params.forms as string[] | undefined,
         limit: Math.min((params.limit as number) ?? 10, 50),
       });
-      return successResult(JSON.stringify(filings, null, 2));
+      // Ensure ticker field is populated in results (Issue #28)
+      const enriched = filings.map(f => ({ ...f, ticker }));
+      return successResult(JSON.stringify(enriched, null, 2));
     } catch (err) {
       return errorResult(err instanceof Error ? err.message : String(err));
     }
@@ -91,7 +96,8 @@ const companyFactsTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
-      const facts = await getCompanyFacts(params.ticker as string);
+      const ticker = resolveTicker(params.ticker as string).ticker;
+      const facts = await getCompanyFacts(ticker);
       return successResult(JSON.stringify(facts, null, 2));
     } catch (err) {
       return errorResult(err instanceof Error ? err.message : String(err));
@@ -108,11 +114,14 @@ const insiderTradesTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const ticker = resolveTicker(params.ticker as string).ticker;
       const trades = await getInsiderTrades(
-        params.ticker as string,
+        ticker,
         params.limit as number | undefined,
       );
-      return successResult(JSON.stringify(trades, null, 2));
+      // Ensure ticker is populated
+      const enriched = trades.map(t => ({ ...t, ticker }));
+      return successResult(JSON.stringify(enriched, null, 2));
     } catch (err) {
       return errorResult(err instanceof Error ? err.message : String(err));
     }
@@ -131,8 +140,10 @@ const institutionalHoldingsTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const res = resolveTicker(params.query as string);
+      const query = res.ticker;
       const holdings = await getInstitutionalHoldings(
-        params.query as string,
+        query,
         params.limit as number | undefined,
       );
       return successResult(JSON.stringify(holdings, null, 2));
@@ -152,11 +163,13 @@ const ownershipFilingsTool: ToolDefinition = {
   },
   handler: async (params) => {
     try {
+      const ticker = resolveTicker(params.ticker as string).ticker;
       const filings = await getOwnershipFilings(
-        params.ticker as string,
+        ticker,
         params.limit as number | undefined,
       );
-      return successResult(JSON.stringify(filings, null, 2));
+      const enriched = filings.map(f => ({ ...f, ticker }));
+      return successResult(JSON.stringify(enriched, null, 2));
     } catch (err) {
       return errorResult(err instanceof Error ? err.message : String(err));
     }
