@@ -33,7 +33,7 @@ describe("full module wiring", () => {
       "tradingview", "tradingview-crypto", "sec-edgar", "coingecko",
     ]);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(20); // 7 + 4 + 6 + 3
+    expect(totalTools).toBe(20); // 7 + 4 + 6 + 3 (free modules only)
   });
 
   it("enables all 6 modules with all API keys", () => {

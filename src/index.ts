@@ -58,7 +58,7 @@ MODULES (30 tools total)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
-  finnhub            5 tools  Market news, earnings, short interest    (FINNHUB_API_KEY)
+  finnhub            5 tools  News, earnings, economic calendar        (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)
 
 SETUP (Claude Code)

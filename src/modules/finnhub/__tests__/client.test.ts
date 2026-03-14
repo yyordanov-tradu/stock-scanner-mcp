@@ -99,6 +99,58 @@ describe("getCompanyNews", () => {
   });
 });
 
+describe("getEconomicCalendar", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches and caches economic events", async () => {
+    const mockEvents = [
+      {
+        country: "US",
+        event: "FOMC Interest Rate Decision",
+        actual: 5.5,
+        estimate: 5.5,
+        prev: 5.25,
+        impact: "high",
+        time: "14:00:00",
+        unit: "%",
+      },
+      {
+        country: "US",
+        event: "CPI YoY",
+        actual: 3.2,
+        estimate: 3.3,
+        prev: 3.0,
+        impact: "high",
+        time: "08:30:00",
+        unit: "%",
+      },
+    ];
+
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ economicCalendar: mockEvents }),
+    });
+
+    const { getEconomicCalendar } = await import("../client.js");
+    const result = await getEconomicCalendar("test-key", "2026-03-10", "2026-03-17");
+
+    expect(result).toHaveLength(2);
+    expect(result[0].event).toBe("FOMC Interest Rate Decision");
+    expect(result[0].impact).toBe("high");
+    expect(result[0].actual).toBe(5.5);
+    expect(result[0].country).toBe("US");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("/calendar/economic?from=2026-03-10&to=2026-03-17");
+  });
+});
+
 describe("createFinnhubModule", () => {
   it("returns module with 5 tools and requires FINNHUB_API_KEY", async () => {
     const { createFinnhubModule } = await import("../index.js");
@@ -110,8 +162,8 @@ describe("createFinnhubModule", () => {
       "finnhub_market_news",
       "finnhub_company_news",
       "finnhub_earnings_calendar",
-      "finnhub_analyst_ratings",
       "finnhub_short_interest",
+      "finnhub_economic_calendar",
     ]);
   });
 });
