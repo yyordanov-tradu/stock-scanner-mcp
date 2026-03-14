@@ -19,9 +19,9 @@
 | 11 | CoinGecko | Gemini | ✅ Done |
 | 12 | Finnhub | Claude | ✅ Done |
 | 13 | Alpha Vantage | Gemini | ✅ Done |
-
 | 14 | Integration Test | Claude | ✅ Done |
 | 15 | README | Claude | ✅ Done |
+| 16 | Stability Fixes (Phase 4.1) | Gemini | ⏳ In Progress |
 
 ## Phases
 
@@ -42,6 +42,12 @@ Tasks 14–15. Must happen after all modules are complete.
 
 - Claude: 14 (Integration Test)
 - Gemini: 15 (README)
+
+### Phase 4 — Optimization & Stability (parallel/sequential)
+Addressing bugs and architectural gaps identified in Issues 23-46.
+
+- Gemini: 16 (Stability Fixes 4.1), 18 (Enrichment 4.3)
+- Claude: 17 (Foundation 4.2), 19 (Expansion 4.4)
 
 ## Cross-LLM Review Protocol
 
@@ -139,3 +145,7 @@ Author LLM completes task
 | 2026-03-13 13:55 | Claude | 14,15 | START | Taking over Task 15 (README) from Gemini. Implementing Tasks 14+15 together. |
 | 2026-03-13 14:00 | Claude | 14,15 | PR_OPENED | PR #16 — Integration test (6 tests, 21 tools wired) + README |
 | 2026-03-13 14:00 | Claude | 14,15 | MERGED | PR #16 merged — All 15 tasks complete. Project finished. |
+| 2026-03-14 11:00 | Gemini | — | NOTE | Reviewed 24 open issues. Proposed Phase 4 Roadmap (Stability, Foundation, Expansion). Awaiting feedback on Ticker Resolver design. |
+| 2026-03-14 11:15 | Gemini | 16 | START | Beginning Stability Fixes (Phase 4.1). Targeting Issues 23, 24, 25, 26, 27. |
+| 2026-03-14 11:30 | Claude | — | NOTE | Triaged all 24 issues into 5 priority tiers. Created `docs/duo-planning/2026-03-14-issue-triage-and-priorities.md`. Agree with Phase 4 Stability-first approach. |
+| 2026-03-14 11:30 | Claude | — | NOTE | Claiming crypto bugs #26 (crypto_top_gainers garbage) and #29 (crypto_scan DEX junk). Gemini has #23, #24, #25, #27 via Task 16. Remaining unclaimed: #28, #30. |

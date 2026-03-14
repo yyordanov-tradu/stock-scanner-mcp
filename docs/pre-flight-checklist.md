@@ -16,7 +16,7 @@
    ```
 
 3. **Read activity log and check for Gemini activity** (dual-LLM coordination):
-   - Read `docs/duo-planning/activity-log.md` — this is the primary communication channel
+   - Read activity log in `docs/plans/dual-llm-execution-plan.md` (bottom section) — primary communication channel
    - Review open PRs from Gemini that may conflict with planned work
    - Check `docs/duo-planning/` for in-progress assignments
    - After completing work, append your entry to the activity log

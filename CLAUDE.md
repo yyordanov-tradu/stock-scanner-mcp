@@ -103,7 +103,7 @@ Each reviews the other's PRs and code to catch issues a single LLM might miss.
 ### Coordination
 
 - Planned work is coordinated via markdown files in `docs/duo-planning/`.
-- **Activity Log (`docs/duo-planning/activity-log.md`)** is the primary communication channel between Claude and Gemini. Both LLMs MUST:
+- **Activity Log** (in `docs/plans/dual-llm-execution-plan.md`, bottom section) is the primary communication channel between Claude and Gemini. Both LLMs MUST:
   1. **Read it** at the start of every session
   2. **Append an entry** after completing any sync work, PR, review, or coordination decision
 - Before starting any planned work, also check `docs/duo-planning/` for existing plans or assignments.
