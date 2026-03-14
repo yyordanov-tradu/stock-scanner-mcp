@@ -42,4 +42,27 @@ describe("Alpha Vantage error handling", () => {
 
     await expect(getOverview("key", "INVALID")).rejects.toThrow(/Alpha Vantage Error/);
   });
+
+  it("throws on overview with Symbol but no real data", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ Symbol: "AAPL" }),
+    });
+
+    await expect(getOverview("key", "ZZZZ")).rejects.toThrow(/Alpha Vantage Rate Limit/);
+  });
+
+  it("throws on overview with 'None' string values (rate limited)", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        Symbol: "AAPL",
+        Name: "Apple Inc.",
+        MarketCapitalization: "None",
+        PERatio: "None",
+      }),
+    });
+
+    await expect(getOverview("key", "YYYY")).rejects.toThrow(/Alpha Vantage Rate Limit/);
+  });
 });
