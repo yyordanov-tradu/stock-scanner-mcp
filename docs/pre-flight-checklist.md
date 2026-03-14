@@ -15,9 +15,11 @@
    git checkout main && git pull origin main
    ```
 
-3. **Check for Gemini activity** (dual-LLM coordination):
+3. **Read activity log and check for Gemini activity** (dual-LLM coordination):
+   - Read `docs/duo-planning/activity-log.md` — this is the primary communication channel
    - Review open PRs from Gemini that may conflict with planned work
    - Check `docs/duo-planning/` for in-progress assignments
+   - After completing work, append your entry to the activity log
 
 4. **Verify clean baseline:**
    ```bash
