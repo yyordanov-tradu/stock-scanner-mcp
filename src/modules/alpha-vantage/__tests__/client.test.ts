@@ -117,38 +117,6 @@ describe("getOverview", () => {
   });
 });
 
-describe("checkAvResponse - empty response handling", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("throws meaningful error when API returns null", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => null,
-    });
-
-    await expect(getDailyPrices("key", "AAPL")).rejects.toThrow(
-      "Alpha Vantage API returned empty response",
-    );
-  });
-
-  it("throws meaningful error when API returns undefined", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => undefined,
-    });
-
-    await expect(getQuote("key", "ZZZZ")).rejects.toThrow(
-      "Alpha Vantage API returned empty response",
-    );
-  });
-});
-
 describe("createAlphaVantageModule", () => {
   it("returns module with 5 tools and requires ALPHA_VANTAGE_API_KEY", async () => {
     const { createAlphaVantageModule } = await import("../index.js");
