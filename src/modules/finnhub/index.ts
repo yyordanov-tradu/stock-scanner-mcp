@@ -8,6 +8,7 @@ import {
   getAnalystRecommendations,
   getPriceTarget,
   getShortInterest,
+  getEconomicCalendar,
 } from "./client.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
@@ -118,17 +119,55 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
+  const economicCalendarTool: ToolDefinition = {
+    name: "finnhub_economic_calendar",
+    description:
+      "Get upcoming and recent economic events (FOMC, CPI, GDP, NFP, etc.) with actual/estimate/previous values and impact ratings. Essential for understanding macro catalysts that move markets, crypto, and correlated assets.",
+    inputSchema: z.object({
+      from: z.string().describe("Start date (YYYY-MM-DD)"),
+      to: z.string().describe("End date (YYYY-MM-DD)"),
+      country: z.string().optional().describe("Filter by country code (e.g. 'US', 'EU', 'GB'). Default: all countries"),
+      impact: z.string().optional().describe("Filter by impact: 'high', 'medium', 'low'. Default: all"),
+      limit: z.number().optional().describe("Max results (default: 50, max: 200)"),
+    }),
+    handler: withMetadata(async (params) => {
+      const events = await getEconomicCalendar(
+        apiKey,
+        params.from as string,
+        params.to as string,
+      );
+
+      let filtered = events;
+
+      if (params.country) {
+        const country = (params.country as string).toUpperCase();
+        filtered = filtered.filter(e => e.country === country);
+      }
+
+      if (params.impact) {
+        const impact = (params.impact as string).toLowerCase();
+        filtered = filtered.filter(e => e.impact === impact);
+      }
+
+      const limit = Math.min((params.limit as number) ?? 50, 200);
+      const capped = filtered.slice(0, limit);
+
+      return successResult(JSON.stringify(capped, null, 2));
+    }, metadata),
+  };
+
   return {
     name: "finnhub",
     description:
-      "Finnhub market and company news, plus earnings calendar, analyst ratings and short interest",
+      "Finnhub market and company news, plus earnings calendar, analyst ratings, short interest, and economic calendar",
     requiredEnvVars: ["FINNHUB_API_KEY"],
     tools: [
-      marketNewsTool, 
-      companyNewsTool, 
-      earningsCalendarTool, 
+      marketNewsTool,
+      companyNewsTool,
+      earningsCalendarTool,
       analystRatingsTool,
       shortInterestTool,
+      economicCalendarTool,
     ],
   };
 }
