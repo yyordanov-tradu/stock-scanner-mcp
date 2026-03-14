@@ -152,18 +152,19 @@ describe("getEconomicCalendar", () => {
 });
 
 describe("createFinnhubModule", () => {
-  it("returns module with 5 tools and requires FINNHUB_API_KEY", async () => {
+  it("returns module with 6 tools and requires FINNHUB_API_KEY", async () => {
     const { createFinnhubModule } = await import("../index.js");
     const mod = createFinnhubModule("test-key");
     expect(mod.name).toBe("finnhub");
     expect(mod.requiredEnvVars).toEqual(["FINNHUB_API_KEY"]);
-    expect(mod.tools).toHaveLength(5);
+    expect(mod.tools).toHaveLength(6);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "finnhub_market_news",
       "finnhub_company_news",
       "finnhub_earnings_calendar",
       "finnhub_analyst_ratings",
       "finnhub_short_interest",
+      "finnhub_economic_calendar",
     ]);
   });
 });
