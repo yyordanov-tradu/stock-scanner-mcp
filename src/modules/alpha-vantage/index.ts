@@ -51,7 +51,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     }),
     handler: withMetadata(async (params) => {
       const inputSymbols = Array.isArray(params.symbols) ? params.symbols : [params.symbols as string];
-      const tickers = inputSymbols.map(s => resolveTicker(s).ticker);
+      const tickers = inputSymbols.map((s: string) => resolveTicker(s).ticker);
       const results = [];
 
       for (let i = 0; i < Math.min(tickers.length, 5); i++) {

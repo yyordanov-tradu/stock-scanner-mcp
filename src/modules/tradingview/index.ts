@@ -16,7 +16,7 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_scan",
         description: "Scan US stocks with custom filters (price > X, RSI < 30, etc.). Returns up to `limit` rows with the requested columns.",
-        inputSchema: {
+        inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange filter, e.g. NASDAQ, NYSE, AMEX"),
           filters: z.array(z.object({
             left: z.string(),
@@ -26,7 +26,7 @@ export function createTradingviewModule(): ModuleDefinition {
           columns: z.array(z.string()).optional().describe("Columns to return (default: all 66)"),
           timeframe: z.string().optional().describe("Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"),
           limit: z.number().optional().describe("Max rows (default 50)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const rows = await scanStocks(input);
           return successResult(JSON.stringify(rows, null, 2));
@@ -35,11 +35,11 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_quote",
         description: "Get a real-time quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap.",
-        inputSchema: {
+        inputSchema: z.object({
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'MSFT']"),
-        },
+        }),
         handler: withMetadata(async (input) => {
-          const resolvedTickers = input.tickers.map(t => resolveTicker(t).full);
+          const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
           const rows = await scanStocks({
             tickers: resolvedTickers,
             columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description"],
@@ -50,10 +50,10 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_technicals",
         description: "Get technical indicators (RSI, MACD, moving averages, pivot points, etc.) for one or more stock tickers.",
-        inputSchema: {
+        inputSchema: z.object({
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'IBM']"),
           timeframe: z.string().optional().describe("Timeframe (default: 1d)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const technicalCols = [
             "Recommend.All", "Recommend.MA", "Recommend.Other",
@@ -62,7 +62,7 @@ export function createTradingviewModule(): ModuleDefinition {
             "EMA20", "EMA50", "EMA200", "SMA20", "SMA50", "SMA200",
             "Pivot.M.Classic.S1", "Pivot.M.Classic.Middle", "Pivot.M.Classic.R1",
           ];
-          const resolvedTickers = input.tickers.map(t => resolveTicker(t).full);
+          const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
           const rows = await scanStocks({
             tickers: resolvedTickers,
             columns: technicalCols,
@@ -74,10 +74,10 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_top_gainers",
         description: "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
-        inputSchema: {
+        inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const filters = [
             { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
@@ -94,10 +94,10 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_top_losers",
         description: "Get today's top losing stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
-        inputSchema: {
+        inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const filters = [
             { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
@@ -115,11 +115,11 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_top_volume",
         description: "Get stocks with the highest trading volume today. Defaults to major US exchanges.",
-        inputSchema: {
+        inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const filters = [];
           if (!input.include_otc) {
@@ -137,10 +137,10 @@ export function createTradingviewModule(): ModuleDefinition {
       {
         name: "tradingview_volume_breakout",
         description: "Find stocks with unusual volume (current volume significantly above average). Defaults to major exchanges.",
-        inputSchema: {
+        inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange filter"),
           limit: z.number().optional().describe("Max results (default 20)"),
-        },
+        }),
         handler: withMetadata(async (input) => {
           const rows = await scanStocks({
             exchange: input.exchange,
