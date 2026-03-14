@@ -64,20 +64,19 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
       limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
     }),
     handler: withMetadata(async (params) => {
+      const symbol = params.symbol
+        ? resolveTicker(params.symbol as string).ticker
+        : undefined;
+
       const results = await getEarningsCalendar(
         apiKey,
         params.from as string,
         params.to as string,
+        symbol,
       );
-      
-      let filtered = results;
-      if (params.symbol) {
-        const s = resolveTicker(params.symbol as string).ticker;
-        filtered = results.filter(r => r.symbol === s);
-      }
 
       const limit = Math.min((params.limit as number) ?? 20, 100);
-      const capped = filtered.slice(0, limit);
+      const capped = results.slice(0, limit);
 
       return successResult(JSON.stringify(capped, null, 2));
     }, metadata),

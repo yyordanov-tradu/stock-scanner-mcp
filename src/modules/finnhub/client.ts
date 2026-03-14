@@ -117,13 +117,19 @@ export async function getEarningsCalendar(
   apiKey: string,
   from: string,
   to: string,
+  symbol?: string,
 ): Promise<EarningsEvent[]> {
-  const cacheKey = `earnings:${from}:${to}`;
+  const cacheKey = `earnings:${from}:${to}:${symbol ?? "all"}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached as EarningsEvent[];
 
+  let url = `${BASE_URL}/calendar/earnings?from=${from}&to=${to}`;
+  if (symbol) {
+    url += `&symbol=${encodeURIComponent(symbol)}`;
+  }
+
   const data = await httpGet<{ earningsCalendar: EarningsEvent[] }>(
-    `${BASE_URL}/calendar/earnings?from=${from}&to=${to}`,
+    url,
     { headers: { "X-Finnhub-Token": apiKey } },
   );
 
