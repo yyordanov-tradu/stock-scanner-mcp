@@ -1,36 +1,50 @@
 # stock-scanner-mcp
 
-A modular MCP (Model Context Protocol) server that provides Claude Code with stock and crypto market data via 21 tools across 6 data source modules.
+A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, and track earnings — all from your terminal.
 
 ## Quick Start
-
-### As a Claude Code Plugin
-
-Add to your `.mcp.json`:
-```json
-{
-  "mcpServers": {
-    "stock-scanner": {
-      "command": "npx",
-      "args": ["stock-scanner-mcp"],
-      "env": {
-        "FINNHUB_API_KEY": "${FINNHUB_API_KEY}",
-        "ALPHA_VANTAGE_API_KEY": "${ALPHA_VANTAGE_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-### Run Directly
 
 ```bash
 npx stock-scanner-mcp
 ```
 
-With specific modules only:
+Or install globally:
+
 ```bash
-npx stock-scanner-mcp --modules tradingview,coingecko
+npm install -g stock-scanner-mcp
+stock-scanner-mcp
+```
+
+## Setup with Claude Code
+
+Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"]
+    }
+  }
+}
+```
+
+### With API keys (optional, enables more tools):
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"],
+      "env": {
+        "FINNHUB_API_KEY": "your-key-here",
+        "ALPHA_VANTAGE_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
 ```
 
 ## Modules
@@ -39,59 +53,63 @@ npx stock-scanner-mcp --modules tradingview,coingecko
 |--------|-------|---------|-------------|
 | tradingview | 6 | None | US stock scanner with real-time quotes, technicals, and screening |
 | tradingview-crypto | 4 | None | Crypto pair scanner with technicals and screening |
-| sec-edgar | 2 | None | SEC EDGAR filing search and company filings |
+| sec-edgar | 6 | None | SEC EDGAR filings, insider trades, institutional holdings, ownership |
 | coingecko | 3 | None | Crypto market data, trending coins, global stats |
 | finnhub | 3 | `FINNHUB_API_KEY` | Market news, company news, earnings calendar |
 | alpha-vantage | 3 | `ALPHA_VANTAGE_API_KEY` | Stock quotes, daily prices, company fundamentals |
 
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
-## Tools Reference
+## Available Tools (25 total)
 
-### TradingView Stock Scanner (6 tools)
-
-| Tool | Description |
-|------|-------------|
-| `tradingview_scan` | Scan stocks with custom filters on any technical or fundamental indicator |
-| `tradingview_quote` | Get real-time quotes for specific stock symbols |
-| `tradingview_technicals` | Technical analysis summary (RSI, MACD, MAs, recommendation) |
-| `tradingview_top_gainers` | Top gaining stocks by percentage change |
-| `tradingview_top_volume` | Highest volume stocks |
-| `tradingview_volume_breakout` | Stocks with unusual volume breakouts |
-
-### TradingView Crypto Scanner (4 tools)
+### TradingView — Stock Scanning (no API key)
 
 | Tool | Description |
 |------|-------------|
-| `crypto_scan` | Scan crypto pairs with filters |
+| `tradingview_scan` | Scan US stocks with custom filters (price, RSI, volume, etc.) |
+| `tradingview_quote` | Real-time quotes for stock tickers |
+| `tradingview_technicals` | Technical indicators (RSI, MACD, moving averages, pivots) |
+| `tradingview_top_gainers` | Today's top gaining stocks |
+| `tradingview_top_volume` | Highest volume stocks today |
+| `tradingview_volume_breakout` | Stocks with unusual volume spikes |
+
+### TradingView — Crypto (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `crypto_scan` | Scan crypto pairs with custom filters |
 | `crypto_quote` | Real-time crypto pair quotes |
 | `crypto_technicals` | Technical analysis for crypto pairs |
 | `crypto_top_gainers` | Top gaining crypto pairs |
 
-### SEC EDGAR (2 tools)
+### SEC EDGAR — Filings & Ownership (no API key)
 
 | Tool | Description |
 |------|-------------|
-| `edgar_search` | Full-text search SEC filings |
-| `edgar_company_filings` | Get recent filings for a company |
+| `edgar_search` | Full-text search across all SEC filings |
+| `edgar_company_filings` | Recent official filings (10-K, 10-Q, 8-K) |
+| `edgar_company_facts` | Financial metrics from XBRL data |
+| `edgar_insider_trades` | Insider buy/sell activity (Form 4) |
+| `edgar_institutional_holdings` | Institutional holdings (13F) |
+| `edgar_ownership_filings` | Major ownership changes (13D/13G) |
 
-### CoinGecko (3 tools)
-
-| Tool | Description |
-|------|-------------|
-| `coingecko_coin` | Detailed crypto info (use slug IDs: 'bitcoin', not 'BTC') |
-| `coingecko_trending` | Trending cryptocurrencies (top 7) |
-| `coingecko_global` | Global market stats (market cap, dominance) |
-
-### Finnhub (3 tools) — requires `FINNHUB_API_KEY`
+### CoinGecko — Crypto Intelligence (no API key)
 
 | Tool | Description |
 |------|-------------|
-| `finnhub_market_news` | Latest market news by category |
-| `finnhub_company_news` | Company-specific news with date range |
-| `finnhub_earnings_calendar` | Upcoming earnings reports |
+| `coingecko_coin` | Detailed crypto info by CoinGecko ID |
+| `coingecko_trending` | Top 7 trending cryptos by search volume |
+| `coingecko_global` | Global crypto market statistics |
 
-### Alpha Vantage (3 tools) — requires `ALPHA_VANTAGE_API_KEY`
+### Finnhub — News & Earnings (requires `FINNHUB_API_KEY`)
+
+| Tool | Description |
+|------|-------------|
+| `finnhub_market_news` | Latest market news articles |
+| `finnhub_company_news` | Company-specific news |
+| `finnhub_earnings_calendar` | Upcoming/historical earnings dates |
+
+### Alpha Vantage — Fundamentals (requires `ALPHA_VANTAGE_API_KEY`)
 
 | Tool | Description |
 |------|-------------|
@@ -105,29 +123,32 @@ Modules auto-enable when their required environment variables are set. Modules w
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `FINNHUB_API_KEY` | No | Enables Finnhub module. Get free key at [finnhub.io](https://finnhub.io) |
-| `ALPHA_VANTAGE_API_KEY` | No | Enables Alpha Vantage module. Get free key at [alphavantage.co](https://www.alphavantage.co/support/#api-key) |
+| `FINNHUB_API_KEY` | No | Enables Finnhub module ([get free key](https://finnhub.io/)) |
+| `ALPHA_VANTAGE_API_KEY` | No | Enables Alpha Vantage module ([get free key](https://www.alphavantage.co/support/#api-key)) |
 
-### CLI Arguments
+### CLI Options
 
-| Argument | Description |
-|----------|-------------|
-| `--modules` | Comma-separated list of modules to enable (default: all available) |
-| `--default-exchange` | Default exchange for symbol resolution (default: NASDAQ) |
+```bash
+stock-scanner-mcp --modules tradingview,sec-edgar    # Enable specific modules only
+stock-scanner-mcp --default-exchange NYSE             # Set default exchange
+```
+
+## Example Usage in Claude Code
+
+Once configured, just ask Claude naturally:
+
+- "What are the top gaining stocks today?"
+- "Show me technicals for AAPL"
+- "Any insider trades for TSLA in the last 30 days?"
+- "What's trending in crypto right now?"
+- "Find stocks with unusual volume today"
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Build
 npm run build
-
-# Run tests
 npm test
-
-# Run locally
 node dist/index.js
 ```
 
