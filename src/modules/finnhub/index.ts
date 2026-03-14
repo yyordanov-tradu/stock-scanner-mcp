@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
-import { successResult, errorResult } from "../../shared/types.js";
+import type { ModuleDefinition } from "../../shared/types.js";
+import { successResult } from "../../shared/types.js";
 import {
   getMarketNews,
   getCompanyNews,
@@ -9,41 +9,38 @@ import {
   getPriceTarget,
 } from "./client.js";
 import { resolveTicker } from "../../shared/resolver.js";
+import { withMetadata } from "../../shared/utils.js";
 
-const marketNewsTool: ToolDefinition = {
-  name: "finnhub_market_news",
-  description: "Get latest market news by category (general, forex, crypto, merger).",
-  inputSchema: {
-    category: z.string().optional().describe("Category: general, forex, crypto, merger"),
-    limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
-  },
-  handler: async (params) => {
-    try {
-      const apiKey = process.env.FINNHUB_API_KEY!;
+export function createFinnhubModule(apiKey: string): ModuleDefinition {
+  const metadata = { source: "finnhub", dataDelay: "real-time" };
+
+  const marketNewsTool = {
+    name: "finnhub_market_news",
+    description: "Get latest market news by category (general, forex, crypto, merger).",
+    inputSchema: z.object({
+      category: z.string().optional().describe("Category: general, forex, crypto, merger"),
+      limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
+    }),
+    handler: withMetadata(async (params) => {
       const news = await getMarketNews(
         apiKey,
         params.category as string | undefined,
         Math.min((params.limit as number) ?? 20, 50),
       );
       return successResult(JSON.stringify(news, null, 2));
-    } catch (err) {
-      return errorResult(err instanceof Error ? err.message : String(err));
-    }
-  },
-};
+    }, metadata),
+  };
 
-const companyNewsTool: ToolDefinition = {
-  name: "finnhub_company_news",
-  description: "Get recent news for a specific company by ticker symbol.",
-  inputSchema: {
-    symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
-    from: z.string().describe("From date (YYYY-MM-DD)"),
-    to: z.string().describe("To date (YYYY-MM-DD)"),
-    limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
-  },
-  handler: async (params) => {
-    try {
-      const apiKey = process.env.FINNHUB_API_KEY!;
+  const companyNewsTool = {
+    name: "finnhub_company_news",
+    description: "Get recent news for a specific company by ticker symbol.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+      from: z.string().describe("From date (YYYY-MM-DD)"),
+      to: z.string().describe("To date (YYYY-MM-DD)"),
+      limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
+    }),
+    handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const news = await getCompanyNews(
         apiKey,
@@ -53,30 +50,25 @@ const companyNewsTool: ToolDefinition = {
         Math.min((params.limit as number) ?? 20, 50),
       );
       return successResult(JSON.stringify(news, null, 2));
-    } catch (err) {
-      return errorResult(err instanceof Error ? err.message : String(err));
-    }
-  },
-};
+    }, metadata),
+  };
 
-const earningsCalendarTool: ToolDefinition = {
-  name: "finnhub_earnings_calendar",
-  description: "Get upcoming or historical earnings reports within a date range.",
-  inputSchema: {
-    from: z.string().describe("Start date (YYYY-MM-DD)"),
-    to: z.string().describe("End date (YYYY-MM-DD)"),
-    symbol: z.string().optional().describe("Filter by specific symbol"),
-    limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
-  },
-  handler: async (params) => {
-    try {
-      const apiKey = process.env.FINNHUB_API_KEY!;
+  const earningsCalendarTool = {
+    name: "finnhub_earnings_calendar",
+    description: "Get upcoming or historical earnings reports within a date range.",
+    inputSchema: z.object({
+      from: z.string().describe("Start date (YYYY-MM-DD)"),
+      to: z.string().describe("End date (YYYY-MM-DD)"),
+      symbol: z.string().optional().describe("Filter by specific symbol"),
+      limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
+    }),
+    handler: withMetadata(async (params) => {
       const results = await getEarningsCalendar(
         apiKey,
         params.from as string,
         params.to as string,
       );
-      
+
       let filtered = results;
       if (params.symbol) {
         const s = resolveTicker(params.symbol as string).ticker;
@@ -87,23 +79,18 @@ const earningsCalendarTool: ToolDefinition = {
       const capped = filtered.slice(0, limit);
 
       return successResult(JSON.stringify(capped, null, 2));
-    } catch (err) {
-      return errorResult(err instanceof Error ? err.message : String(err));
-    }
-  },
-};
+    }, metadata),
+  };
 
-const analystRatingsTool: ToolDefinition = {
-  name: "finnhub_analyst_ratings",
-  description: "Get analyst consensus recommendations and price targets for a stock.",
-  inputSchema: {
-    symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
-  },
-  handler: async (params) => {
-    try {
-      const apiKey = process.env.FINNHUB_API_KEY!;
+  const analystRatingsTool = {
+    name: "finnhub_analyst_ratings",
+    description: "Get analyst consensus recommendations and price targets for a stock.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
-      
+
       const [recs, target] = await Promise.all([
         getAnalystRecommendations(apiKey, symbol),
         getPriceTarget(apiKey, symbol),
@@ -115,22 +102,18 @@ const analystRatingsTool: ToolDefinition = {
         priceTarget: target,
         recommendationHistory: recs.slice(0, 4),
       }, null, 2));
-    } catch (err) {
-      return errorResult(err instanceof Error ? err.message : String(err));
-    }
-  },
-};
+    }, metadata),
+  };
 
-export function createFinnhubModule(_apiKey?: string): ModuleDefinition {
   return {
     name: "finnhub",
     description:
       "Finnhub market and company news, plus earnings calendar and analyst ratings",
     requiredEnvVars: ["FINNHUB_API_KEY"],
     tools: [
-      marketNewsTool, 
-      companyNewsTool, 
-      earningsCalendarTool, 
+      marketNewsTool,
+      companyNewsTool,
+      earningsCalendarTool,
       analystRatingsTool
     ],
   };

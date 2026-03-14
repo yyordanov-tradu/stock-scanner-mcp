@@ -80,7 +80,7 @@ describe("full module wiring", () => {
       for (const tool of mod.tools) {
         const result = await tool.handler({});
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain("Error:");
+        expect(result.content[0].text).toContain('"error": true');
       }
     }
 
