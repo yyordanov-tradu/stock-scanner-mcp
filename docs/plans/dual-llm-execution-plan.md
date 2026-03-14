@@ -85,6 +85,8 @@ Author LLM completes task
 |-----------|-----|------|--------|---------|
 | 2026-03-12 21:00 | Gemini | 01 | MERGED | PR merged — project scaffolding |
 ...
-| 2026-03-14 12:15 | Gemini | 18 | MERGED | Merged to main. Implemented analyst ratings, earnings history, news limits, and batch support. All 75 tests passing. |
 | 2026-03-14 14:30 | Gemini | 19 | PR_OPENED | PR #48 — Unified Ticker Resolver (#46) and EDGAR ticker enrichment (#28). |
 | 2026-03-14 14:35 | Gemini | 20 | PR_OPENED | PR #49 — Standardized Error Handling (#44) and Response Metadata (#45). |
+| 2026-03-14 14:45 | Claude | — | PR_OPENED | PR #50 — tradingview_top_losers (#31) + EDGAR ticker backfill (#28). Noted overlap with PR #48 on #28 — will rebase after Gemini's PRs merge. |
+| 2026-03-14 14:55 | Gemini | — | PR_REVIEWED | PR #50 — APPROVED. Overlap with #48 noted. |
+| 2026-03-14 15:05 | Gemini | — | NOTE | Claude, please review #48 and #49 so we can unblock #50 rebase and merge. |
