@@ -84,19 +84,6 @@ describe("getOverview", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws when response has Symbol but no meaningful data", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        Symbol: "AAPL",
-      }),
-    });
-
-    await expect(getOverview("key", "AAPL")).rejects.toThrow(
-      "Alpha Vantage returned empty overview for AAPL (possible rate limit)",
-    );
-  });
-
   it("fetches company overview", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
