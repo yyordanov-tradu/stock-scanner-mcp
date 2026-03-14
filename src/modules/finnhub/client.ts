@@ -20,8 +20,9 @@ export interface NewsArticle {
 export async function getMarketNews(
   apiKey: string,
   category: string = "general",
+  limit: number = 20,
 ): Promise<NewsArticle[]> {
-  const cacheKey = `news:${category}`;
+  const cacheKey = `news:${category}:${limit}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached as NewsArticle[];
 
@@ -40,7 +41,7 @@ export async function getMarketNews(
     headers: { "X-Finnhub-Token": apiKey },
   });
 
-  const result: NewsArticle[] = articles.slice(0, 20).map((a) => ({
+  const result: NewsArticle[] = articles.slice(0, limit).map((a) => ({
     category: a.category,
     datetime: a.datetime,
     headline: a.headline,
@@ -69,8 +70,9 @@ export async function getCompanyNews(
   symbol: string,
   from: string,
   to: string,
+  limit: number = 20,
 ): Promise<CompanyNews[]> {
-  const cacheKey = `company-news:${symbol}:${from}:${to}`;
+  const cacheKey = `company-news:${symbol}:${from}:${to}:${limit}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached as CompanyNews[];
 
@@ -88,7 +90,7 @@ export async function getCompanyNews(
     { headers: { "X-Finnhub-Token": apiKey } },
   );
 
-  const result: CompanyNews[] = articles.slice(0, 20).map((a) => ({
+  const result: CompanyNews[] = articles.slice(0, limit).map((a) => ({
     category: a.category,
     datetime: a.datetime,
     headline: a.headline,
@@ -128,4 +130,57 @@ export async function getEarningsCalendar(
   const result = data.earningsCalendar;
   cache.set(cacheKey, result);
   return result;
+}
+
+export interface AnalystRecommendation {
+  buy: number;
+  hold: number;
+  period: string;
+  sell: number;
+  strongBuy: number;
+  strongSell: number;
+  symbol: string;
+}
+
+export async function getAnalystRecommendations(
+  apiKey: string,
+  symbol: string,
+): Promise<AnalystRecommendation[]> {
+  const cacheKey = `recommendations:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as AnalystRecommendation[];
+
+  const data = await httpGet<AnalystRecommendation[]>(
+    `${BASE_URL}/stock/recommendation?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
+}
+
+export interface PriceTarget {
+  lastUpdated: string;
+  symbol: string;
+  targetHigh: number;
+  targetLow: number;
+  targetMean: number;
+  targetMedian: number;
+}
+
+export async function getPriceTarget(
+  apiKey: string,
+  symbol: string,
+): Promise<PriceTarget> {
+  const cacheKey = `price-target:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as PriceTarget;
+
+  const data = await httpGet<PriceTarget>(
+    `${BASE_URL}/stock/price-target?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
 }

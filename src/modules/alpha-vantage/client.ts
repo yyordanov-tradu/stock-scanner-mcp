@@ -59,10 +59,7 @@ export async function getQuote(apiKey: string, symbol: string): Promise<StockQuo
 
 export interface DailyPrice {
   date: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+  open: number; high: number; low: number; close: number;
   volume: number;
 }
 
@@ -148,4 +145,42 @@ export async function getOverview(apiKey: string, symbol: string): Promise<Compa
 
   cache.set(cacheKey, overview);
   return overview;
+}
+
+export interface QuarterlyEarnings {
+  fiscalDateEnding: string;
+  reportedDate: string;
+  reportedEPS: string;
+  estimatedEPS: string;
+  surprise: string;
+  surprisePercentage: string;
+}
+
+export interface CompanyEarnings {
+  symbol: string;
+  annualEarnings: Array<{ fiscalDateEnding: string; reportedEPS: string }>;
+  quarterlyEarnings: QuarterlyEarnings[];
+}
+
+export async function getEarningsHistory(
+  apiKey: string,
+  symbol: string,
+  limit: number = 8,
+): Promise<CompanyEarnings> {
+  const cacheKey = `earnings-history:${symbol}:${limit}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as CompanyEarnings;
+
+  const data = await httpGet<any>(
+    `${BASE_URL}?function=EARNINGS&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`,
+  );
+
+  const result: CompanyEarnings = {
+    symbol: data.symbol,
+    annualEarnings: (data.annualEarnings || []).slice(0, 4),
+    quarterlyEarnings: (data.quarterlyEarnings || []).slice(0, limit),
+  };
+
+  cache.set(cacheKey, result);
+  return result;
 }
