@@ -1,10 +1,12 @@
 {
-  "stock-scanner": {
-    "command": "node",
-    "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
-    "env": {
-      "FINNHUB_API_KEY": "${FINNHUB_API_KEY}",
-      "ALPHA_VANTAGE_API_KEY": "${ALPHA_VANTAGE_API_KEY}"
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "FINNHUB_API_KEY": "${FINNHUB_API_KEY}",
+        "ALPHA_VANTAGE_API_KEY": "${ALPHA_VANTAGE_API_KEY}"
+      }
     }
   }
 }
