@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ModuleDefinition, ToolDefinition, ToolResult } from "../../shared/types.js";
 import { errorResult, successResult } from "../../shared/types.js";
 import { scanStocks } from "./scanner.js";
-import { STOCK_COLUMNS } from "./columns.js";
+import { resolveTicker } from "../../shared/resolver.js";
 
 export function createTradingviewModule(): ModuleDefinition {
   return {
@@ -35,14 +35,15 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_quote",
-        description: "Get a real-time quote for one or more stock tickers (e.g. NASDAQ:AAPL). Returns price, change, volume, market cap.",
+        description: "Get a real-time quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap.",
         inputSchema: {
-          tickers: z.array(z.string()).describe("Fully-qualified tickers, e.g. ['NASDAQ:AAPL', 'NYSE:MSFT']"),
+          tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'MSFT']"),
         },
         handler: async (input): Promise<ToolResult> => {
           try {
+            const resolvedTickers = input.tickers.map(t => resolveTicker(t).full);
             const rows = await scanStocks({
-              tickers: input.tickers as string[],
+              tickers: resolvedTickers,
               columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description"],
             });
             return successResult(JSON.stringify(rows, null, 2));
@@ -55,7 +56,7 @@ export function createTradingviewModule(): ModuleDefinition {
         name: "tradingview_technicals",
         description: "Get technical indicators (RSI, MACD, moving averages, pivot points, etc.) for one or more stock tickers.",
         inputSchema: {
-          tickers: z.array(z.string()).describe("Fully-qualified tickers"),
+          tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'IBM']"),
           timeframe: z.string().optional().describe("Timeframe (default: 1d)"),
         },
         handler: async (input): Promise<ToolResult> => {
@@ -67,8 +68,9 @@ export function createTradingviewModule(): ModuleDefinition {
               "EMA20", "EMA50", "EMA200", "SMA20", "SMA50", "SMA200",
               "Pivot.M.Classic.S1", "Pivot.M.Classic.Middle", "Pivot.M.Classic.R1",
             ];
+            const resolvedTickers = input.tickers.map(t => resolveTicker(t).full);
             const rows = await scanStocks({
-              tickers: input.tickers as string[],
+              tickers: resolvedTickers,
               columns: technicalCols,
               timeframe: input.timeframe as string | undefined,
             });

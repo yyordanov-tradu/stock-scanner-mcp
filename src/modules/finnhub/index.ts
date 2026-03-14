@@ -8,6 +8,7 @@ import {
   getAnalystRecommendations,
   getPriceTarget,
 } from "./client.js";
+import { resolveTicker } from "../../shared/resolver.js";
 
 const marketNewsTool: ToolDefinition = {
   name: "finnhub_market_news",
@@ -43,9 +44,10 @@ const companyNewsTool: ToolDefinition = {
   handler: async (params) => {
     try {
       const apiKey = process.env.FINNHUB_API_KEY!;
+      const symbol = resolveTicker(params.symbol as string).ticker;
       const news = await getCompanyNews(
         apiKey,
-        params.symbol as string,
+        symbol,
         params.from as string,
         params.to as string,
         Math.min((params.limit as number) ?? 20, 50),
@@ -77,7 +79,7 @@ const earningsCalendarTool: ToolDefinition = {
       
       let filtered = results;
       if (params.symbol) {
-        const s = (params.symbol as string).toUpperCase();
+        const s = resolveTicker(params.symbol as string).ticker;
         filtered = results.filter(r => r.symbol === s);
       }
 
@@ -100,7 +102,7 @@ const analystRatingsTool: ToolDefinition = {
   handler: async (params) => {
     try {
       const apiKey = process.env.FINNHUB_API_KEY!;
-      const symbol = (params.symbol as string).toUpperCase();
+      const symbol = resolveTicker(params.symbol as string).ticker;
       
       const [recs, target] = await Promise.all([
         getAnalystRecommendations(apiKey, symbol),

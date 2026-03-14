@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
 import { successResult, errorResult } from "../../shared/types.js";
 import { getQuote, getDailyPrices, getOverview, getEarningsHistory } from "./client.js";
+import { resolveTicker } from "../../shared/resolver.js";
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,7 +17,8 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     },
     handler: async (params) => {
       try {
-        const quote = await getQuote(apiKey, params.symbol as string);
+        const symbol = resolveTicker(params.symbol as string).ticker;
+        const quote = await getQuote(apiKey, symbol);
         return successResult(JSON.stringify(quote, null, 2));
       } catch (err) {
         return errorResult(err instanceof Error ? err.message : String(err));
@@ -33,9 +35,10 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     },
     handler: async (params) => {
       try {
+        const symbol = resolveTicker(params.symbol as string).ticker;
         const prices = await getDailyPrices(
           apiKey,
-          params.symbol as string,
+          symbol,
           Math.min((params.limit as number) ?? 30, 100),
         );
         return successResult(JSON.stringify(prices, null, 2));
@@ -53,12 +56,13 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     },
     handler: async (params) => {
       try {
-        const symbols = Array.isArray(params.symbols) ? params.symbols : [params.symbols as string];
+        const inputSymbols = Array.isArray(params.symbols) ? params.symbols : [params.symbols as string];
+        const tickers = inputSymbols.map(s => resolveTicker(s).ticker);
         const results = [];
         
-        for (let i = 0; i < Math.min(symbols.length, 5); i++) {
+        for (let i = 0; i < Math.min(tickers.length, 5); i++) {
           if (i > 0) await sleep(12000); // 12s delay to respect 5/min rate limit
-          const overview = await getOverview(apiKey, symbols[i]);
+          const overview = await getOverview(apiKey, tickers[i]);
           results.push(overview);
         }
         
@@ -78,9 +82,10 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     },
     handler: async (params) => {
       try {
+        const symbol = resolveTicker(params.symbol as string).ticker;
         const earnings = await getEarningsHistory(
           apiKey,
-          params.symbol as string,
+          symbol,
           Math.min((params.limit as number) ?? 8, 20),
         );
         return successResult(JSON.stringify(earnings, null, 2));

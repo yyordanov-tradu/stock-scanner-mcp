@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
 import { successResult, errorResult } from "../../shared/types.js";
 import { scanCrypto } from "./scanner.js";
+import { resolveTicker } from "../../shared/resolver.js";
 
 const MAJOR_EXCHANGES = ["BINANCE", "COINBASE", "KRAKEN", "OKX", "BYBIT", "BITSTAMP"];
 
@@ -57,16 +58,22 @@ const scanTool: ToolDefinition = {
 const quoteTool: ToolDefinition = {
   name: "crypto_quote",
   description:
-    "Get real-time quotes for specific crypto pairs. Use exchange:pair format (e.g. BINANCE:BTCUSDT).",
+    "Get real-time quotes for specific crypto pairs. Supports 'BTCUSDT' (defaults to BINANCE) or 'BINANCE:BTCUSDT'.",
   inputSchema: {
     symbols: z
       .array(z.string())
-      .describe("Crypto pair symbols (e.g. ['BINANCE:BTCUSDT', 'BINANCE:ETHUSDT'])"),
+      .describe("Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT'])"),
   },
   handler: async (params) => {
     try {
+      const resolvedTickers = (params.symbols as string[]).map(s => {
+        const res = resolveTicker(s, "BINANCE");
+        // For crypto, if it's exchange-less, we might need to construct the pair properly
+        // TradingView Crypto scanner usually expects EXCHANGE:SYMBOL
+        return res.exchange ? `${res.exchange}:${res.ticker}` : `BINANCE:${res.ticker}`;
+      });
       const rows = await scanCrypto({
-        tickers: params.symbols as string[],
+        tickers: resolvedTickers,
         columns: [
           "close",
           "change",
@@ -86,15 +93,19 @@ const quoteTool: ToolDefinition = {
 const technicalsTool: ToolDefinition = {
   name: "crypto_technicals",
   description:
-    "Get technical analysis for crypto pairs. Includes RSI, MACD, moving averages, and recommendation.",
+    "Get technical analysis for crypto pairs. Supports 'BTCUSDT' or 'BINANCE:BTCUSDT'.",
   inputSchema: {
-    symbols: z.array(z.string()).describe("Crypto symbols (e.g. ['BINANCE:BTCUSDT'])"),
+    symbols: z.array(z.string()).describe("Crypto symbols (e.g. ['BTCUSDT'])"),
     timeframe: z.string().optional().describe("Timeframe. Default: '1d'"),
   },
   handler: async (params) => {
     try {
+      const resolvedTickers = (params.symbols as string[]).map(s => {
+        const res = resolveTicker(s, "BINANCE");
+        return res.exchange ? `${res.exchange}:${res.ticker}` : `BINANCE:${res.ticker}`;
+      });
       const rows = await scanCrypto({
-        tickers: params.symbols as string[],
+        tickers: resolvedTickers,
         timeframe: params.timeframe as string | undefined,
         columns: [
           "Recommend.All",
