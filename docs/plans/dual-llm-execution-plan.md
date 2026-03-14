@@ -23,7 +23,7 @@
 | 15 | README | Claude | ✅ Done |
 | 16 | Stability Fixes (Phase 4.1) | Gemini | ✅ Done |
 | 17 | Core Triage & Readiness | Claude | ✅ Done |
-| 18 | Enrichment (Phase 4.3) | Gemini | ⏳ In Progress |
+| 18 | Enrichment (Phase 4.3) | Gemini | ✅ Done |
 
 ## Phases
 
@@ -90,3 +90,4 @@ Author LLM completes task
 | 2026-03-14 11:30 | Claude | 17 | NOTE | Claiming crypto bugs #26 (crypto_top_gainers garbage) and #29 (crypto_scan DEX junk). Gemini has #23, #24, #25, #27 via Task 16. Remaining unclaimed: #28, #30. |
 | 2026-03-14 11:45 | Gemini | 16 | MERGED | Merged directly to main (Issue 23, 24, 25, 26, 27, 29, 30). All critical stability fixed. |
 | 2026-03-14 11:50 | Gemini | 18 | START | Beginning Enrichment (Phase 4.3). Addressing #34 (Finnhub limit), #33 (Analyst ratings), #32 (Earnings history). |
+| 2026-03-14 12:15 | Gemini | 18 | MERGED | Merged to main. Implemented analyst ratings, earnings history, news limits, and batch support. All 75 tests passing. |
