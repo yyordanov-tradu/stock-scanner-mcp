@@ -104,11 +104,16 @@ export interface CompanyFilingsParams {
 export async function getCompanyFilings(
   params: CompanyFilingsParams,
 ): Promise<EdgarFiling[]> {
-  return searchFilings({
+  const filings = await searchFilings({
     query: params.ticker,
     forms: params.forms,
     limit: params.limit,
   });
+  const ticker = params.ticker.toUpperCase();
+  for (const f of filings) {
+    if (!f.ticker) f.ticker = ticker;
+  }
+  return filings;
 }
 
 export interface CompanyMetricValue {
@@ -350,20 +355,33 @@ export async function getInsiderTrades(ticker: string, limit = 10): Promise<Edga
  * Get recent institutional holdings reports (Form 13F) for a ticker or manager.
  */
 export async function getInstitutionalHoldings(query: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
+  const filings = await searchFilings({
     query,
     forms: ["13F-HR", "13F-HR/A", "13F-NT", "13F-NT/A"],
     limit,
   });
+  // Backfill ticker if query looks like a ticker symbol (short, alphanumeric)
+  if (/^[A-Za-z]{1,5}$/.test(query.trim())) {
+    const ticker = query.trim().toUpperCase();
+    for (const f of filings) {
+      if (!f.ticker) f.ticker = ticker;
+    }
+  }
+  return filings;
 }
 
 /**
  * Get recent significant ownership filings (13D, 13G) for a ticker.
  */
 export async function getOwnershipFilings(ticker: string, limit = 10): Promise<EdgarFiling[]> {
-  return searchFilings({
+  const filings = await searchFilings({
     query: ticker,
     forms: ["SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A"],
     limit,
   });
+  const upperTicker = ticker.toUpperCase();
+  for (const f of filings) {
+    if (!f.ticker) f.ticker = upperTicker;
+  }
+  return filings;
 }

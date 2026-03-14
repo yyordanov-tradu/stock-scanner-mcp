@@ -14,6 +14,7 @@ export interface ScanRequest {
   columns?: string[];
   timeframe?: string;
   limit?: number;
+  sort?: { sortBy: string; sortOrder: "asc" | "desc" };
 }
 
 export interface ScanRow {
@@ -47,7 +48,7 @@ export async function scanStocks(request: ScanRequest): Promise<ScanRow[]> {
     columns,
     options: { lang: "en" },
     range: [0, request.limit ?? 50],
-    sort: { sortBy: columns[0], sortOrder: "desc" },
+    sort: request.sort ?? { sortBy: columns[0], sortOrder: "desc" },
   };
 
   if (request.tickers) {
