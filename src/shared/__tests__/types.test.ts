@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ModuleDefinition, ToolDefinition, ToolResult } from "../types.js";
+import type { ModuleDefinition, ToolResult } from "../types.js";
 import { errorResult, successResult } from "../types.js";
 
 describe("types", () => {
@@ -23,7 +23,7 @@ describe("types", () => {
 
   it("ToolResult error shape", () => {
     const result: ToolResult = {
-      content: [{ type: "text", text: "Error: something failed" }],
+      content: [{ type: "text", text: '{"error":true}' }],
       isError: true,
     };
     expect(result.isError).toBe(true);
@@ -33,8 +33,10 @@ describe("types", () => {
 describe("errorResult", () => {
   it("returns error ToolResult", () => {
     const result = errorResult("something broke");
-    expect(result.content[0].text).toBe("Error: something broke");
     expect(result.isError).toBe(true);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.error).toBe(true);
+    expect(data.message).toBe("something broke");
   });
 });
 

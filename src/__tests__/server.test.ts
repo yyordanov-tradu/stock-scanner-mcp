@@ -3,6 +3,7 @@ import { parseConfig } from "../config.js";
 import { resolveEnabledModules } from "../registry.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
 import { successResult } from "../shared/types.js";
+import { withMetadata } from "../shared/utils.js";
 import { z } from "zod";
 
 describe("server module wiring", () => {
@@ -28,19 +29,25 @@ describe("server module wiring", () => {
     expect(tools[0].name).toBe("test_tool");
   });
 
-  it("wraps tool handler errors into error results", async () => {
-    const failingTool: ToolDefinition = {
-      name: "fail_tool",
-      description: "Fails",
-      inputSchema: {},
-      handler: async () => { throw new Error("boom"); },
-    };
+  it("withMetadata wrapper adds _meta and standardizes errors", async () => {
+    const handler = async () => successResult("ok");
+    const wrapped = withMetadata(handler, { source: "test-src", dataDelay: "1s" });
+    
+    const res = await wrapped({});
+    expect(res._meta).toBeDefined();
+    expect(res._meta?.source).toBe("test-src");
+    expect(res._meta?.dataDelay).toBe("1s");
+    expect(res._meta?.lastUpdated).toBeDefined();
 
-    try {
-      await failingTool.handler({});
-    } catch (err) {
-      expect(err).toBeInstanceOf(Error);
-      expect((err as Error).message).toBe("boom");
-    }
+    const failingHandler = async () => { throw new Error("fetch failed"); };
+    const wrappedFail = withMetadata(failingHandler, { source: "fail-src" });
+    const failRes = await wrappedFail({});
+    
+    expect(failRes.isError).toBe(true);
+    const errorData = JSON.parse(failRes.content[0].text);
+    expect(errorData.error).toBe(true);
+    expect(errorData.code).toBe("FETCH_FAILED");
+    expect(errorData.retryable).toBe(true);
+    expect(failRes._meta?.source).toBe("fail-src");
   });
 });
