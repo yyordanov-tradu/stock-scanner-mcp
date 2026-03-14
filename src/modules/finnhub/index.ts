@@ -1,12 +1,10 @@
 import { z } from "zod";
 import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
-import { successResult, errorResult } from "../../shared/types.js";
+import { successResult } from "../../shared/types.js";
 import {
   getMarketNews,
   getCompanyNews,
   getEarningsCalendar,
-  getAnalystRecommendations,
-  getPriceTarget,
   getShortInterest,
   getEconomicCalendar,
 } from "./client.js";
@@ -83,29 +81,6 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
-  const analystRatingsTool: ToolDefinition = {
-    name: "finnhub_analyst_ratings",
-    description: "Get analyst consensus recommendations and price targets for a stock.",
-    inputSchema: z.object({
-      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
-    }),
-    handler: withMetadata(async (params) => {
-      const symbol = resolveTicker(params.symbol as string).ticker;
-      
-      const [recs, target] = await Promise.all([
-        getAnalystRecommendations(apiKey, symbol),
-        getPriceTarget(apiKey, symbol),
-      ]);
-
-      return successResult(JSON.stringify({
-        symbol,
-        currentConsensus: recs[0] || null,
-        priceTarget: target,
-        recommendationHistory: recs.slice(0, 4),
-      }, null, 2));
-    }, metadata),
-  };
-
   const shortInterestTool: ToolDefinition = {
     name: "finnhub_short_interest",
     description: "Get short interest and other key financial metrics for a stock.",
@@ -159,13 +134,12 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
   return {
     name: "finnhub",
     description:
-      "Finnhub market and company news, plus earnings calendar, analyst ratings, short interest, and economic calendar",
+      "Finnhub market and company news, plus earnings calendar, short interest, and economic calendar",
     requiredEnvVars: ["FINNHUB_API_KEY"],
     tools: [
       marketNewsTool,
       companyNewsTool,
       earningsCalendarTool,
-      analystRatingsTool,
       shortInterestTool,
       economicCalendarTool,
     ],
