@@ -65,4 +65,26 @@ describe("Alpha Vantage error handling", () => {
 
     await expect(getOverview("key", "YYYY")).rejects.toThrow(/Alpha Vantage Rate Limit/);
   });
+
+  it("throws meaningful error when API returns null", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => null,
+    });
+
+    await expect(getDailyPrices("key", "NULLTEST")).rejects.toThrow(
+      "Alpha Vantage API returned empty response",
+    );
+  });
+
+  it("throws meaningful error when API returns undefined", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => undefined,
+    });
+
+    await expect(getQuote("key", "UNDEFTEST")).rejects.toThrow(
+      "Alpha Vantage API returned empty response",
+    );
+  });
 });

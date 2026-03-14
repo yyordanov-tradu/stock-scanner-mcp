@@ -7,7 +7,9 @@ const CACHE_TTL = 60 * 1000; // 1 minute
 const cache = new TtlCache<unknown>(CACHE_TTL);
 
 function checkAvResponse(data: any) {
-  if (!data) return;
+  if (!data) {
+    throw new Error("Alpha Vantage API returned empty response");
+  }
   if (data["Note"]) {
     throw new Error(`Alpha Vantage Rate Limit: ${data["Note"]}`);
   }
