@@ -10,7 +10,7 @@ describe("server module wiring", () => {
   const mockTool: ToolDefinition = {
     name: "test_tool",
     description: "A test tool",
-    inputSchema: { symbol: z.string() },
+    inputSchema: z.object({ symbol: z.string() }),
     handler: async () => successResult("ok"),
   };
 

@@ -184,3 +184,29 @@ export async function getEarningsHistory(
   cache.set(cacheKey, result);
   return result;
 }
+
+export interface DividendHistory {
+  symbol: string;
+  data: Array<{ ex_dividend_date: string; declaration_date: string; record_date: string; payment_date: string; amount: string }>;
+}
+
+export async function getDividendHistory(
+  apiKey: string,
+  symbol: string,
+): Promise<DividendHistory> {
+  const cacheKey = `dividend-history:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as DividendHistory;
+
+  const data = await httpGet<any>(
+    `${BASE_URL}?function=DIVIDENDS&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`,
+  );
+
+  const result: DividendHistory = {
+    symbol: data.symbol,
+    data: (data.data || []).slice(0, 20),
+  };
+
+  cache.set(cacheKey, result);
+  return result;
+}

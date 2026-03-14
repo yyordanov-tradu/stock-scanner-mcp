@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ModuleDefinition } from "../../shared/types.js";
 import { successResult } from "../../shared/types.js";
-import { getQuote, getDailyPrices, getOverview, getEarningsHistory } from "./client.js";
+import { getQuote, getDailyPrices, getOverview, getEarningsHistory, getDividendHistory } from "./client.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
 
@@ -51,7 +51,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     }),
     handler: withMetadata(async (params) => {
       const inputSymbols = Array.isArray(params.symbols) ? params.symbols : [params.symbols as string];
-      const tickers = inputSymbols.map(s => resolveTicker(s).ticker);
+      const tickers = inputSymbols.map((s: string) => resolveTicker(s).ticker);
       const results = [];
 
       for (let i = 0; i < Math.min(tickers.length, 5); i++) {
@@ -82,10 +82,23 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     }, metadata),
   };
 
+  const dividendHistoryTool = {
+    name: "alphavantage_dividend_history",
+    description: "Get historical dividend data for a specific ticker.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
+      const symbol = resolveTicker(params.symbol as string).ticker;
+      const dividends = await getDividendHistory(apiKey, symbol);
+      return successResult(JSON.stringify(dividends, null, 2));
+    }, metadata),
+  };
+
   return {
     name: "alpha-vantage",
     description: "Alpha Vantage stock data -- quotes, daily prices, and company fundamentals",
     requiredEnvVars: ["ALPHA_VANTAGE_API_KEY"],
-    tools: [quoteTool, dailyTool, overviewTool, earningsHistoryTool],
+    tools: [quoteTool, dailyTool, overviewTool, earningsHistoryTool, dividendHistoryTool],
   };
 }
