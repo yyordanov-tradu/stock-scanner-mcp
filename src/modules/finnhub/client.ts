@@ -191,6 +191,36 @@ export async function getPriceTarget(
   return data;
 }
 
+export interface EconomicEvent {
+  country: string;
+  event: string;
+  actual: number | null;
+  estimate: number | null;
+  prev: number | null;
+  impact: string;
+  time: string;
+  unit: string;
+}
+
+export async function getEconomicCalendar(
+  apiKey: string,
+  from: string,
+  to: string,
+): Promise<EconomicEvent[]> {
+  const cacheKey = `economic:${from}:${to}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as EconomicEvent[];
+
+  const data = await httpGet<{ economicCalendar: EconomicEvent[] }>(
+    `${BASE_URL}/calendar/economic?from=${from}&to=${to}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  const result = data.economicCalendar ?? [];
+  cache.set(cacheKey, result);
+  return result;
+}
+
 export async function getShortInterest(
   apiKey: string,
   symbol: string,
