@@ -99,6 +99,99 @@ describe("getCompanyNews", () => {
   });
 });
 
+describe("getEarningsCalendar", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches earnings calendar with date range", async () => {
+    const mockEvents = [
+      {
+        date: "2026-03-20",
+        symbol: "AAPL",
+        actual: 1.52,
+        estimate: 1.50,
+        period: "2025-12-31",
+        quarter: 1,
+        year: 2026,
+      },
+    ];
+
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ earningsCalendar: mockEvents }),
+    });
+
+    const { getEarningsCalendar } = await import("../client.js");
+    const result = await getEarningsCalendar("test-key", "2026-03-15", "2026-03-22");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("/calendar/earnings?from=2026-03-15&to=2026-03-22");
+    expect(result).toHaveLength(1);
+    expect(result[0].symbol).toBe("AAPL");
+    expect(result[0].actual).toBe(1.52);
+  });
+
+  it("includes symbol filter when provided", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ earningsCalendar: [] }),
+    });
+
+    const { getEarningsCalendar } = await import("../client.js");
+    await getEarningsCalendar("test-key", "2026-03-15", "2026-03-22", "AAPL");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("symbol=AAPL");
+  });
+});
+
+describe("getShortInterest", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches short interest metrics with API key header", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        symbol: "AAPL",
+        metric: {
+          "52WeekHigh": 199.62,
+          "52WeekLow": 143.90,
+          shortInterest: 120000000,
+          shortRatio: 1.5,
+          shortPercentOfFloat: 0.75,
+        },
+      }),
+    });
+
+    const { getShortInterest } = await import("../client.js");
+    const result = await getShortInterest("test-key", "AAPL");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("stock/metric?symbol=AAPL"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-Finnhub-Token": "test-key",
+        }),
+      }),
+    );
+    expect(result.symbol).toBe("AAPL");
+    expect(result.metric.shortInterest).toBe(120000000);
+    expect(result.metric.shortRatio).toBe(1.5);
+    expect(result.metric["52WeekHigh"]).toBe(199.62);
+  });
+});
+
 describe("getEconomicCalendar", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());

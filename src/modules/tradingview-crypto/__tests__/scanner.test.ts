@@ -3,7 +3,7 @@ import { scanCrypto } from "../scanner.js";
 import { CRYPTO_COLUMNS } from "../columns.js";
 
 describe("CRYPTO_COLUMNS", () => {
-  it("has 24 column IDs", () => {
+  it("has 23 column IDs", () => {
     expect(CRYPTO_COLUMNS).toHaveLength(23);
   });
 

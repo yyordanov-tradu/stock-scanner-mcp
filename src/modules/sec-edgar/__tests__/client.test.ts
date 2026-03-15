@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { searchFilings, getCompanyFilings } from "../client.js";
+import { searchFilings, getCompanyFilings, getInstitutionalHoldings, getOwnershipFilings } from "../client.js";
 
 describe("searchFilings", () => {
   beforeEach(() => {
@@ -123,6 +123,117 @@ describe("getCompanyFilings", () => {
 
     expect(filings).toHaveLength(1);
     expect(filings[0].ticker).toBe("APLD");
+  });
+});
+
+describe("getInstitutionalHoldings", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("searches for 13F filings and backfills ticker for short queries", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        hits: {
+          hits: [
+            {
+              _id: "0001234567-24-000010",
+              _source: {
+                file_num: "001-99999",
+                file_date: "2024-06-30",
+                form_type: "13F-HR",
+                entity_name: "Berkshire Hathaway Inc",
+                tickers: "",
+                display_names: ["Berkshire Hathaway Inc"],
+                file_description: "Quarterly report filed by institutional managers",
+              },
+            },
+          ],
+        },
+      }),
+    });
+
+    const filings = await getInstitutionalHoldings("AAPL", 5);
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("forms=13F-HR");
+    expect(filings).toHaveLength(1);
+    expect(filings[0].formType).toBe("13F-HR");
+    expect(filings[0].ticker).toBe("AAPL");
+  });
+
+  it("does not backfill ticker for long manager name queries", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        hits: {
+          hits: [
+            {
+              _id: "0001234567-24-000020",
+              _source: {
+                file_num: "001-88888",
+                file_date: "2024-06-30",
+                form_type: "13F-HR",
+                entity_name: "Berkshire Hathaway Inc",
+                tickers: "BRK-B",
+                display_names: ["Berkshire Hathaway Inc"],
+                file_description: "13F quarterly report",
+              },
+            },
+          ],
+        },
+      }),
+    });
+
+    const filings = await getInstitutionalHoldings("Berkshire Hathaway", 5);
+    expect(filings[0].ticker).toBe("BRK-B");
+  });
+});
+
+describe("getOwnershipFilings", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("searches for 13D/13G filings and backfills ticker", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        hits: {
+          hits: [
+            {
+              _id: "0001234567-24-000030",
+              _source: {
+                file_num: "005-77777",
+                file_date: "2024-08-15",
+                form_type: "SC 13D",
+                entity_name: "Activist Investor LLC",
+                tickers: "",
+                display_names: ["Activist Investor LLC"],
+                file_description: "Schedule 13D",
+              },
+            },
+          ],
+        },
+      }),
+    });
+
+    const filings = await getOwnershipFilings("TSLA", 5);
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("forms=SC+13D");
+    expect(filings).toHaveLength(1);
+    expect(filings[0].formType).toBe("SC 13D");
+    expect(filings[0].ticker).toBe("TSLA");
   });
 });
 
