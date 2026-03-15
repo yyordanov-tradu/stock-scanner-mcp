@@ -19,7 +19,6 @@ import { createSecEdgarModule } from "./modules/sec-edgar/index.js";
 import { createCoingeckoModule } from "./modules/coingecko/index.js";
 import { createFinnhubModule } from "./modules/finnhub/index.js";
 import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
-import { createOptionsModule } from "./modules/options/index.js";
 import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 
 function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
@@ -28,7 +27,6 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createTradingviewCryptoModule(),
     createSecEdgarModule(),
     createCoingeckoModule(),
-    createOptionsModule(),
     createOptionsCboeModule(),
   ];
 
@@ -57,12 +55,11 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
 
-MODULES (35 tools total)
+MODULES (31 tools total)
   tradingview        7 tools  Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
-  options            4 tools  Options chains, Greeks, unusual activity  (no key)
   options-cboe       1 tool   CBOE put/call ratio sentiment            (no key)
   finnhub            5 tools  Market news, earnings, short interest    (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)

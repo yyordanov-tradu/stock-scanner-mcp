@@ -57,13 +57,12 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | tradingview-crypto | 4 | None | Crypto pair scanner with technicals and screening |
 | sec-edgar | 6 | None | SEC filings, insider trades, institutional holdings, ownership |
 | coingecko | 3 | None | Crypto market data, trending coins, global stats |
-| options | 4 | None | Options chains, Greeks, unusual activity, max pain |
 | options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
 | finnhub | 5 | `FINNHUB_API_KEY` | News, earnings, short interest, economic calendar |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
-## Available Tools (35 total)
+## Available Tools (31 total)
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -104,15 +103,6 @@ Modules auto-enable when their required environment variables are set. Modules w
 | `coingecko_coin` | Detailed crypto info by CoinGecko slug (e.g. 'bitcoin', 'solana') |
 | `coingecko_trending` | Top 7 trending cryptos by search volume (last 24h) |
 | `coingecko_global` | Global crypto market cap, volume, BTC/ETH dominance |
-
-### Options — Chains, Greeks & Unusual Activity (no API key)
-
-| Tool | Description |
-|------|-------------|
-| `options_expirations` | Available expiration dates for a stock's options |
-| `options_chain` | Full options chain with Greeks for a given expiration |
-| `options_unusual_activity` | Unusual options activity — high volume/OI contracts |
-| `options_max_pain` | Max pain (strike where most options expire worthless) |
 
 ### Options CBOE — Put/Call Sentiment (no API key)
 
@@ -179,9 +169,6 @@ Once configured, just ask Claude naturally:
 - "Show me the economic calendar for high-impact US events"
 - "What's the short interest on GME?"
 - "Get Apple's dividend history"
-- "What's the options chain for AAPL expiring next Friday?"
-- "Any unusual options activity on TSLA?"
-- "What's the max pain for SPY this week?"
 - "Show me the put/call ratio trend for the last 30 days"
 
 ## Development
@@ -206,7 +193,6 @@ src/
 │   ├── tradingview-crypto/ # 4 tools — crypto scanning and technicals
 │   ├── sec-edgar/        # 6 tools — filings, insider trades, holdings
 │   ├── coingecko/        # 3 tools — crypto market data
-│   ├── options/          # 4 tools — options chains, Greeks, unusual activity
 │   ├── options-cboe/     # 1 tool  — CBOE put/call ratio sentiment
 │   ├── finnhub/          # 5 tools — news, earnings, economic calendar
 │   └── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
@@ -225,7 +211,6 @@ src/
 | TradingView | No documented limit (be reasonable) | — |
 | SEC EDGAR | 10 requests/second | 5 min |
 | CoinGecko | ~30 calls/minute | 1 min |
-| Yahoo Finance | No documented limit (be reasonable) | 5 min |
 | CBOE CDN | No documented limit | 30 min |
 | Finnhub | 30 calls/second | 5 min |
 | Alpha Vantage | 5 calls/minute, 25 calls/day | 1 min |

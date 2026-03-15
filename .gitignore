@@ -4,3 +4,4 @@ dist/
 .env
 .worktrees/
 .claude/worktrees/
+cookies.txt
