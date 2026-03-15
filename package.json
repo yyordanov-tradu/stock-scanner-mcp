@@ -1,6 +1,6 @@
 {
   "name": "stock-scanner-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "MCP server providing Claude Code with real-time stock and crypto market data, SEC filings, insider trades, and technical analysis",
   "type": "module",
   "bin": {
