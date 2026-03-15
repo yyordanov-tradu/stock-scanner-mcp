@@ -61,7 +61,6 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
 | finnhub | 5 | `FINNHUB_API_KEY` | News, earnings, short interest, economic calendar |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
-
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
 ## Available Tools (35 total)
@@ -119,7 +118,7 @@ Modules auto-enable when their required environment variables are set. Modules w
 
 | Tool | Description |
 |------|-------------|
-| `options_cboe_put_call_ratio` | CBOE equity/index/total put/call ratio for market sentiment |
+| `options_put_call_ratio` | CBOE equity/index/total put/call ratio for market sentiment |
 
 ### Finnhub — News, Earnings & Macro (requires `FINNHUB_API_KEY`)
 
@@ -180,6 +179,10 @@ Once configured, just ask Claude naturally:
 - "Show me the economic calendar for high-impact US events"
 - "What's the short interest on GME?"
 - "Get Apple's dividend history"
+- "What's the options chain for AAPL expiring next Friday?"
+- "Any unusual options activity on TSLA?"
+- "What's the max pain for SPY this week?"
+- "Show me the put/call ratio trend for the last 30 days"
 
 ## Development
 
@@ -223,7 +226,7 @@ src/
 | SEC EDGAR | 10 requests/second | 5 min |
 | CoinGecko | ~30 calls/minute | 1 min |
 | Yahoo Finance | No documented limit (be reasonable) | 5 min |
-| CBOE | No documented limit (be reasonable) | 5 min |
+| CBOE CDN | No documented limit | 30 min |
 | Finnhub | 30 calls/second | 5 min |
 | Alpha Vantage | 5 calls/minute, 25 calls/day | 1 min |
 
