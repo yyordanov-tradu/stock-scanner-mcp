@@ -138,34 +138,57 @@ export async function getEarningsCalendar(
   return result;
 }
 
-export interface EconomicEvent {
-  country: string;
-  event: string;
-  actual: number | null;
-  estimate: number | null;
-  prev: number | null;
-  impact: string;
-  time: string;
-  unit: string;
+export interface AnalystRecommendation {
+  buy: number;
+  hold: number;
+  period: string;
+  sell: number;
+  strongBuy: number;
+  strongSell: number;
+  symbol: string;
 }
 
-export async function getEconomicCalendar(
+export async function getAnalystRecommendations(
   apiKey: string,
-  from: string,
-  to: string,
-): Promise<EconomicEvent[]> {
-  const cacheKey = `economic:${from}:${to}`;
+  symbol: string,
+): Promise<AnalystRecommendation[]> {
+  const cacheKey = `recommendations:${symbol}`;
   const cached = cache.get(cacheKey);
-  if (cached) return cached as EconomicEvent[];
+  if (cached) return cached as AnalystRecommendation[];
 
-  const data = await httpGet<{ economicCalendar: EconomicEvent[] }>(
-    `${BASE_URL}/calendar/economic?from=${from}&to=${to}`,
+  const data = await httpGet<AnalystRecommendation[]>(
+    `${BASE_URL}/stock/recommendation?symbol=${encodeURIComponent(symbol)}`,
     { headers: { "X-Finnhub-Token": apiKey } },
   );
 
-  const result = data.economicCalendar ?? [];
-  cache.set(cacheKey, result);
-  return result;
+  cache.set(cacheKey, data);
+  return data;
+}
+
+export interface PriceTarget {
+  lastUpdated: string;
+  symbol: string;
+  targetHigh: number;
+  targetLow: number;
+  targetMean: number;
+  targetMedian: number;
+}
+
+export async function getPriceTarget(
+  apiKey: string,
+  symbol: string,
+): Promise<PriceTarget> {
+  const cacheKey = `price-target:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as PriceTarget;
+
+  const data = await httpGet<PriceTarget>(
+    `${BASE_URL}/stock/price-target?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
 }
 
 export async function getShortInterest(
