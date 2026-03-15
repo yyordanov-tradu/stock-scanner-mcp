@@ -57,12 +57,12 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
   const earningsCalendarTool: ToolDefinition = {
     name: "finnhub_earnings_calendar",
     description: "Get upcoming or historical earnings reports within a date range.",
-    inputSchema: {
+    inputSchema: z.object({
       from: z.string().describe("Start date (YYYY-MM-DD)"),
       to: z.string().describe("End date (YYYY-MM-DD)"),
       symbol: z.string().optional().describe("Filter by specific symbol"),
       limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
-    },
+    }),
     handler: withMetadata(async (params) => {
       const symbol = params.symbol
         ? resolveTicker(params.symbol as string).ticker
