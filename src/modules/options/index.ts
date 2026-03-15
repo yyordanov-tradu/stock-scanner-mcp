@@ -4,9 +4,14 @@ import { successResult } from "../../shared/types.js";
 import { getExpirations, getOptionsChain } from "./client.js";
 import { calculateMaxPain } from "./max-pain.js";
 import { withMetadata } from "../../shared/utils.js";
+import { resolveTicker } from "../../shared/resolver.js";
+
+const symbolSchema = z.string().min(1).max(10).describe("Underlying stock ticker (e.g. 'AAPL', 'NYSE:GM')");
+const expirationSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").describe("Expiration date (YYYY-MM-DD)");
 
 export function createOptionsModule(apiToken: string): ModuleDefinition {
-  const metadata = { source: "tradier", dataDelay: "15min" };
+  const isSandbox = !process.env.TRADIER_BASE_URL;
+  const metadata = { source: "tradier", dataDelay: isSandbox ? "15min (sandbox)" : "realtime" };
 
   const chainTool: ToolDefinition = {
     name: "options_chain",
@@ -15,15 +20,15 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
       "including Greeks (delta, gamma, theta, vega) and implied volatility. " +
       "Use options_expirations first to find valid expiration dates.",
     inputSchema: z.object({
-      symbol: z.string().describe("Underlying stock ticker (e.g. 'AAPL')"),
-      expiration: z.string().describe("Expiration date (YYYY-MM-DD)"),
+      symbol: symbolSchema,
+      expiration: expirationSchema,
       side: z.enum(["call", "put", "both"]).optional().describe("Filter by option type (default: both)"),
       min_open_interest: z.number().optional().describe("Minimum open interest filter (default: 0)"),
-      limit: z.number().optional().describe("Max contracts to return (default: 50)"),
+      limit: z.number().optional().describe("Max contracts to return (default: 50, max: 200)"),
     }),
     handler: withMetadata(async (params) => {
-      const symbol = (params.symbol as string).toUpperCase();
-      let chain = await getOptionsChain(apiToken, symbol, params.expiration as string);
+      const { ticker } = resolveTicker(params.symbol as string);
+      let chain = await getOptionsChain(apiToken, ticker, params.expiration as string);
 
       if (params.side && params.side !== "both") {
         chain = chain.filter(c => c.optionType === params.side);
@@ -34,7 +39,7 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
         chain = chain.filter(c => c.openInterest >= minOI);
       }
 
-      const limit = (params.limit as number) ?? 50;
+      const limit = Math.min((params.limit as number) ?? 50, 200);
       chain = chain.slice(0, limit);
 
       return successResult(JSON.stringify(chain, null, 2));
@@ -47,11 +52,11 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
       "List all available expiration dates for a stock's options. " +
       "Call this first before using options_chain to find valid dates.",
     inputSchema: z.object({
-      symbol: z.string().describe("Underlying stock ticker (e.g. 'AAPL')"),
+      symbol: symbolSchema,
     }),
     handler: withMetadata(async (params) => {
-      const symbol = (params.symbol as string).toUpperCase();
-      const dates = await getExpirations(apiToken, symbol);
+      const { ticker } = resolveTicker(params.symbol as string);
+      const dates = await getExpirations(apiToken, ticker);
       return successResult(JSON.stringify(dates, null, 2));
     }, metadata),
   };
@@ -63,31 +68,31 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
       "(a common 'smart money' signal). Scans the nearest 2 expirations and flags " +
       "contracts where volume/OI exceeds a threshold.",
     inputSchema: z.object({
-      symbol: z.string().describe("Underlying stock ticker (e.g. 'AAPL')"),
+      symbol: symbolSchema,
       volume_oi_ratio: z.number().optional().describe("Min volume/OI ratio to flag as unusual (default: 3.0)"),
       min_volume: z.number().optional().describe("Min absolute volume (default: 100)"),
       side: z.enum(["call", "put", "both"]).optional().describe("Filter by option type (default: both)"),
     }),
     handler: withMetadata(async (params) => {
-      const symbol = (params.symbol as string).toUpperCase();
+      const { ticker } = resolveTicker(params.symbol as string);
       const minRatio = (params.volume_oi_ratio as number) ?? 3.0;
       const minVol = (params.min_volume as number) ?? 100;
+      const minOI = 10;
 
-      const expirations = await getExpirations(apiToken, symbol);
+      const expirations = await getExpirations(apiToken, ticker);
       const nearestExps = expirations.slice(0, 2);
 
       if (nearestExps.length === 0) {
-        return successResult(JSON.stringify({ symbol, unusual: [], message: "No options available" }));
+        return successResult(JSON.stringify({ symbol: ticker, unusual: [], message: "No options available" }));
       }
 
-      const allContracts = [];
-      for (const exp of nearestExps) {
-        const chain = await getOptionsChain(apiToken, symbol, exp);
-        allContracts.push(...chain);
-      }
+      const chainResults = await Promise.all(
+        nearestExps.map(exp => getOptionsChain(apiToken, ticker, exp)),
+      );
+      const allContracts = chainResults.flat();
 
       let unusual = allContracts
-        .filter(c => c.volume >= minVol && c.openInterest > 0)
+        .filter(c => c.volume >= minVol && c.openInterest >= minOI)
         .map(c => ({
           ...c,
           volumeOiRatio: Math.round((c.volume / c.openInterest) * 100) / 100,
@@ -101,7 +106,7 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
       unusual.sort((a, b) => b.volume - a.volume);
       unusual = unusual.slice(0, 20);
 
-      return successResult(JSON.stringify({ symbol, unusual }, null, 2));
+      return successResult(JSON.stringify({ symbol: ticker, unusual }, null, 2));
     }, metadata),
   };
 
@@ -113,16 +118,16 @@ export function createOptionsModule(apiToken: string): ModuleDefinition {
       "(the price where most options expire worthless). Useful for predicting " +
       "where market makers may pin the stock near expiration.",
     inputSchema: z.object({
-      symbol: z.string().describe("Underlying stock ticker (e.g. 'AAPL')"),
-      expiration: z.string().describe("Expiration date (YYYY-MM-DD)"),
+      symbol: symbolSchema,
+      expiration: expirationSchema,
     }),
     handler: withMetadata(async (params) => {
-      const symbol = (params.symbol as string).toUpperCase();
-      const chain = await getOptionsChain(apiToken, symbol, params.expiration as string);
+      const { ticker } = resolveTicker(params.symbol as string);
+      const chain = await getOptionsChain(apiToken, ticker, params.expiration as string);
       const result = calculateMaxPain(chain);
 
       return successResult(JSON.stringify({
-        symbol,
+        symbol: ticker,
         expiration: params.expiration,
         maxPainStrike: result.maxPainStrike,
         painCurve: result.painCurve,

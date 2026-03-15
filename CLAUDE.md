@@ -72,6 +72,7 @@ npm test
 - `FINNHUB_API_KEY` -- enables Finnhub module (news, earnings)
 - `ALPHA_VANTAGE_API_KEY` -- enables Alpha Vantage module (quotes, fundamentals)
 - `TRADIER_API_TOKEN` -- enables Options module (chains, Greeks, max pain)
+- `TRADIER_BASE_URL` -- (optional) override Tradier API base URL (default: sandbox). Set to `https://api.tradier.com/v1/markets/options` for production data
 
 ### CLI Arguments (preferences)
 - `--modules` -- comma-separated list of modules to enable (default: all available)

@@ -84,7 +84,20 @@ describe("createOptionsModule", () => {
       expect(parsed).toHaveLength(2);
     });
 
-    it("respects limit parameter", async () => {
+    it("caps limit at 200", async () => {
+      const mod = createOptionsModule("tok");
+      const handler = mod.tools[0].handler;
+      const chain = Array.from({ length: 300 }, (_, i) =>
+        makeContract({ strike: 100 + i }),
+      );
+      (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue(chain);
+
+      const result = await handler({ symbol: "AAPL", expiration: "2026-03-20", limit: 500 });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed).toHaveLength(200);
+    });
+
+    it("respects limit parameter below cap", async () => {
       const mod = createOptionsModule("tok");
       const handler = mod.tools[0].handler;
       const chain = Array.from({ length: 10 }, (_, i) =>
@@ -97,7 +110,16 @@ describe("createOptionsModule", () => {
       expect(parsed).toHaveLength(3);
     });
 
-    it("uppercases the symbol", async () => {
+    it("uses resolveTicker to strip exchange prefix", async () => {
+      const mod = createOptionsModule("tok");
+      const handler = mod.tools[0].handler;
+      (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+      await handler({ symbol: "NYSE:GM", expiration: "2026-03-20" });
+      expect(getOptionsChain).toHaveBeenCalledWith("tok", "GM", "2026-03-20");
+    });
+
+    it("uppercases the symbol via resolveTicker", async () => {
       const mod = createOptionsModule("tok");
       const handler = mod.tools[0].handler;
       (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue([]);
@@ -121,9 +143,37 @@ describe("createOptionsModule", () => {
 
       const result = await handler({ symbol: "AAPL" });
       const parsed = JSON.parse(result.content[0].text);
-      // 2 expirations × 4 contracts each, but only 2 per expiration pass both filters
       expect(parsed.unusual.length).toBeGreaterThanOrEqual(2);
       expect(parsed.unusual.every((c: { volumeOiRatio: number }) => c.volumeOiRatio >= 3.0)).toBe(true);
+    });
+
+    it("enforces minimum OI floor of 10", async () => {
+      const mod = createOptionsModule("tok");
+      const handler = mod.tools[2].handler;
+      (getExpirations as ReturnType<typeof vi.fn>).mockResolvedValue(["2026-03-20"]);
+      (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue([
+        makeContract({ volume: 500, openInterest: 5 }),   // OI < 10 — filtered
+        makeContract({ volume: 500, openInterest: 10 }),  // OI = 10 — passes
+        makeContract({ volume: 500, openInterest: 100 }), // OI = 100 — passes
+      ]);
+
+      const result = await handler({ symbol: "AAPL", volume_oi_ratio: 1.0, min_volume: 100 });
+      const parsed = JSON.parse(result.content[0].text);
+      // Only OI >= 10 contracts pass
+      expect(parsed.unusual).toHaveLength(2);
+    });
+
+    it("fetches expirations in parallel via Promise.all", async () => {
+      const mod = createOptionsModule("tok");
+      const handler = mod.tools[2].handler;
+      (getExpirations as ReturnType<typeof vi.fn>).mockResolvedValue(["2026-03-20", "2026-03-27"]);
+      (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue([
+        makeContract({ volume: 5000, openInterest: 1000 }),
+      ]);
+
+      await handler({ symbol: "AAPL" });
+      // Both expirations fetched
+      expect(getOptionsChain).toHaveBeenCalledTimes(2);
     });
 
     it("filters unusual activity by side", async () => {
@@ -164,7 +214,6 @@ describe("createOptionsModule", () => {
       const result = await handler({ symbol: "AAPL", volume_oi_ratio: 1.0, min_volume: 100 });
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.unusual).toHaveLength(20);
-      // Highest volume first
       expect(parsed.unusual[0].volume).toBeGreaterThan(parsed.unusual[19].volume);
     });
   });
@@ -185,6 +234,21 @@ describe("createOptionsModule", () => {
       expect(parsed.maxPainStrike).toBe(150);
       expect(parsed.symbol).toBe("AAPL");
       expect(calculateMaxPain).toHaveBeenCalledWith(chain);
+    });
+
+    it("resolves ticker with exchange prefix", async () => {
+      const mod = createOptionsModule("tok");
+      const handler = mod.tools[3].handler;
+      (getOptionsChain as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (calculateMaxPain as ReturnType<typeof vi.fn>).mockReturnValue({
+        maxPainStrike: 0,
+        painCurve: [],
+      });
+
+      const result = await handler({ symbol: "NYSE:GM", expiration: "2026-03-20" });
+      expect(getOptionsChain).toHaveBeenCalledWith("tok", "GM", "2026-03-20");
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.symbol).toBe("GM");
     });
   });
 });

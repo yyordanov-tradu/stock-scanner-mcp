@@ -1,12 +1,16 @@
 import { TtlCache } from "../../shared/cache.js";
 import { httpGet } from "../../shared/http.js";
 
-const BASE_URL = "https://sandbox.tradier.com/v1/markets/options";
+const DEFAULT_BASE_URL = "https://sandbox.tradier.com/v1/markets/options";
 const EXPIRATIONS_TTL = 60 * 60 * 1000; // 1 hour
 const CHAIN_TTL = 2 * 60 * 1000; // 2 minutes
 
 const expirationsCache = new TtlCache<string[]>(EXPIRATIONS_TTL);
 const chainCache = new TtlCache<OptionContract[]>(CHAIN_TTL);
+
+export function getBaseUrl(): string {
+  return process.env.TRADIER_BASE_URL || DEFAULT_BASE_URL;
+}
 
 export interface OptionContract {
   symbol: string;
@@ -18,11 +22,11 @@ export interface OptionContract {
   ask: number;
   volume: number;
   openInterest: number;
-  delta: number;
-  gamma: number;
-  theta: number;
-  vega: number;
-  iv: number;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  iv: number | null;
 }
 
 function tradierHeaders(token: string): Record<string, string> {
@@ -39,7 +43,7 @@ export async function getExpirations(
   const cacheKey = `expirations:${symbol}`;
   return expirationsCache.getOrFetch(cacheKey, async () => {
     const data = await httpGet<{ expirations?: { date?: string[] } }>(
-      `${BASE_URL}/expirations?symbol=${encodeURIComponent(symbol)}`,
+      `${getBaseUrl()}/expirations?symbol=${encodeURIComponent(symbol)}`,
       { headers: tradierHeaders(token) },
     );
     return data?.expirations?.date ?? [];
@@ -76,11 +80,11 @@ function mapOption(raw: RawOption): OptionContract {
     ask: raw.ask ?? 0,
     volume: raw.volume ?? 0,
     openInterest: raw.open_interest ?? 0,
-    delta: raw.greeks?.delta ?? 0,
-    gamma: raw.greeks?.gamma ?? 0,
-    theta: raw.greeks?.theta ?? 0,
-    vega: raw.greeks?.vega ?? 0,
-    iv: raw.greeks?.mid_iv ?? 0,
+    delta: raw.greeks?.delta ?? null,
+    gamma: raw.greeks?.gamma ?? null,
+    theta: raw.greeks?.theta ?? null,
+    vega: raw.greeks?.vega ?? null,
+    iv: raw.greeks?.mid_iv ?? null,
   };
 }
 
@@ -94,7 +98,7 @@ export async function getOptionsChain(
     const data = await httpGet<{
       options?: { option?: RawOption | RawOption[] } | null;
     }>(
-      `${BASE_URL}/chains?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&greeks=true`,
+      `${getBaseUrl()}/chains?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&greeks=true`,
       { headers: tradierHeaders(token) },
     );
 
