@@ -2,6 +2,7 @@ import { httpGet } from "../../shared/http.js";
 import { TtlCache } from "../../shared/cache.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { calculateGreeks, calculateMaxPain } from "./greeks.js";
+import { invalidateSession, appendCrumb, getYahooHeaders } from "./yahoo-session.js";
 
 const BASE_URL = "https://query1.finance.yahoo.com/v7/finance/options";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -100,6 +101,24 @@ function mapOption(
   };
 }
 
+async function yahooGet<T>(url: string): Promise<T> {
+  try {
+    const headers = await getYahooHeaders();
+    const finalUrl = await appendCrumb(url);
+    return await httpGet<T>(finalUrl, { headers });
+  } catch (err) {
+    // Retry once with a fresh session on 401 or 403
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("HTTP 401") || msg.includes("HTTP 403")) {
+      invalidateSession();
+      const headers = await getYahooHeaders();
+      const finalUrl = await appendCrumb(url);
+      return await httpGet<T>(finalUrl, { headers });
+    }
+    throw err;
+  }
+}
+
 export async function fetchOptionChain(
   rawSymbol: string,
   expiration?: number,
@@ -110,12 +129,9 @@ export async function fetchOptionChain(
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  let url = `${BASE_URL}/${encodeURIComponent(ticker)}`;
-  if (expiration) {
-    url += `?date=${expiration}`;
-  }
+  const baseUrl = `${BASE_URL}/${encodeURIComponent(ticker)}${expiration ? `?date=${expiration}` : ""}`;
 
-  const response = await httpGet<YahooOptionsResponse>(url);
+  const response = await yahooGet<YahooOptionsResponse>(baseUrl);
 
   const result = response?.optionChain?.result?.[0];
   if (!result) {
