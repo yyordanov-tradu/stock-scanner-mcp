@@ -1,9 +1,9 @@
 import { TtlCache } from "../../shared/cache.js";
+import { httpGet } from "../../shared/http.js";
 
 const BASE_URL = "https://sandbox.tradier.com/v1/markets/options";
 const EXPIRATIONS_TTL = 60 * 60 * 1000; // 1 hour
 const CHAIN_TTL = 2 * 60 * 1000; // 2 minutes
-const TIMEOUT_MS = 10_000;
 
 const expirationsCache = new TtlCache<string[]>(EXPIRATIONS_TTL);
 const chainCache = new TtlCache<OptionContract[]>(CHAIN_TTL);
@@ -25,31 +25,11 @@ export interface OptionContract {
   iv: number;
 }
 
-async function tradierFetch<T>(url: string, token: string): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(
-        `HTTP ${response.status}: ${response.statusText} -- ${text.slice(0, 200)}`,
-      );
-    }
-
-    return (await response.json()) as T;
-  } finally {
-    clearTimeout(timer);
-  }
+function tradierHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+  };
 }
 
 export async function getExpirations(
@@ -58,9 +38,9 @@ export async function getExpirations(
 ): Promise<string[]> {
   const cacheKey = `expirations:${symbol}`;
   return expirationsCache.getOrFetch(cacheKey, async () => {
-    const data = await tradierFetch<{ expirations?: { date?: string[] } }>(
+    const data = await httpGet<{ expirations?: { date?: string[] } }>(
       `${BASE_URL}/expirations?symbol=${encodeURIComponent(symbol)}`,
-      token,
+      { headers: tradierHeaders(token) },
     );
     return data?.expirations?.date ?? [];
   });
@@ -111,11 +91,11 @@ export async function getOptionsChain(
 ): Promise<OptionContract[]> {
   const cacheKey = `chain:${symbol}:${expiration}`;
   return chainCache.getOrFetch(cacheKey, async () => {
-    const data = await tradierFetch<{
+    const data = await httpGet<{
       options?: { option?: RawOption | RawOption[] } | null;
     }>(
       `${BASE_URL}/chains?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&greeks=true`,
-      token,
+      { headers: tradierHeaders(token) },
     );
 
     const raw = data?.options?.option;

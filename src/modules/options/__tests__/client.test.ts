@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getExpirations, getOptionsChain } from "../client.js";
 
 describe("getExpirations", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -20,20 +20,17 @@ describe("getExpirations", () => {
       }),
     });
 
+    const { getExpirations } = await import("../client.js");
     const result = await getExpirations("test-token", "AAPL");
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("sandbox.tradier.com"),
+      expect.stringContaining("/expirations?symbol=AAPL"),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer test-token",
         }),
       }),
     );
-
-    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(calledUrl).toContain("/expirations?symbol=AAPL");
-
     expect(result).toEqual(["2026-03-20", "2026-03-27", "2026-04-03"]);
   });
 
@@ -43,15 +40,29 @@ describe("getExpirations", () => {
       json: async () => ({ expirations: null }),
     });
 
+    const { getExpirations } = await import("../client.js");
     const result = await getExpirations("test-token", "INVALID");
 
     expect(result).toEqual([]);
+  });
+
+  it("propagates HTTP errors from httpGet", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+      text: async () => "Invalid token",
+    });
+
+    const { getExpirations } = await import("../client.js");
+    await expect(getExpirations("bad-token", "AAPL")).rejects.toThrow("HTTP 401");
   });
 });
 
 describe("getOptionsChain", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -87,12 +98,22 @@ describe("getOptionsChain", () => {
       }),
     });
 
+    const { getOptionsChain } = await import("../client.js");
     const result = await getOptionsChain("test-token", "AAPL", "2026-03-20");
 
-    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(calledUrl).toContain("greeks=true");
     expect(calledUrl).toContain("symbol=AAPL");
     expect(calledUrl).toContain("expiration=2026-03-20");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-token",
+        }),
+      }),
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].optionType).toBe("call");
@@ -108,6 +129,7 @@ describe("getOptionsChain", () => {
       json: async () => ({ options: null }),
     });
 
+    const { getOptionsChain } = await import("../client.js");
     const result = await getOptionsChain("test-token", "INVALID", "2026-03-20");
 
     expect(result).toEqual([]);
@@ -140,11 +162,26 @@ describe("getOptionsChain", () => {
       }),
     });
 
+    const { getOptionsChain } = await import("../client.js");
     const result = await getOptionsChain("test-token", "MSFT", "2026-03-27");
 
     expect(result).toHaveLength(1);
     expect(result[0].symbol).toBe("MSFT260327P00400000");
     expect(result[0].optionType).toBe("put");
     expect(result[0].delta).toBe(-0.35);
+  });
+
+  it("propagates HTTP errors from httpGet", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      text: async () => "Rate limit exceeded",
+    });
+
+    const { getOptionsChain } = await import("../client.js");
+    await expect(
+      getOptionsChain("test-token", "AAPL", "2026-03-20"),
+    ).rejects.toThrow("HTTP 429");
   });
 });

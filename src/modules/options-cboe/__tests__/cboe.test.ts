@@ -80,7 +80,7 @@ describe("getPutCallRatio", () => {
     const result = await getPutCallRatio("total", 3);
 
     expect(result).toHaveLength(3);
-    // Most recent first
+    // Most recent first (sorted once during fetch)
     expect(result[0].date).toBe("2026-03-14");
     expect(result[1].date).toBe("2026-03-13");
     expect(result[2].date).toBe("2026-03-12");
@@ -106,6 +106,25 @@ short,row
     expect(result).toHaveLength(2);
     expect(result[0].date).toBe("2026-03-14");
     expect(result[1].date).toBe("2026-03-10");
+  });
+
+  it("throws on unknown put/call ratio type", async () => {
+    const { getPutCallRatio } = await import("../cboe.js");
+    await expect(getPutCallRatio("unknown", 5)).rejects.toThrow(
+      "Unknown put/call ratio type: unknown",
+    );
+  });
+
+  it("propagates HTTP errors from httpGet", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+      text: async () => "server down",
+    });
+
+    const { getPutCallRatio } = await import("../cboe.js");
+    await expect(getPutCallRatio("total", 5)).rejects.toThrow("HTTP 503");
   });
 });
 

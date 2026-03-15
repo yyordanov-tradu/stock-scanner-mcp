@@ -1,4 +1,5 @@
 import { TtlCache } from "../../shared/cache.js";
+import { httpGet } from "../../shared/http.js";
 
 const CSV_URLS: Record<string, string> = {
   total: "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv",
@@ -60,26 +61,13 @@ async function fetchCsv(type: string): Promise<PutCallEntry[]> {
     throw new Error(`Unknown put/call ratio type: ${type}`);
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} fetching CBOE ${type} data`);
-    }
-    const text = await response.text();
-    return parseCsvRows(text);
-  } finally {
-    clearTimeout(timeout);
-  }
+  const text = await httpGet<string>(url, { responseType: "text" });
+  const entries = parseCsvRows(text);
+  entries.sort((a, b) => b.date.localeCompare(a.date));
+  return entries;
 }
 
 export async function getPutCallRatio(type: string, days: number): Promise<PutCallEntry[]> {
   const allEntries = await cache.getOrFetch(`pcr:${type}`, () => fetchCsv(type));
-
-  // Sort descending by date (most recent first)
-  const sorted = [...allEntries].sort((a, b) => b.date.localeCompare(a.date));
-
-  return sorted.slice(0, days);
+  return allEntries.slice(0, days);
 }
