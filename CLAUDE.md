@@ -42,7 +42,9 @@ stock-scanner-mcp/
 │   │   ├── sec-edgar/        # SEC EDGAR filings (no key)
 │   │   ├── finnhub/          # News + earnings (FINNHUB_API_KEY)
 │   │   ├── alpha-vantage/    # Prices + fundamentals (ALPHA_VANTAGE_API_KEY)
-│   │   └── coingecko/        # Crypto market data (no key)
+│   │   ├── coingecko/        # Crypto market data (no key)
+│   │   ├── options/          # Options chains, Greeks, unusual activity (no key)
+│   │   └── options-cboe/     # CBOE put/call ratio sentiment (no key)
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
@@ -88,6 +90,8 @@ npm test
 | tradingview-crypto | (none) | Always |
 | sec-edgar | (none) | Always |
 | coingecko | (none) | Always |
+| options | (none) | Always |
+| options-cboe | (none) | Always |
 | finnhub | FINNHUB_API_KEY | When key set |
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
 
