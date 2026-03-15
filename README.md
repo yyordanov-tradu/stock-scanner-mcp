@@ -42,8 +42,7 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
       "args": ["-y", "stock-scanner-mcp"],
       "env": {
         "FINNHUB_API_KEY": "your-key-here",
-        "ALPHA_VANTAGE_API_KEY": "your-key-here",
-        "TRADIER_API_TOKEN": "your-token-here"
+        "ALPHA_VANTAGE_API_KEY": "your-key-here"
       }
     }
   }
@@ -58,11 +57,10 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | tradingview-crypto | 4 | None | Crypto pair scanner with technicals and screening |
 | sec-edgar | 6 | None | SEC filings, insider trades, institutional holdings, ownership |
 | coingecko | 3 | None | Crypto market data, trending coins, global stats |
+| options | 4 | None | Options chains, Greeks, unusual activity, max pain |
+| options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
 | finnhub | 5 | `FINNHUB_API_KEY` | News, earnings, short interest, economic calendar |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
-| options-cboe | 1 | None | CBOE market-wide put/call ratio (sentiment indicator) |
-| options | 4 | `TRADIER_API_TOKEN` | Options chains, Greeks, unusual activity, max pain |
-
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
 ## Available Tools (35 total)
@@ -107,6 +105,21 @@ Modules auto-enable when their required environment variables are set. Modules w
 | `coingecko_trending` | Top 7 trending cryptos by search volume (last 24h) |
 | `coingecko_global` | Global crypto market cap, volume, BTC/ETH dominance |
 
+### Options — Chains, Greeks & Unusual Activity (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `options_expirations` | Available expiration dates for a stock's options |
+| `options_chain` | Full options chain with Greeks for a given expiration |
+| `options_unusual_activity` | Unusual options activity — high volume/OI contracts |
+| `options_max_pain` | Max pain (strike where most options expire worthless) |
+
+### Options CBOE — Put/Call Sentiment (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `options_put_call_ratio` | CBOE equity/index/total put/call ratio for market sentiment |
+
 ### Finnhub — News, Earnings & Macro (requires `FINNHUB_API_KEY`)
 
 | Tool | Description |
@@ -127,21 +140,6 @@ Modules auto-enable when their required environment variables are set. Modules w
 | `alphavantage_earnings_history` | Historical EPS actual vs estimate by quarter |
 | `alphavantage_dividend_history` | Historical dividend payments and dates |
 
-### CBOE Options Sentiment (no API key)
-
-| Tool | Description |
-|------|-------------|
-| `options_put_call_ratio` | Historical put/call ratio from CBOE (total, equity, or index) |
-
-### Options — Chains, Greeks & Analysis (requires `TRADIER_API_TOKEN`)
-
-| Tool | Description |
-|------|-------------|
-| `options_chain` | Full options chain with Greeks (delta, gamma, theta, vega) and IV |
-| `options_expirations` | List available expiration dates for a stock's options |
-| `options_unusual_activity` | Find contracts with unusual volume/OI ratio (smart money signals) |
-| `options_max_pain` | Calculate max pain strike price from open interest data |
-
 ## Configuration
 
 ### Environment Variables
@@ -150,7 +148,6 @@ Modules auto-enable when their required environment variables are set. Modules w
 |----------|----------|-------------|
 | `FINNHUB_API_KEY` | No | Enables Finnhub module ([get free key](https://finnhub.io/)) |
 | `ALPHA_VANTAGE_API_KEY` | No | Enables Alpha Vantage module ([get free key](https://www.alphavantage.co/support/#api-key)) |
-| `TRADIER_API_TOKEN` | No | Enables Options module ([free sandbox](https://developer.tradier.com/)) |
 
 ### CLI Options
 
@@ -209,10 +206,10 @@ src/
 │   ├── tradingview-crypto/ # 4 tools — crypto scanning and technicals
 │   ├── sec-edgar/        # 6 tools — filings, insider trades, holdings
 │   ├── coingecko/        # 3 tools — crypto market data
+│   ├── options/          # 4 tools — options chains, Greeks, unusual activity
+│   ├── options-cboe/     # 1 tool  — CBOE put/call ratio sentiment
 │   ├── finnhub/          # 5 tools — news, earnings, economic calendar
-│   ├── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
-│   ├── options-cboe/     # 1 tool — CBOE put/call ratios
-│   └── options/          # 4 tools — chains, Greeks, unusual activity, max pain
+│   └── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
@@ -228,10 +225,10 @@ src/
 | TradingView | No documented limit (be reasonable) | — |
 | SEC EDGAR | 10 requests/second | 5 min |
 | CoinGecko | ~30 calls/minute | 1 min |
+| Yahoo Finance | No documented limit (be reasonable) | 5 min |
+| CBOE CDN | No documented limit | 30 min |
 | Finnhub | 30 calls/second | 5 min |
 | Alpha Vantage | 5 calls/minute, 25 calls/day | 1 min |
-| Tradier Sandbox | 60 calls/minute | 2 min |
-| CBOE CDN | No documented limit | 30 min |
 
 All modules use in-memory TTL caching to minimize API calls. Error responses include retry hints for rate-limited requests.
 

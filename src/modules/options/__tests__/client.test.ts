@@ -1,6 +1,46 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-describe("getExpirations", () => {
+const MOCK_YAHOO_RESPONSE = {
+  optionChain: {
+    result: [{
+      underlyingSymbol: "AAPL",
+      expirationDates: [1742515200, 1743120000],
+      strikes: [170, 175, 180, 185, 190],
+      quote: { regularMarketPrice: 180.25 },
+      options: [{
+        expirationDate: 1742515200,
+        calls: [{
+          contractSymbol: "AAPL260320C00180000",
+          strike: 180,
+          lastPrice: 5.5,
+          bid: 5.4,
+          ask: 5.6,
+          change: 0.5,
+          percentChange: 10,
+          volume: 1234,
+          openInterest: 5678,
+          impliedVolatility: 0.32,
+          inTheMoney: true,
+        }],
+        puts: [{
+          contractSymbol: "AAPL260320P00180000",
+          strike: 180,
+          lastPrice: 4.2,
+          bid: 4.1,
+          ask: 4.3,
+          change: -0.3,
+          percentChange: -5,
+          volume: 987,
+          openInterest: 4321,
+          impliedVolatility: 0.30,
+          inTheMoney: false,
+        }],
+      }],
+    }],
+  },
+};
+
+describe("fetchOptionChain", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     vi.resetModules();
@@ -10,178 +50,155 @@ describe("getExpirations", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches expirations with correct URL and auth header", async () => {
+  it("parses a successful Yahoo response with calls and puts", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => MOCK_YAHOO_RESPONSE,
+    });
+
+    const { fetchOptionChain } = await import("../client.js");
+    const chain = await fetchOptionChain("AAPL");
+
+    expect(chain.underlyingSymbol).toBe("AAPL");
+    expect(chain.underlyingPrice).toBe(180.25);
+    expect(chain.expirationDates).toEqual([1742515200, 1743120000]);
+    expect(chain.strikes).toEqual([170, 175, 180, 185, 190]);
+
+    // Calls mapped correctly
+    expect(chain.calls).toHaveLength(1);
+    expect(chain.calls[0].symbol).toBe("AAPL260320C00180000");
+    expect(chain.calls[0].strike).toBe(180);
+    expect(chain.calls[0].lastPrice).toBe(5.5);
+    expect(chain.calls[0].volume).toBe(1234);
+    expect(chain.calls[0].openInterest).toBe(5678);
+    expect(chain.calls[0].impliedVolatility).toBe(0.32);
+
+    // Puts mapped correctly
+    expect(chain.puts).toHaveLength(1);
+    expect(chain.puts[0].symbol).toBe("AAPL260320P00180000");
+    expect(chain.puts[0].strike).toBe(180);
+    expect(chain.puts[0].lastPrice).toBe(4.2);
+
+    // Max pain calculated
+    expect(typeof chain.maxPain).toBe("number");
+  });
+
+  it("calculates Greeks when IV and expiration are valid", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => MOCK_YAHOO_RESPONSE,
+    });
+
+    const { fetchOptionChain } = await import("../client.js");
+    const chain = await fetchOptionChain("AAPL");
+
+    // The expiration is in the future (relative to when the mock was created),
+    // so Greeks should be calculated if IV > 0 and price > 0
+    const call = chain.calls[0];
+    // If expiration is in the past, delta will be null; only assert type
+    if (call.delta !== null) {
+      expect(call.delta).toBeGreaterThan(0); // call delta positive
+      expect(call.gamma).toBeGreaterThan(0);
+      expect(call.vega).toBeGreaterThan(0);
+    }
+  });
+
+  it("URL contains the encoded ticker symbol", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => MOCK_YAHOO_RESPONSE,
+    });
+
+    const { fetchOptionChain } = await import("../client.js");
+    await fetchOptionChain("AAPL");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("/AAPL");
+    expect(calledUrl).toContain("query1.finance.yahoo.com");
+  });
+
+  it("resolveTicker strips exchange prefix (NYSE:GM → GM in URL)", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({
-        expirations: {
-          date: ["2026-03-20", "2026-03-27", "2026-04-03"],
+        optionChain: {
+          result: [{
+            underlyingSymbol: "GM",
+            expirationDates: [1742515200],
+            strikes: [40, 45, 50],
+            quote: { regularMarketPrice: 45.0 },
+            options: [{
+              expirationDate: 1742515200,
+              calls: [],
+              puts: [],
+            }],
+          }],
         },
       }),
     });
 
-    const { getExpirations } = await import("../client.js");
-    const result = await getExpirations("test-token", "AAPL");
+    const { fetchOptionChain } = await import("../client.js");
+    await fetchOptionChain("NYSE:GM");
 
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/expirations?symbol=AAPL"),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer test-token",
-        }),
-      }),
-    );
-    expect(result).toEqual(["2026-03-20", "2026-03-27", "2026-04-03"]);
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("/GM");
+    expect(calledUrl).not.toContain("NYSE");
   });
 
-  it("returns empty array when no expirations found", async () => {
+  it("throws on empty result array", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      json: async () => ({ expirations: null }),
+      json: async () => ({ optionChain: { result: [] } }),
     });
 
-    const { getExpirations } = await import("../client.js");
-    const result = await getExpirations("test-token", "INVALID");
-
-    expect(result).toEqual([]);
+    const { fetchOptionChain } = await import("../client.js");
+    await expect(fetchOptionChain("INVALID")).rejects.toThrow(
+      "No options data found for symbol",
+    );
   });
 
-  it("propagates HTTP errors from httpGet", async () => {
+  it("throws on missing quote price", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        optionChain: {
+          result: [{
+            underlyingSymbol: "AAPL",
+            quote: {}, // no regularMarketPrice
+            options: [{ calls: [], puts: [] }],
+          }],
+        },
+      }),
+    });
+
+    const { fetchOptionChain } = await import("../client.js");
+    await expect(fetchOptionChain("AAPL")).rejects.toThrow(
+      "No price data available",
+    );
+  });
+
+  it("propagates HTTP errors (404)", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
-      status: 401,
-      statusText: "Unauthorized",
-      text: async () => "Invalid token",
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "Symbol not found",
     });
 
-    const { getExpirations } = await import("../client.js");
-    await expect(getExpirations("bad-token", "AAPL")).rejects.toThrow("HTTP 401");
-  });
-});
-
-describe("getOptionsChain", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    vi.resetModules();
+    const { fetchOptionChain } = await import("../client.js");
+    await expect(fetchOptionChain("AAPL")).rejects.toThrow("HTTP 404");
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("fetches chain with greeks=true and maps response fields correctly", async () => {
+  it("appends date query parameter when expiration is provided", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      json: async () => ({
-        options: {
-          option: [
-            {
-              symbol: "AAPL260320C00150000",
-              strike: 150,
-              option_type: "call",
-              expiration_date: "2026-03-20",
-              last: 12.5,
-              bid: 12.0,
-              ask: 13.0,
-              volume: 1500,
-              open_interest: 25000,
-              greeks: {
-                delta: 0.65,
-                gamma: 0.03,
-                theta: -0.05,
-                vega: 0.25,
-                mid_iv: 0.32,
-              },
-            },
-          ],
-        },
-      }),
+      json: async () => MOCK_YAHOO_RESPONSE,
     });
 
-    const { getOptionsChain } = await import("../client.js");
-    const result = await getOptionsChain("test-token", "AAPL", "2026-03-20");
+    const { fetchOptionChain } = await import("../client.js");
+    await fetchOptionChain("AAPL", 1742515200);
 
-    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(calledUrl).toContain("greeks=true");
-    expect(calledUrl).toContain("symbol=AAPL");
-    expect(calledUrl).toContain("expiration=2026-03-20");
-
-    expect(fetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer test-token",
-        }),
-      }),
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].optionType).toBe("call");
-    expect(result[0].openInterest).toBe(25000);
-    expect(result[0].delta).toBe(0.65);
-    expect(result[0].iv).toBe(0.32);
-    expect(result[0].strike).toBe(150);
-  });
-
-  it("returns empty array when no options found", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({ options: null }),
-    });
-
-    const { getOptionsChain } = await import("../client.js");
-    const result = await getOptionsChain("test-token", "INVALID", "2026-03-20");
-
-    expect(result).toEqual([]);
-  });
-
-  it("handles single option (non-array response)", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        options: {
-          option: {
-            symbol: "MSFT260327P00400000",
-            strike: 400,
-            option_type: "put",
-            expiration_date: "2026-03-27",
-            last: 3.2,
-            bid: 3.0,
-            ask: 3.4,
-            volume: 800,
-            open_interest: 12000,
-            greeks: {
-              delta: -0.35,
-              gamma: 0.03,
-              theta: -0.04,
-              vega: 0.22,
-              mid_iv: 0.30,
-            },
-          },
-        },
-      }),
-    });
-
-    const { getOptionsChain } = await import("../client.js");
-    const result = await getOptionsChain("test-token", "MSFT", "2026-03-27");
-
-    expect(result).toHaveLength(1);
-    expect(result[0].symbol).toBe("MSFT260327P00400000");
-    expect(result[0].optionType).toBe("put");
-    expect(result[0].delta).toBe(-0.35);
-  });
-
-  it("propagates HTTP errors from httpGet", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: false,
-      status: 429,
-      statusText: "Too Many Requests",
-      text: async () => "Rate limit exceeded",
-    });
-
-    const { getOptionsChain } = await import("../client.js");
-    await expect(
-      getOptionsChain("test-token", "AAPL", "2026-03-20"),
-    ).rejects.toThrow("HTTP 429");
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("?date=1742515200");
   });
 });

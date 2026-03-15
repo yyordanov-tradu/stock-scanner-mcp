@@ -1,144 +1,162 @@
 import { z } from "zod";
 import type { ModuleDefinition, ToolDefinition } from "../../shared/types.js";
 import { successResult } from "../../shared/types.js";
-import { getExpirations, getOptionsChain } from "./client.js";
-import { calculateMaxPain } from "./max-pain.js";
+import { fetchOptionChain } from "./client.js";
 import { withMetadata } from "../../shared/utils.js";
-import { resolveTicker } from "../../shared/resolver.js";
 
-const symbolSchema = z.string().min(1).max(10).describe("Underlying stock ticker (e.g. 'AAPL', 'NYSE:GM')");
-const expirationSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").describe("Expiration date (YYYY-MM-DD)");
+const metadata = { source: "yahoo-finance", dataDelay: "15min" };
 
-export function createOptionsModule(apiToken: string): ModuleDefinition {
-  const isSandbox = !process.env.TRADIER_BASE_URL;
-  const metadata = { source: "tradier", dataDelay: isSandbox ? "15min (sandbox)" : "realtime" };
+const symbolSchema = z.string().min(1).max(10)
+  .describe("Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')");
 
-  const chainTool: ToolDefinition = {
-    name: "options_chain",
-    description:
-      "Get the full options chain for a stock ticker and expiration date, " +
-      "including Greeks (delta, gamma, theta, vega) and implied volatility. " +
-      "Use options_expirations first to find valid expiration dates.",
-    inputSchema: z.object({
-      symbol: symbolSchema,
-      expiration: expirationSchema,
-      side: z.enum(["call", "put", "both"]).optional().describe("Filter by option type (default: both)"),
-      min_open_interest: z.number().optional().describe("Minimum open interest filter (default: 0)"),
-      limit: z.number().optional().describe("Max contracts to return (default: 50, max: 200)"),
-    }),
-    handler: withMetadata(async (params) => {
-      const { ticker } = resolveTicker(params.symbol as string);
-      let chain = await getOptionsChain(apiToken, ticker, params.expiration as string);
+function parseExpiration(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  // Accept YYYY-MM-DD → convert to Unix timestamp
+  const ts = Math.floor(new Date(value + "T00:00:00Z").getTime() / 1000);
+  if (isNaN(ts)) return undefined;
+  return ts;
+}
 
-      if (params.side && params.side !== "both") {
-        chain = chain.filter(c => c.optionType === params.side);
-      }
+const expirationsTool: ToolDefinition = {
+  name: "options_expirations",
+  description:
+    "Get all available option expiration dates for a stock ticker. " +
+    "Call this first to discover valid dates, then pass one to options_chain or options_max_pain.",
+  inputSchema: z.object({
+    symbol: symbolSchema,
+  }),
+  handler: withMetadata(async (params) => {
+    const chain = await fetchOptionChain(params.symbol as string);
+    const dates = chain.expirationDates.map(
+      d => new Date(d * 1000).toISOString().split("T")[0],
+    );
+    return successResult(JSON.stringify({
+      symbol: chain.underlyingSymbol,
+      underlyingPrice: chain.underlyingPrice,
+      expirations: dates,
+    }, null, 2));
+  }, metadata),
+};
 
-      const minOI = (params.min_open_interest as number) ?? 0;
-      if (minOI > 0) {
-        chain = chain.filter(c => c.openInterest >= minOI);
-      }
+const chainTool: ToolDefinition = {
+  name: "options_chain",
+  description:
+    "Get the full option chain (calls and puts) with calculated Greeks (Delta, Gamma, Theta, Vega). " +
+    "Use options_expirations first to find valid dates. If expiration is omitted, uses nearest date. " +
+    "Response can be large — use 'limit' to cap contracts per side.",
+  inputSchema: z.object({
+    symbol: symbolSchema,
+    expiration: z.string().optional()
+      .describe("Expiration date as YYYY-MM-DD (e.g. '2026-04-17'). If omitted, uses nearest."),
+    side: z.enum(["call", "put", "both"]).optional()
+      .describe("Filter by option type (default: both)"),
+    limit: z.number().optional()
+      .describe("Max contracts per side (default: 50, max: 200)"),
+  }),
+  handler: withMetadata(async (params) => {
+    const expUnix = parseExpiration(params.expiration as string | undefined);
+    const chain = await fetchOptionChain(params.symbol as string, expUnix);
 
-      const limit = Math.min((params.limit as number) ?? 50, 200);
-      chain = chain.slice(0, limit);
+    let { calls, puts } = chain;
 
-      return successResult(JSON.stringify(chain, null, 2));
-    }, metadata),
-  };
+    if (params.side === "call") {
+      puts = [];
+    } else if (params.side === "put") {
+      calls = [];
+    }
 
-  const expirationsTool: ToolDefinition = {
-    name: "options_expirations",
-    description:
-      "List all available expiration dates for a stock's options. " +
-      "Call this first before using options_chain to find valid dates.",
-    inputSchema: z.object({
-      symbol: symbolSchema,
-    }),
-    handler: withMetadata(async (params) => {
-      const { ticker } = resolveTicker(params.symbol as string);
-      const dates = await getExpirations(apiToken, ticker);
-      return successResult(JSON.stringify(dates, null, 2));
-    }, metadata),
-  };
+    const limit = Math.min((params.limit as number) ?? 50, 200);
+    calls = calls.slice(0, limit);
+    puts = puts.slice(0, limit);
 
-  const unusualActivityTool: ToolDefinition = {
-    name: "options_unusual_activity",
-    description:
-      "Find options contracts with unusually high volume relative to open interest " +
-      "(a common 'smart money' signal). Scans the nearest 2 expirations and flags " +
-      "contracts where volume/OI exceeds a threshold.",
-    inputSchema: z.object({
-      symbol: symbolSchema,
-      volume_oi_ratio: z.number().optional().describe("Min volume/OI ratio to flag as unusual (default: 3.0)"),
-      min_volume: z.number().optional().describe("Min absolute volume (default: 100)"),
-      side: z.enum(["call", "put", "both"]).optional().describe("Filter by option type (default: both)"),
-    }),
-    handler: withMetadata(async (params) => {
-      const { ticker } = resolveTicker(params.symbol as string);
-      const minRatio = (params.volume_oi_ratio as number) ?? 3.0;
-      const minVol = (params.min_volume as number) ?? 100;
-      const minOI = 10;
+    return successResult(JSON.stringify({
+      ...chain,
+      calls,
+      puts,
+    }, null, 2));
+  }, metadata),
+};
 
-      const expirations = await getExpirations(apiToken, ticker);
-      const nearestExps = expirations.slice(0, 2);
+const unusualActivityTool: ToolDefinition = {
+  name: "options_unusual_activity",
+  description:
+    "Find options contracts with unusually high volume relative to open interest " +
+    "(a common 'smart money' signal). Scans the nearest expiration and flags " +
+    "contracts where volume/OI exceeds a threshold.",
+  inputSchema: z.object({
+    symbol: symbolSchema,
+    volume_oi_ratio: z.number().optional()
+      .describe("Min volume/OI ratio to flag as unusual (default: 3.0)"),
+    min_volume: z.number().optional()
+      .describe("Min absolute volume (default: 100)"),
+    side: z.enum(["call", "put", "both"]).optional()
+      .describe("Filter by option type (default: both)"),
+  }),
+  handler: withMetadata(async (params) => {
+    const chain = await fetchOptionChain(params.symbol as string);
+    const minRatio = (params.volume_oi_ratio as number) ?? 3.0;
+    const minVol = (params.min_volume as number) ?? 100;
+    const minOI = 10;
 
-      if (nearestExps.length === 0) {
-        return successResult(JSON.stringify({ symbol: ticker, unusual: [], message: "No options available" }));
-      }
+    const allContracts = [
+      ...chain.calls.map(c => ({ ...c, side: "call" as const })),
+      ...chain.puts.map(c => ({ ...c, side: "put" as const })),
+    ];
 
-      const chainResults = await Promise.all(
-        nearestExps.map(exp => getOptionsChain(apiToken, ticker, exp)),
-      );
-      const allContracts = chainResults.flat();
+    let unusual = allContracts
+      .filter(c => c.volume >= minVol && c.openInterest >= minOI)
+      .map(c => ({
+        ...c,
+        volumeOiRatio: Math.round((c.volume / c.openInterest) * 100) / 100,
+      }))
+      .filter(c => c.volumeOiRatio >= minRatio);
 
-      let unusual = allContracts
-        .filter(c => c.volume >= minVol && c.openInterest >= minOI)
-        .map(c => ({
-          ...c,
-          volumeOiRatio: Math.round((c.volume / c.openInterest) * 100) / 100,
-        }))
-        .filter(c => c.volumeOiRatio >= minRatio);
+    if (params.side && params.side !== "both") {
+      unusual = unusual.filter(c => c.side === params.side);
+    }
 
-      if (params.side && params.side !== "both") {
-        unusual = unusual.filter(c => c.optionType === params.side);
-      }
+    unusual.sort((a, b) => b.volume - a.volume);
+    unusual = unusual.slice(0, 20);
 
-      unusual.sort((a, b) => b.volume - a.volume);
-      unusual = unusual.slice(0, 20);
+    return successResult(JSON.stringify({
+      symbol: chain.underlyingSymbol,
+      underlyingPrice: chain.underlyingPrice,
+      unusual,
+    }, null, 2));
+  }, metadata),
+};
 
-      return successResult(JSON.stringify({ symbol: ticker, unusual }, null, 2));
-    }, metadata),
-  };
+const maxPainTool: ToolDefinition = {
+  name: "options_max_pain",
+  description:
+    "Calculate the max pain strike price — where cumulative option open interest expires worthless. " +
+    "This level often acts as a support/resistance zone near expiration.",
+  inputSchema: z.object({
+    symbol: symbolSchema,
+    expiration: z.string().optional()
+      .describe("Expiration date as YYYY-MM-DD. If omitted, uses nearest."),
+  }),
+  handler: withMetadata(async (params) => {
+    const expUnix = parseExpiration(params.expiration as string | undefined);
+    const chain = await fetchOptionChain(params.symbol as string, expUnix);
+    const expDate = chain.expirationDates[0]
+      ? new Date(chain.expirationDates[0] * 1000).toISOString().split("T")[0]
+      : "unknown";
 
-  const maxPainTool: ToolDefinition = {
-    name: "options_max_pain",
-    description:
-      "Calculate the max pain strike price for an expiration date. " +
-      "Max pain is the strike where option writers' total payout is minimized " +
-      "(the price where most options expire worthless). Useful for predicting " +
-      "where market makers may pin the stock near expiration.",
-    inputSchema: z.object({
-      symbol: symbolSchema,
-      expiration: expirationSchema,
-    }),
-    handler: withMetadata(async (params) => {
-      const { ticker } = resolveTicker(params.symbol as string);
-      const chain = await getOptionsChain(apiToken, ticker, params.expiration as string);
-      const result = calculateMaxPain(chain);
+    return successResult(JSON.stringify({
+      symbol: chain.underlyingSymbol,
+      underlyingPrice: chain.underlyingPrice,
+      expiration: expDate,
+      maxPain: chain.maxPain,
+    }, null, 2));
+  }, metadata),
+};
 
-      return successResult(JSON.stringify({
-        symbol: ticker,
-        expiration: params.expiration,
-        maxPainStrike: result.maxPainStrike,
-        painCurve: result.painCurve,
-      }, null, 2));
-    }, metadata),
-  };
-
+export function createOptionsModule(): ModuleDefinition {
   return {
     name: "options",
-    description: "Options chains with Greeks, unusual activity detection, and max pain calculator via Tradier API",
-    requiredEnvVars: ["TRADIER_API_TOKEN"],
-    tools: [chainTool, expirationsTool, unusualActivityTool, maxPainTool],
+    description: "Stock options chains, Greeks, unusual activity, and max pain from Yahoo Finance (no API key required)",
+    requiredEnvVars: [],
+    tools: [expirationsTool, chainTool, unusualActivityTool, maxPainTool],
   };
 }
