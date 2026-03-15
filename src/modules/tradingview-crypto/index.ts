@@ -37,7 +37,7 @@ export function createTradingviewCryptoModule(): ModuleDefinition {
             .optional()
             .describe("Filter conditions combined with AND"),
           major_only: z.boolean().optional().describe("Only include major exchanges (default: true)"),
-          columns: z.array(z.string()).optional().describe("Columns to return (default: all 24)"),
+          columns: z.array(z.string()).optional().describe("Columns to return (default: all 23)"),
           timeframe: z
             .string()
             .optional()

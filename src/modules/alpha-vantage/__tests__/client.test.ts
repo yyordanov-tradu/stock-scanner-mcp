@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getQuote, getDailyPrices, getOverview } from "../client.js";
+import { getQuote, getDailyPrices, getOverview, getEarningsHistory, getDividendHistory } from "../client.js";
 
 describe("getQuote", () => {
   beforeEach(() => {
@@ -114,6 +114,87 @@ describe("getOverview", () => {
     expect(overview.marketCap).toBe(2500000000000);
     expect(overview.peRatio).toBe(28.5);
     expect(overview.sector).toBe("TECHNOLOGY");
+  });
+});
+
+describe("getEarningsHistory", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches earnings and limits quarterly results", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        symbol: "AAPL",
+        annualEarnings: [
+          { fiscalDateEnding: "2024-09-30", reportedEPS: "6.08" },
+          { fiscalDateEnding: "2023-09-30", reportedEPS: "5.89" },
+          { fiscalDateEnding: "2022-09-30", reportedEPS: "6.15" },
+          { fiscalDateEnding: "2021-09-30", reportedEPS: "5.67" },
+          { fiscalDateEnding: "2020-09-30", reportedEPS: "3.28" },
+        ],
+        quarterlyEarnings: Array.from({ length: 12 }, (_, i) => ({
+          fiscalDateEnding: `2024-${String(12 - i).padStart(2, "0")}-30`,
+          reportedDate: `2024-${String(12 - i).padStart(2, "0")}-28`,
+          reportedEPS: "1.52",
+          estimatedEPS: "1.50",
+          surprise: "0.02",
+          surprisePercentage: "1.33",
+        })),
+      }),
+    });
+
+    const earnings = await getEarningsHistory("key", "AAPL", 4);
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("function=EARNINGS");
+    expect(calledUrl).toContain("symbol=AAPL");
+    expect(earnings.symbol).toBe("AAPL");
+    expect(earnings.annualEarnings).toHaveLength(4);
+    expect(earnings.quarterlyEarnings).toHaveLength(4);
+    expect(earnings.quarterlyEarnings[0].reportedEPS).toBe("1.52");
+  });
+});
+
+describe("getDividendHistory", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches dividends and limits to 20 entries", async () => {
+    const mockData = Array.from({ length: 30 }, (_, i) => ({
+      ex_dividend_date: `2024-${String((i % 12) + 1).padStart(2, "0")}-15`,
+      declaration_date: `2024-${String((i % 12) + 1).padStart(2, "0")}-01`,
+      record_date: `2024-${String((i % 12) + 1).padStart(2, "0")}-16`,
+      payment_date: `2024-${String((i % 12) + 1).padStart(2, "0")}-20`,
+      amount: "0.24",
+    }));
+
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        symbol: "AAPL",
+        data: mockData,
+      }),
+    });
+
+    const dividends = await getDividendHistory("key", "AAPL");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(calledUrl).toContain("function=DIVIDENDS");
+    expect(calledUrl).toContain("symbol=AAPL");
+    expect(dividends.symbol).toBe("AAPL");
+    expect(dividends.data).toHaveLength(20);
+    expect(dividends.data[0].amount).toBe("0.24");
   });
 });
 

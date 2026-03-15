@@ -144,11 +144,13 @@ export function createTradingviewModule(): ModuleDefinition {
         handler: withMetadata(async (input) => {
           const rows = await scanStocks({
             exchange: input.exchange,
-            columns: ["volume", "close", "change", "name", "description", "market_cap_basic", "RSI", "MACD.macd"],
+            columns: ["volume", "relative_volume_10d_calc", "close", "change", "name", "description", "market_cap_basic", "RSI", "MACD.macd"],
             filters: [
+              { left: "relative_volume_10d_calc", operation: "greater", right: 2 },
               { left: "volume", operation: "greater", right: 1_000_000 },
-              { left: "market_cap_basic", operation: "greater", right: 100_000_000 }
+              { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
             ],
+            sort: { sortBy: "relative_volume_10d_calc", sortOrder: "desc" },
             limit: input.limit ?? 20,
           });
           return successResult(JSON.stringify(rows, null, 2));
