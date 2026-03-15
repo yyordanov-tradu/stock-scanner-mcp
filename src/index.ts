@@ -19,6 +19,8 @@ import { createSecEdgarModule } from "./modules/sec-edgar/index.js";
 import { createCoingeckoModule } from "./modules/coingecko/index.js";
 import { createFinnhubModule } from "./modules/finnhub/index.js";
 import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
+import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
+import { createOptionsModule } from "./modules/options/index.js";
 
 function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
   const modules: ModuleDefinition[] = [
@@ -26,6 +28,7 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createTradingviewCryptoModule(),
     createSecEdgarModule(),
     createCoingeckoModule(),
+    createOptionsCboeModule(),
   ];
 
   if (env.FINNHUB_API_KEY) {
@@ -34,6 +37,10 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
 
   if (env.ALPHA_VANTAGE_API_KEY) {
     modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
+  }
+
+  if (env.TRADIER_API_TOKEN) {
+    modules.push(createOptionsModule(env.TRADIER_API_TOKEN));
   }
 
   return modules;
@@ -53,13 +60,15 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
 
-MODULES (30 tools total)
+MODULES (35 tools total)
   tradingview        7 tools  Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
+  options-cboe       1 tool   CBOE put/call ratio sentiment            (no key)
   finnhub            5 tools  Market news, earnings, short interest    (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)
+  options            4 tools  Options chains, Greeks, max pain          (TRADIER_API_TOKEN)
 
 SETUP (Claude Code)
   Add to ~/.claude.json or .mcp.json:
@@ -71,7 +80,8 @@ SETUP (Claude Code)
         "args": ["-y", "stock-scanner-mcp"],
         "env": {
           "FINNHUB_API_KEY": "your-key",
-          "ALPHA_VANTAGE_API_KEY": "your-key"
+          "ALPHA_VANTAGE_API_KEY": "your-key",
+          "TRADIER_API_TOKEN": "your-token"
         }
       }
     }
