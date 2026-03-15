@@ -2,7 +2,7 @@
  * Black-Scholes Greeks Implementation
  */
 
-// Normal cumulative distribution function
+// Normal CDF — Abramowitz & Stegun approximation (26.2.17), max error 7.5e-8
 function cnd(x: number): number {
   const a1 = 0.31938153;
   const a2 = -0.356563782;
@@ -11,15 +11,12 @@ function cnd(x: number): number {
   const a5 = 1.330274429;
   const L = Math.abs(x);
   const K = 1.0 / (1.0 + 0.2316419 * L);
-  let w = 1.0 - 1.0 / Math.sqrt(2.0 * Math.PI) * Math.exp(-L * L / 2.0) * (a1 * K + a2 * K * K + a3 * Math.pow(K, 3) + a4 * Math.pow(K, 4) + a5 * Math.pow(K, 5));
-
-  if (x < 0) {
-    w = 1.0 - w;
-  }
+  let w = 1.0 - (1.0 / Math.sqrt(2.0 * Math.PI)) * Math.exp(-L * L / 2.0) *
+    (a1 * K + a2 * K * K + a3 * Math.pow(K, 3) + a4 * Math.pow(K, 4) + a5 * Math.pow(K, 5));
+  if (x < 0) w = 1.0 - w;
   return w;
 }
 
-// Probability density function
 function pdf(x: number): number {
   return Math.exp(-x * x / 2.0) / Math.sqrt(2.0 * Math.PI);
 }
@@ -27,18 +24,15 @@ function pdf(x: number): number {
 export interface Greeks {
   delta: number;
   gamma: number;
+  /** Daily theta — dollar change per calendar day */
   theta: number;
+  /** Vega per 1 percentage-point IV move (market convention, raw B-S / 100) */
   vega: number;
 }
 
 /**
  * Calculates Greeks using Black-Scholes.
- * S: Underlying Price
- * K: Strike Price
- * T: Time to Expiration (in years, e.g. 30/365)
- * r: Risk-free interest rate (e.g. 0.05 for 5%)
- * v: Volatility (Implied Volatility, e.g. 0.25 for 20%)
- * isCall: True for Call, False for Put
+ * Returns { delta: 0, gamma: 0, theta: 0, vega: 0 } for invalid inputs.
  */
 export function calculateGreeks(
   S: number,
@@ -46,13 +40,13 @@ export function calculateGreeks(
   T: number,
   r: number,
   v: number,
-  isCall: boolean
+  isCall: boolean,
 ): Greeks {
-  if (T <= 0 || v <= 0) {
+  if (T <= 0 || v <= 0 || S <= 0 || K <= 0) {
     return { delta: 0, gamma: 0, theta: 0, vega: 0 };
   }
 
-  const d1 = (Math.log(S / K) + (r + v * v / 2.0) * T) / (v * Math.sqrt(T));
+  const d1 = (Math.log(S / K) + (r + (v * v) / 2.0) * T) / (v * Math.sqrt(T));
   const d2 = d1 - v * Math.sqrt(T);
 
   let delta: number;
@@ -70,41 +64,46 @@ export function calculateGreeks(
   const vega = (S * Math.sqrt(T) * pdf(d1)) / 100;
 
   return {
-    delta: parseFloat(delta.toFixed(4)),
-    gamma: parseFloat(gamma.toFixed(4)),
-    theta: parseFloat(theta.toFixed(4)),
-    vega: parseFloat(vega.toFixed(4)),
+    delta: parseFloat(delta.toFixed(6)),
+    gamma: parseFloat(gamma.toFixed(6)),
+    theta: parseFloat(theta.toFixed(6)),
+    vega: parseFloat(vega.toFixed(6)),
   };
 }
 
+export interface OptionForPain {
+  strike: number;
+  openInterest: number;
+}
+
 /**
- * Calculates Max Pain strike for a given set of options.
- * Max Pain is the strike price where shareholders as a whole will lose the most money.
+ * Calculates max pain — the strike where total option holder payout is minimized.
  */
-export function calculateMaxPain(strikes: number[], calls: any[], puts: any[]): number {
+export function calculateMaxPain(
+  strikes: number[],
+  calls: OptionForPain[],
+  puts: OptionForPain[],
+): number {
+  if (strikes.length === 0) return 0;
+
   let minPain = Infinity;
   let maxPainStrike = strikes[0];
 
-  for (const strike of strikes) {
-    let currentPain = 0;
-    
-    // Sum pain for calls
+  for (const candidate of strikes) {
+    let pain = 0;
     for (const call of calls) {
-      if (call.strike < strike) {
-        currentPain += (strike - call.strike) * (call.openInterest || 0);
+      if (candidate > call.strike) {
+        pain += (candidate - call.strike) * (call.openInterest ?? 0);
       }
     }
-    
-    // Sum pain for puts
     for (const put of puts) {
-      if (put.strike > strike) {
-        currentPain += (put.strike - strike) * (put.openInterest || 0);
+      if (candidate < put.strike) {
+        pain += (put.strike - candidate) * (put.openInterest ?? 0);
       }
     }
-
-    if (currentPain < minPain) {
-      minPain = currentPain;
-      maxPainStrike = strike;
+    if (pain < minPain) {
+      minPain = pain;
+      maxPainStrike = candidate;
     }
   }
 
