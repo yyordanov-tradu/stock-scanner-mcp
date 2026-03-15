@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock yahoo-session to avoid real HTTP calls for crumb/cookie
 vi.mock("../yahoo-session.js", () => ({
@@ -79,6 +79,7 @@ function mockFetchOk(data: unknown) {
 describe("fetchOptionChain", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.clearAllMocks();
   });
 
   it("parses a successful Yahoo response with calls and puts", async () => {
@@ -208,5 +209,82 @@ describe("fetchOptionChain", () => {
 
     const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(calledUrl).toContain("date=1742515200");
+  });
+
+  it("retries with fresh session on HTTP 401", async () => {
+    // First call returns 401, second (after session refresh) succeeds
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        text: async () => '{"error":"Invalid Crumb"}',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => MOCK_YAHOO_RESPONSE,
+      }),
+    );
+
+    const { fetchOptionChain } = await import("../client.js");
+    const { invalidateSession } = await import("../yahoo-session.js");
+    const chain = await fetchOptionChain("AAPL");
+
+    expect(chain.underlyingSymbol).toBe("AAPL");
+    expect(invalidateSession).toHaveBeenCalledTimes(1);
+    expect((fetch as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries with fresh session on HTTP 403", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        text: async () => "Forbidden",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => MOCK_YAHOO_RESPONSE,
+      }),
+    );
+
+    const { fetchOptionChain } = await import("../client.js");
+    const { invalidateSession } = await import("../yahoo-session.js");
+    const chain = await fetchOptionChain("AAPL");
+
+    expect(chain.underlyingSymbol).toBe("AAPL");
+    expect(invalidateSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on non-auth errors (HTTP 500)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      text: async () => "Server error",
+    }));
+
+    const { fetchOptionChain } = await import("../client.js");
+    const { invalidateSession } = await import("../yahoo-session.js");
+
+    await expect(fetchOptionChain("AAPL")).rejects.toThrow("HTTP 500");
+    expect(invalidateSession).not.toHaveBeenCalled();
+  });
+
+  it("does not false-match status codes containing 401 substring", async () => {
+    // A port number like 14013 contains "401" — should NOT trigger retry
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: "Bad Gateway",
+      text: async () => "upstream connect error, address=10.0.0.1:14013",
+    }));
+
+    const { fetchOptionChain } = await import("../client.js");
+    const { invalidateSession } = await import("../yahoo-session.js");
+
+    await expect(fetchOptionChain("AAPL")).rejects.toThrow("HTTP 502");
+    expect(invalidateSession).not.toHaveBeenCalled();
   });
 });

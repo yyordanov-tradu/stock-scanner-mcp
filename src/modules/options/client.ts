@@ -109,7 +109,7 @@ async function yahooGet<T>(url: string): Promise<T> {
   } catch (err) {
     // Retry once with a fresh session on 401 or 403
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("401") || msg.includes("403")) {
+    if (msg.includes("HTTP 401") || msg.includes("HTTP 403")) {
       invalidateSession();
       const headers = await getYahooHeaders();
       const finalUrl = await appendCrumb(url);

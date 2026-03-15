@@ -144,4 +144,24 @@ describe("yahoo-session", () => {
       expect(sess.crumb).toBe("dedup-crumb");
     }
   });
+
+  it("refreshes session after TTL expires", async () => {
+    const fetchMock = mockFetchSequence(
+      cookieResponse(), crumbResponse("crumb-fresh"),
+      cookieResponse(), crumbResponse("crumb-refreshed"),
+    );
+
+    const { getSession } = await import("../yahoo-session.js");
+
+    const sess1 = await getSession();
+    expect(sess1.crumb).toBe("crumb-fresh");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // Simulate TTL expiry by backdating createdAt
+    (sess1 as any).createdAt = Date.now() - 31 * 60 * 1000; // 31 minutes ago
+
+    const sess2 = await getSession();
+    expect(sess2.crumb).toBe("crumb-refreshed");
+    expect(fetchMock).toHaveBeenCalledTimes(4); // 2 more fetch calls for new session
+  });
 });
