@@ -20,6 +20,7 @@ import { createCoingeckoModule } from "./modules/coingecko/index.js";
 import { createFinnhubModule } from "./modules/finnhub/index.js";
 import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
 import { createOptionsModule } from "./modules/options/index.js";
+import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 
 function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
   const modules: ModuleDefinition[] = [
@@ -28,6 +29,7 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createSecEdgarModule(),
     createCoingeckoModule(),
     createOptionsModule(),
+    createOptionsCboeModule(),
   ];
 
   if (env.FINNHUB_API_KEY) {
