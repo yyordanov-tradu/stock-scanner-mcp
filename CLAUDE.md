@@ -42,7 +42,9 @@ stock-scanner-mcp/
 │   │   ├── sec-edgar/        # SEC EDGAR filings (no key)
 │   │   ├── finnhub/          # News + earnings (FINNHUB_API_KEY)
 │   │   ├── alpha-vantage/    # Prices + fundamentals (ALPHA_VANTAGE_API_KEY)
-│   │   └── coingecko/        # Crypto market data (no key)
+│   │   ├── coingecko/        # Crypto market data (no key)
+│   │   ├── options-cboe/     # 1 tool — CBOE put/call ratios
+│   │   └── options/          # 4 tools — chains, Greeks, unusual activity, max pain
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
@@ -69,6 +71,7 @@ npm test
 ### Environment Variables (secrets)
 - `FINNHUB_API_KEY` -- enables Finnhub module (news, earnings)
 - `ALPHA_VANTAGE_API_KEY` -- enables Alpha Vantage module (quotes, fundamentals)
+- `TRADIER_API_TOKEN` -- enables Options module (chains, Greeks, max pain)
 
 ### CLI Arguments (preferences)
 - `--modules` -- comma-separated list of modules to enable (default: all available)
@@ -90,6 +93,8 @@ npm test
 | coingecko | (none) | Always |
 | finnhub | FINNHUB_API_KEY | When key set |
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
+| options-cboe | (none) | Always |
+| options | TRADIER_API_TOKEN | When key set |
 
 ## Dual-LLM Development
 
