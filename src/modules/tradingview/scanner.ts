@@ -28,6 +28,8 @@ const META_COLUMNS = new Set([
   "name", "description", "type", "subtype", "exchange",
   "sector", "update_mode", "pricescale", "minmov", "fractional",
   "minmove2", "number_of_employees", "market_cap_basic",
+  "premarket_close", "premarket_change", "premarket_change_abs", "premarket_volume",
+  "postmarket_close", "postmarket_change", "postmarket_change_abs", "postmarket_volume",
   "earnings_release_date", "earnings_release_next_date",
   "dividend_yield_recent", "return_on_equity_fq", "total_revenue_fq",
   "net_income_fq", "total_assets_fq", "total_debt_fq",

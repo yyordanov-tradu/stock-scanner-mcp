@@ -34,7 +34,7 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_quote",
-        description: "Get a real-time quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap.",
+        description: "Get a real-time quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap, and pre-market/after-hours data when available.",
         inputSchema: z.object({
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'MSFT']"),
         }),
@@ -42,7 +42,11 @@ export function createTradingviewModule(): ModuleDefinition {
           const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
           const rows = await scanStocks({
             tickers: resolvedTickers,
-            columns: ["close", "change", "change_abs", "volume", "market_cap_basic", "name", "description"],
+            columns: [
+              "close", "change", "change_abs", "volume", "market_cap_basic", "name", "description",
+              "premarket_close", "premarket_change", "premarket_change_abs", "premarket_volume",
+              "postmarket_close", "postmarket_change", "postmarket_change_abs", "postmarket_volume",
+            ],
           });
           return successResult(JSON.stringify(rows, null, 2));
         }, metadata),
