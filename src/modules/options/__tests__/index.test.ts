@@ -123,6 +123,81 @@ describe("options_chain", () => {
     expect(data.puts).toHaveLength(0);
   });
 
+  it("defaults to ±20% ATM strike range", async () => {
+    // underlyingPrice = 180.25, so ±20% = 144.20 – 216.30
+    // strikes 170-190 are all within range, so all 5 contracts per side should pass
+    mockFetch.mockResolvedValue(makeMockChain());
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_chain")!;
+    const result = await tool.handler({ symbol: "AAPL" });
+
+    const data = JSON.parse(result.content[0].text);
+    // All strikes 170-190 are within ±20% of 180.25
+    expect(data.calls).toHaveLength(5);
+    expect(data.puts).toHaveLength(5);
+  });
+
+  it("filters out-of-range strikes with default ±20% ATM", async () => {
+    // Create chain with wide strike range: $50 through $350 for a $180 stock
+    // ±20% of 180 = 144 – 216
+    const wideChain = makeMockChain({
+      calls: [
+        { symbol: "C50", strike: 50, lastPrice: 130, bid: 130, ask: 130, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 1.0, gamma: 0, theta: 0, vega: 0 },
+        { symbol: "C100", strike: 100, lastPrice: 80, bid: 80, ask: 80, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 0.95, gamma: 0.01, theta: -0.01, vega: 0.05 },
+        { symbol: "C150", strike: 150, lastPrice: 32, bid: 32, ask: 32, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 0.8, gamma: 0.02, theta: -0.05, vega: 0.15 },
+        { symbol: "C180", strike: 180, lastPrice: 5, bid: 5, ask: 5, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 0.55, gamma: 0.03, theta: -0.07, vega: 0.2 },
+        { symbol: "C200", strike: 200, lastPrice: 1, bid: 1, ask: 1, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: false, delta: 0.25, gamma: 0.02, theta: -0.03, vega: 0.1 },
+        { symbol: "C250", strike: 250, lastPrice: 0.1, bid: 0.1, ask: 0.1, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: false, delta: 0.05, gamma: 0.005, theta: -0.01, vega: 0.02 },
+        { symbol: "C350", strike: 350, lastPrice: 0.01, bid: 0.01, ask: 0.01, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: false, delta: 0.01, gamma: 0.001, theta: -0.005, vega: 0.005 },
+      ],
+      puts: [],
+    });
+    mockFetch.mockResolvedValue(wideChain);
+
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_chain")!;
+    const result = await tool.handler({ symbol: "AAPL" });
+
+    const data = JSON.parse(result.content[0].text);
+    // Only strikes 150, 180, 200 are within 144.20 – 216.30
+    const strikes = data.calls.map((c: any) => c.strike);
+    expect(strikes).toEqual([150, 180, 200]);
+  });
+
+  it("respects explicit strike_min and strike_max", async () => {
+    mockFetch.mockResolvedValue(makeMockChain());
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_chain")!;
+    const result = await tool.handler({ symbol: "AAPL", strike_min: 175, strike_max: 185 });
+
+    const data = JSON.parse(result.content[0].text);
+    const callStrikes = data.calls.map((c: any) => c.strike);
+    expect(callStrikes).toEqual([175, 180, 185]);
+    const putStrikes = data.puts.map((p: any) => p.strike);
+    expect(putStrikes).toEqual([175, 180, 185]);
+  });
+
+  it("returns all strikes when all_strikes=true", async () => {
+    // Use wide chain that would normally be filtered
+    const wideChain = makeMockChain({
+      calls: [
+        { symbol: "C50", strike: 50, lastPrice: 130, bid: 130, ask: 130, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 1.0, gamma: 0, theta: 0, vega: 0 },
+        { symbol: "C180", strike: 180, lastPrice: 5, bid: 5, ask: 5, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: true, delta: 0.55, gamma: 0.03, theta: -0.07, vega: 0.2 },
+        { symbol: "C350", strike: 350, lastPrice: 0.01, bid: 0.01, ask: 0.01, change: 0, percentChange: 0, volume: 100, openInterest: 100, impliedVolatility: 0.3, inTheMoney: false, delta: 0.01, gamma: 0.001, theta: -0.005, vega: 0.005 },
+      ],
+      puts: [],
+    });
+    mockFetch.mockResolvedValue(wideChain);
+
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_chain")!;
+    const result = await tool.handler({ symbol: "AAPL", all_strikes: true });
+
+    const data = JSON.parse(result.content[0].text);
+    expect(data.calls).toHaveLength(3);
+    expect(data.calls.map((c: any) => c.strike)).toEqual([50, 180, 350]);
+  });
+
   it("caps limit at 200", async () => {
     // Create a chain with more than 200 contracts per side
     const bigCalls = Array.from({ length: 250 }, (_, i) => ({
@@ -135,7 +210,7 @@ describe("options_chain", () => {
 
     const mod = createOptionsModule();
     const tool = mod.tools.find(t => t.name === "options_chain")!;
-    const result = await tool.handler({ symbol: "AAPL", limit: 999 });
+    const result = await tool.handler({ symbol: "AAPL", limit: 999, all_strikes: true });
 
     const data = JSON.parse(result.content[0].text);
     expect(data.calls).toHaveLength(200);

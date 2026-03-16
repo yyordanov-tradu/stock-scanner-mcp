@@ -43,7 +43,8 @@ const chainTool: ToolDefinition = {
   description:
     "Get the full option chain (calls and puts) with calculated Greeks (Delta, Gamma, Theta, Vega). " +
     "Use options_expirations first to find valid dates. If expiration is omitted, uses nearest date. " +
-    "Response can be large — use 'limit' to cap contracts per side.",
+    "By default, returns strikes within ±20% of current price to save tokens. " +
+    "Use strike_min/strike_max for custom range, or all_strikes=true for everything.",
   inputSchema: z.object({
     symbol: symbolSchema,
     expiration: z.string().optional()
@@ -52,12 +53,39 @@ const chainTool: ToolDefinition = {
       .describe("Filter by option type (default: both)"),
     limit: z.number().optional()
       .describe("Max contracts per side (default: 50, max: 200)"),
+    strike_min: z.number().optional()
+      .describe("Minimum strike price filter (e.g. 25.0)"),
+    strike_max: z.number().optional()
+      .describe("Maximum strike price filter (e.g. 35.0)"),
+    all_strikes: z.boolean().optional()
+      .describe("Return all strikes instead of centering around ATM (default: false)"),
   }),
   handler: withMetadata(async (params) => {
     const expUnix = parseExpiration(params.expiration as string | undefined);
     const chain = await fetchOptionChain(params.symbol as string, expUnix);
 
     let { calls, puts } = chain;
+
+    // Determine strike range: explicit min/max > default ±20% ATM > all
+    const allStrikes = (params.all_strikes as boolean) ?? false;
+    const hasExplicitRange = params.strike_min != null || params.strike_max != null;
+
+    if (!allStrikes) {
+      let minStrike: number;
+      let maxStrike: number;
+
+      if (hasExplicitRange) {
+        minStrike = (params.strike_min as number) ?? 0;
+        maxStrike = (params.strike_max as number) ?? Infinity;
+      } else {
+        // Default: ±20% of underlying price
+        minStrike = chain.underlyingPrice * 0.8;
+        maxStrike = chain.underlyingPrice * 1.2;
+      }
+
+      calls = calls.filter(c => c.strike >= minStrike && c.strike <= maxStrike);
+      puts = puts.filter(c => c.strike >= minStrike && c.strike <= maxStrike);
+    }
 
     if (params.side === "call") {
       puts = [];

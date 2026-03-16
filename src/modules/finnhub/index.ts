@@ -84,7 +84,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const analystRatingsTool: ToolDefinition = {
     name: "finnhub_analyst_ratings",
-    description: "Get analyst consensus recommendations and price targets for a stock.",
+    description: "Get analyst consensus recommendations and price targets for a stock. Note: Some tickers may return 403 errors on Finnhub free tier plans.",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
