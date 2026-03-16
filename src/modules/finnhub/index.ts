@@ -133,10 +133,10 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     name: "finnhub_market_status",
     description: "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market).",
     inputSchema: z.object({
-      exchange: z.string().optional().describe("Exchange code (default: 'US'). Examples: US, L (London), T (Tokyo), HK"),
+      exchange: z.string().default("US").describe("Exchange code. Examples: US, L (London), T (Tokyo), HK"),
     }),
     handler: withMetadata(async (params) => {
-      const exchange = (params.exchange as string) || "US";
+      const exchange = params.exchange as string;
       const status = await getMarketStatus(apiKey, exchange);
       return successResult(JSON.stringify(status, null, 2));
     }, metadata),
@@ -144,7 +144,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const quoteTool: ToolDefinition = {
     name: "finnhub_quote",
-    description: "Get a real-time stock quote: current price, change, percent change, day high/low, open, and previous close.",
+    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Use tradingview_quote for a keyless alternative.",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
