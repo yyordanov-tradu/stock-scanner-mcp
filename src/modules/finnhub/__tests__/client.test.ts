@@ -192,14 +192,191 @@ describe("getShortInterest", () => {
   });
 });
 
+describe("getQuote", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches quote with API key header", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        c: 178.72,
+        d: 2.34,
+        dp: 1.33,
+        h: 179.50,
+        l: 176.10,
+        o: 176.50,
+        pc: 176.38,
+        t: 1710500000,
+      }),
+    });
+
+    const { getQuote } = await import("../client.js");
+    const result = await getQuote("test-key", "AAPL");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("quote?symbol=AAPL"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-Finnhub-Token": "test-key",
+        }),
+      }),
+    );
+    expect(result.c).toBe(178.72);
+    expect(result.d).toBe(2.34);
+    expect(result.dp).toBe(1.33);
+    expect(result.h).toBe(179.50);
+    expect(result.l).toBe(176.10);
+    expect(result.o).toBe(176.50);
+    expect(result.pc).toBe(176.38);
+  });
+});
+
+describe("getCompanyProfile", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches company profile with API key header", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        country: "US",
+        currency: "USD",
+        exchange: "NASDAQ NMS - GLOBAL MARKET",
+        finnhubIndustry: "Technology",
+        ipo: "1980-12-12",
+        logo: "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/AAPL.png",
+        marketCapitalization: 2800000,
+        name: "Apple Inc",
+        phone: "14089961010",
+        shareOutstanding: 15550.0,
+        ticker: "AAPL",
+        weburl: "https://www.apple.com/",
+      }),
+    });
+
+    const { getCompanyProfile } = await import("../client.js");
+    const result = await getCompanyProfile("test-key", "AAPL");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("stock/profile2?symbol=AAPL"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-Finnhub-Token": "test-key",
+        }),
+      }),
+    );
+    expect(result.name).toBe("Apple Inc");
+    expect(result.ticker).toBe("AAPL");
+    expect(result.finnhubIndustry).toBe("Technology");
+    expect(result.marketCapitalization).toBe(2800000);
+  });
+});
+
+describe("getPeers", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches peer companies with API key header", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ["MSFT", "GOOGL", "META", "AMZN"],
+    });
+
+    const { getPeers } = await import("../client.js");
+    const result = await getPeers("test-key", "AAPL");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("stock/peers?symbol=AAPL"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-Finnhub-Token": "test-key",
+        }),
+      }),
+    );
+    expect(result).toEqual(["MSFT", "GOOGL", "META", "AMZN"]);
+  });
+
+  it("handles empty peers list", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+
+    const { getPeers } = await import("../client.js");
+    const result = await getPeers("test-key", "UNKNOWN");
+    expect(result).toEqual([]);
+  });
+});
+
+describe("getMarketStatus", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches market status with API key header", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        exchange: "US",
+        holiday: null,
+        isOpen: true,
+        session: "regular",
+        t: 1710500000,
+        timezone: "America/New_York",
+      }),
+    });
+
+    const { getMarketStatus } = await import("../client.js");
+    const result = await getMarketStatus("test-key", "US");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("stock/market-status?exchange=US"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-Finnhub-Token": "test-key",
+        }),
+      }),
+    );
+    expect(result.exchange).toBe("US");
+    expect(result.isOpen).toBe(true);
+    expect(result.session).toBe("regular");
+    expect(result.timezone).toBe("America/New_York");
+    expect(result.holiday).toBeNull();
+  });
+});
+
 describe("createFinnhubModule", () => {
-  it("returns module with 5 tools and requires FINNHUB_API_KEY", async () => {
+  it("returns module with 9 tools and requires FINNHUB_API_KEY", async () => {
     const { createFinnhubModule } = await import("../index.js");
     const mod = createFinnhubModule("test-key");
     expect(mod.name).toBe("finnhub");
     expect(mod.requiredEnvVars).toEqual(["FINNHUB_API_KEY"]);
-    expect(mod.tools).toHaveLength(5);
+    expect(mod.tools).toHaveLength(9);
     expect(mod.tools.map((t) => t.name)).toEqual([
+      "finnhub_quote",
+      "finnhub_company_profile",
+      "finnhub_peers",
+      "finnhub_market_status",
       "finnhub_market_news",
       "finnhub_company_news",
       "finnhub_earnings_calendar",

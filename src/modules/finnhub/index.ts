@@ -7,7 +7,10 @@ import {
   getEarningsCalendar,
   getShortInterest,
   getAnalystRecommendations,
-  getPriceTarget,
+  getCompanyProfile,
+  getPeers,
+  getMarketStatus,
+  getQuote,
 } from "./client.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
@@ -84,23 +87,79 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const analystRatingsTool: ToolDefinition = {
     name: "finnhub_analyst_ratings",
-    description: "Get analyst consensus recommendations and price targets for a stock. Note: Some tickers may return 403 errors on Finnhub free tier plans.",
+    description: "Get analyst consensus recommendations for a stock.",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
-      
-      const [recs, target] = await Promise.all([
-        getAnalystRecommendations(apiKey, symbol),
-        getPriceTarget(apiKey, symbol),
-      ]);
+      const recs = await getAnalystRecommendations(apiKey, symbol);
 
       return successResult(JSON.stringify({
         symbol,
         currentConsensus: recs[0] || null,
-        priceTarget: target,
         recommendationHistory: recs.slice(0, 4),
+      }, null, 2));
+    }, metadata),
+  };
+
+  const companyProfileTool: ToolDefinition = {
+    name: "finnhub_company_profile",
+    description: "Get company profile: name, industry, market cap, IPO date, logo, website, share count, and exchange.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
+      const symbol = resolveTicker(params.symbol as string).ticker;
+      const profile = await getCompanyProfile(apiKey, symbol);
+      return successResult(JSON.stringify(profile, null, 2));
+    }, metadata),
+  };
+
+  const peersTool: ToolDefinition = {
+    name: "finnhub_peers",
+    description: "Get a list of peer/comparable companies in the same industry for a given stock.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
+      const symbol = resolveTicker(params.symbol as string).ticker;
+      const peers = await getPeers(apiKey, symbol);
+      return successResult(JSON.stringify({ symbol, peers }, null, 2));
+    }, metadata),
+  };
+
+  const marketStatusTool: ToolDefinition = {
+    name: "finnhub_market_status",
+    description: "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market).",
+    inputSchema: z.object({
+      exchange: z.string().default("US").describe("Exchange code. Examples: US, L (London), T (Tokyo), HK"),
+    }),
+    handler: withMetadata(async (params) => {
+      const exchange = params.exchange as string;
+      const status = await getMarketStatus(apiKey, exchange);
+      return successResult(JSON.stringify(status, null, 2));
+    }, metadata),
+  };
+
+  const quoteTool: ToolDefinition = {
+    name: "finnhub_quote",
+    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Use tradingview_quote for a keyless alternative.",
+    inputSchema: z.object({
+      symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
+    }),
+    handler: withMetadata(async (params) => {
+      const symbol = resolveTicker(params.symbol as string).ticker;
+      const q = await getQuote(apiKey, symbol);
+      return successResult(JSON.stringify({
+        symbol,
+        price: q.c,
+        change: q.d,
+        changePercent: q.dp,
+        dayHigh: q.h,
+        dayLow: q.l,
+        open: q.o,
+        previousClose: q.pc,
       }, null, 2));
     }, metadata),
   };
@@ -121,9 +180,13 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
   return {
     name: "finnhub",
     description:
-      "Finnhub market and company news, plus earnings calendar, analyst ratings and short interest",
+      "Finnhub market data: quotes, company profiles, peers, news, earnings, analyst ratings, short interest, and market status",
     requiredEnvVars: ["FINNHUB_API_KEY"],
     tools: [
+      quoteTool,
+      companyProfileTool,
+      peersTool,
+      marketStatusTool,
       marketNewsTool,
       companyNewsTool,
       earningsCalendarTool,

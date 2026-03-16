@@ -165,25 +165,102 @@ export async function getAnalystRecommendations(
   return data;
 }
 
-export interface PriceTarget {
-  lastUpdated: string;
-  symbol: string;
-  targetHigh: number;
-  targetLow: number;
-  targetMean: number;
-  targetMedian: number;
+export interface CompanyProfile {
+  country: string;
+  currency: string;
+  exchange: string;
+  finnhubIndustry: string;
+  ipo: string;
+  logo: string;
+  marketCapitalization: number;
+  name: string;
+  phone: string;
+  shareOutstanding: number;
+  ticker: string;
+  weburl: string;
 }
 
-export async function getPriceTarget(
+export async function getCompanyProfile(
   apiKey: string,
   symbol: string,
-): Promise<PriceTarget> {
-  const cacheKey = `price-target:${symbol}`;
+): Promise<CompanyProfile> {
+  const cacheKey = `profile:${symbol}`;
   const cached = cache.get(cacheKey);
-  if (cached) return cached as PriceTarget;
+  if (cached) return cached as CompanyProfile;
 
-  const data = await httpGet<PriceTarget>(
-    `${BASE_URL}/stock/price-target?symbol=${encodeURIComponent(symbol)}`,
+  const data = await httpGet<CompanyProfile>(
+    `${BASE_URL}/stock/profile2?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
+}
+
+export async function getPeers(
+  apiKey: string,
+  symbol: string,
+): Promise<string[]> {
+  const cacheKey = `peers:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as string[];
+
+  const data = await httpGet<string[]>(
+    `${BASE_URL}/stock/peers?symbol=${encodeURIComponent(symbol)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
+}
+
+export interface MarketStatus {
+  exchange: string;
+  holiday: string | null;
+  isOpen: boolean;
+  session: string;
+  t: number;
+  timezone: string;
+}
+
+export async function getMarketStatus(
+  apiKey: string,
+  exchange: string,
+): Promise<MarketStatus> {
+  const cacheKey = `market-status:${exchange}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as MarketStatus;
+
+  const data = await httpGet<MarketStatus>(
+    `${BASE_URL}/stock/market-status?exchange=${encodeURIComponent(exchange)}`,
+    { headers: { "X-Finnhub-Token": apiKey } },
+  );
+
+  cache.set(cacheKey, data);
+  return data;
+}
+
+export interface Quote {
+  c: number;  // current price
+  d: number;  // change
+  dp: number; // percent change
+  h: number;  // high
+  l: number;  // low
+  o: number;  // open
+  pc: number; // previous close
+  t: number;  // timestamp
+}
+
+export async function getQuote(
+  apiKey: string,
+  symbol: string,
+): Promise<Quote> {
+  const cacheKey = `quote:${symbol}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached as Quote;
+
+  const data = await httpGet<Quote>(
+    `${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}`,
     { headers: { "X-Finnhub-Token": apiKey } },
   );
 
