@@ -193,13 +193,17 @@ describe("getShortInterest", () => {
 });
 
 describe("createFinnhubModule", () => {
-  it("returns module with 5 tools and requires FINNHUB_API_KEY", async () => {
+  it("returns module with 9 tools and requires FINNHUB_API_KEY", async () => {
     const { createFinnhubModule } = await import("../index.js");
     const mod = createFinnhubModule("test-key");
     expect(mod.name).toBe("finnhub");
     expect(mod.requiredEnvVars).toEqual(["FINNHUB_API_KEY"]);
-    expect(mod.tools).toHaveLength(5);
+    expect(mod.tools).toHaveLength(9);
     expect(mod.tools.map((t) => t.name)).toEqual([
+      "finnhub_quote",
+      "finnhub_company_profile",
+      "finnhub_peers",
+      "finnhub_market_status",
       "finnhub_market_news",
       "finnhub_company_news",
       "finnhub_earnings_calendar",
