@@ -3,8 +3,8 @@ import { scanStocks } from "../scanner.js";
 import { STOCK_COLUMNS, STOCK_TIMEFRAMES } from "../columns.js";
 
 describe("STOCK_COLUMNS", () => {
-  it("has 73 column IDs", () => {
-    expect(STOCK_COLUMNS).toHaveLength(73);
+  it("has 81 column IDs", () => {
+    expect(STOCK_COLUMNS).toHaveLength(81);
   });
 
   it("includes key indicators", () => {
@@ -13,6 +13,17 @@ describe("STOCK_COLUMNS", () => {
     expect(STOCK_COLUMNS).toContain("MACD.macd");
     expect(STOCK_COLUMNS).toContain("EMA200");
     expect(STOCK_COLUMNS).toContain("volume");
+  });
+
+  it("includes pre-market and post-market columns", () => {
+    expect(STOCK_COLUMNS).toContain("premarket_close");
+    expect(STOCK_COLUMNS).toContain("premarket_change");
+    expect(STOCK_COLUMNS).toContain("premarket_change_abs");
+    expect(STOCK_COLUMNS).toContain("premarket_volume");
+    expect(STOCK_COLUMNS).toContain("postmarket_close");
+    expect(STOCK_COLUMNS).toContain("postmarket_change");
+    expect(STOCK_COLUMNS).toContain("postmarket_change_abs");
+    expect(STOCK_COLUMNS).toContain("postmarket_volume");
   });
 });
 
@@ -107,6 +118,25 @@ describe("scanStocks", () => {
     expect(callBody.columns).toContain("RSI|60");
     expect(callBody.columns).toContain("name"); // metadata columns should NOT get suffix
   });
+
+  it("does not apply timeframe suffix to pre/post-market columns", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    await scanStocks({
+      timeframe: "1h",
+      columns: ["close", "premarket_close", "premarket_change", "postmarket_close", "postmarket_volume"],
+    });
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.columns).toContain("close|60");
+    expect(callBody.columns).toContain("premarket_close");
+    expect(callBody.columns).toContain("premarket_change");
+    expect(callBody.columns).toContain("postmarket_close");
+    expect(callBody.columns).toContain("postmarket_volume");
+  });
 });
 
 describe("createTradingviewModule", () => {
@@ -147,6 +177,29 @@ describe("createTradingviewModule", () => {
       // Must be valid JSON
       expect(() => JSON.parse(text)).not.toThrow();
     }
+
+    vi.restoreAllMocks();
+  });
+
+  it("quote tool requests pre-market and post-market columns", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    }));
+
+    const { createTradingviewModule } = await import("../index.js");
+    const mod = createTradingviewModule();
+    const quoteTool = mod.tools.find(t => t.name === "tradingview_quote")!;
+
+    await quoteTool.handler({ tickers: ["AAPL"] });
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.columns).toContain("premarket_close");
+    expect(callBody.columns).toContain("premarket_change");
+    expect(callBody.columns).toContain("premarket_volume");
+    expect(callBody.columns).toContain("postmarket_close");
+    expect(callBody.columns).toContain("postmarket_change");
+    expect(callBody.columns).toContain("postmarket_volume");
 
     vi.restoreAllMocks();
   });

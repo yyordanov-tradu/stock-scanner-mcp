@@ -3,6 +3,8 @@ export const STOCK_COLUMNS: string[] = [
   "price_earnings_ttm", "earnings_per_share_basic_ttm", "number_of_employees",
   "sector", "description", "name", "type", "subtype", "update_mode",
   "exchange", "pricescale", "minmov", "fractional", "minmove2",
+  "premarket_close", "premarket_change", "premarket_change_abs", "premarket_volume",
+  "postmarket_close", "postmarket_change", "postmarket_change_abs", "postmarket_volume",
   "earnings_release_date", "earnings_release_next_date",
   "dividend_yield_recent", "return_on_equity_fq", "total_revenue_fq",
   "net_income_fq", "total_assets_fq", "total_debt_fq",
