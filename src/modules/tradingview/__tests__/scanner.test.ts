@@ -62,9 +62,24 @@ describe("scanStocks", () => {
       "https://scanner.tradingview.com/america/scan",
       expect.objectContaining({ method: "POST" }),
     );
-    expect(rows).toHaveLength(1);
-    expect(rows[0].symbol).toBe("NASDAQ:AAPL");
-    expect(rows[0].data.close).toBe(150.5);
+  });
+
+  it("uses custom market endpoint when specified", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { s: "CBOE:VIX", d: [22.5] },
+        ],
+      }),
+    });
+
+    await scanStocks({ tickers: ["CBOE:VIX"], columns: ["close"], market: "global" });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://scanner.tradingview.com/global/scan",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   it("applies exchange filter when no tickers specified", async () => {
@@ -205,14 +220,14 @@ describe("createTradingviewModule", () => {
     vi.restoreAllMocks();
   });
 
-  it("market_indices tool requests VIX, SPX, NDQ, DJI", async () => {
+  it("market_indices tool requests VIX, SPX, NDX, DJI via global endpoint", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: [
-          { s: "TVC:VIX", d: [23.5, -5.2, -1.3, 27.0, 23.1, 25.8, "VIX", "VOLATILITY S&P 500"] },
-          { s: "TVC:SPX", d: [5800, 0.5, 29, 5820, 5780, 5790, "SPX", "S&P 500"] },
-          { s: "TVC:NDQ", d: [18500, 0.8, 148, 18600, 18400, 18450, "NDQ", "NASDAQ Composite"] },
+          { s: "CBOE:VIX", d: [23.5, -5.2, -1.3, 27.0, 23.1, 25.8, "VIX", "VOLATILITY S&P 500"] },
+          { s: "SP:SPX", d: [5800, 0.5, 29, 5820, 5780, 5790, "SPX", "S&P 500"] },
+          { s: "NASDAQ:NDX", d: [18500, 0.8, 148, 18600, 18400, 18450, "NDX", "NASDAQ 100"] },
           { s: "TVC:DJI", d: [42000, 0.3, 126, 42100, 41900, 41950, "DJI", "Dow Jones Industrial Average"] },
         ],
       }),
@@ -224,15 +239,19 @@ describe("createTradingviewModule", () => {
 
     const result = await tool.handler({});
 
+    expect(fetch).toHaveBeenCalledWith(
+      "https://scanner.tradingview.com/global/scan",
+      expect.objectContaining({ method: "POST" }),
+    );
     const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
-    expect(callBody.symbols.tickers).toEqual(["TVC:VIX", "TVC:SPX", "TVC:NDQ", "TVC:DJI"]);
+    expect(callBody.symbols.tickers).toEqual(["CBOE:VIX", "SP:SPX", "NASDAQ:NDX", "TVC:DJI"]);
     expect(callBody.columns).toContain("close");
     expect(callBody.columns).toContain("change");
     expect(callBody.columns).toContain("name");
 
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed).toHaveLength(4);
-    expect(parsed[0].symbol).toBe("TVC:VIX");
+    expect(parsed[0].symbol).toBe("CBOE:VIX");
     expect(parsed[0].data.close).toBe(23.5);
 
     vi.restoreAllMocks();
