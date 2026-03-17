@@ -145,7 +145,7 @@ describe("createTradingviewModule", () => {
     const mod = createTradingviewModule();
     expect(mod.name).toBe("tradingview");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(7);
+    expect(mod.tools).toHaveLength(8);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "tradingview_scan",
       "tradingview_quote",
@@ -153,6 +153,7 @@ describe("createTradingviewModule", () => {
       "tradingview_top_gainers",
       "tradingview_top_losers",
       "tradingview_top_volume",
+      "tradingview_market_indices",
       "tradingview_volume_breakout",
     ]);
   });
@@ -200,6 +201,39 @@ describe("createTradingviewModule", () => {
     expect(callBody.columns).toContain("postmarket_close");
     expect(callBody.columns).toContain("postmarket_change");
     expect(callBody.columns).toContain("postmarket_volume");
+
+    vi.restoreAllMocks();
+  });
+
+  it("market_indices tool requests VIX, SPX, NDQ, DJI", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { s: "TVC:VIX", d: [23.5, -5.2, -1.3, 27.0, 23.1, 25.8, "VIX", "VOLATILITY S&P 500"] },
+          { s: "TVC:SPX", d: [5800, 0.5, 29, 5820, 5780, 5790, "SPX", "S&P 500"] },
+          { s: "TVC:NDQ", d: [18500, 0.8, 148, 18600, 18400, 18450, "NDQ", "NASDAQ Composite"] },
+          { s: "TVC:DJI", d: [42000, 0.3, 126, 42100, 41900, 41950, "DJI", "Dow Jones Industrial Average"] },
+        ],
+      }),
+    }));
+
+    const { createTradingviewModule } = await import("../index.js");
+    const mod = createTradingviewModule();
+    const tool = mod.tools.find(t => t.name === "tradingview_market_indices")!;
+
+    const result = await tool.handler({});
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.symbols.tickers).toEqual(["TVC:VIX", "TVC:SPX", "TVC:NDQ", "TVC:DJI"]);
+    expect(callBody.columns).toContain("close");
+    expect(callBody.columns).toContain("change");
+    expect(callBody.columns).toContain("name");
+
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed).toHaveLength(4);
+    expect(parsed[0].symbol).toBe("TVC:VIX");
+    expect(parsed[0].data.close).toBe(23.5);
 
     vi.restoreAllMocks();
   });
