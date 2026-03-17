@@ -34,7 +34,7 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_quote",
-        description: "Get a real-time quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap, and pre-market/after-hours data when available. If a ticker returns empty results, retry with the correct exchange prefix (e.g. 'NYSE:CDE', 'AMEX:XYZ').",
+        description: "Get a 15-minute delayed quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap, and pre-market/after-hours data when available. Data is delayed ~15 minutes during market hours — use finnhub_quote for real-time prices if available. If a ticker returns empty results, retry with the correct exchange prefix (e.g. 'NYSE:CDE', 'AMEX:XYZ').",
         inputSchema: z.object({
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'MSFT']"),
         }),
@@ -135,6 +135,20 @@ export function createTradingviewModule(): ModuleDefinition {
             filters,
             limit: input.limit ?? 20,
           });
+          return successResult(JSON.stringify(rows, null, 2));
+        }, metadata),
+      },
+      {
+        name: "tradingview_market_indices",
+        description: "Get real-time values for major market indices: VIX (volatility), S&P 500, NASDAQ Composite, and Dow Jones. Essential for gauging broad market conditions, risk sentiment, and options pricing context.",
+        inputSchema: z.object({}),
+        handler: withMetadata(async () => {
+          const tickers = ["TVC:VIX", "TVC:SPX", "TVC:NDQ", "TVC:DJI"];
+          const columns = [
+            "close", "change", "change_abs", "high", "low", "open",
+            "name", "description",
+          ];
+          const rows = await scanStocks({ tickers, columns });
           return successResult(JSON.stringify(rows, null, 2));
         }, metadata),
       },

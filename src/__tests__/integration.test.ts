@@ -37,7 +37,7 @@ describe("full module wiring", () => {
       "tradingview", "tradingview-crypto", "sec-edgar", "coingecko", "options", "options-cboe",
     ]);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(25); // 7 + 4 + 6 + 3 + 4 + 1 (free modules only)
+    expect(totalTools).toBe(26); // 8 + 4 + 6 + 3 + 4 + 1 (free modules only)
   });
 
   it("enables all 8 modules with all API keys", () => {
@@ -49,10 +49,10 @@ describe("full module wiring", () => {
     const enabled = resolveEnabledModules(modules, env);
     expect(enabled).toHaveLength(8);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(39); // 7 + 4 + 6 + 3 + 4 + 1 + 9 + 5
+    expect(totalTools).toBe(40); // 8 + 4 + 6 + 3 + 4 + 1 + 9 + 5
   });
 
-  it("all 39 tool names are unique", () => {
+  it("all 40 tool names are unique", () => {
     const env = {
       FINNHUB_API_KEY: "key",
       ALPHA_VANTAGE_API_KEY: "key",
@@ -60,7 +60,7 @@ describe("full module wiring", () => {
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
     const allNames = enabled.flatMap((m) => m.tools.map((t) => t.name));
-    expect(new Set(allNames).size).toBe(39);
+    expect(new Set(allNames).size).toBe(40);
   });
 
   it("respects --modules filter", () => {

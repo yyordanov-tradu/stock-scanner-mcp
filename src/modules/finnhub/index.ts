@@ -144,7 +144,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const quoteTool: ToolDefinition = {
     name: "finnhub_quote",
-    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Use tradingview_quote for a keyless alternative.",
+    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Preferred over tradingview_quote during market hours for live prices. Use tradingview_quote as a keyless fallback when Finnhub is unavailable.",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
