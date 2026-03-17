@@ -143,12 +143,12 @@ export function createTradingviewModule(): ModuleDefinition {
         description: "Get real-time values for major market indices: VIX (volatility), S&P 500, NASDAQ Composite, and Dow Jones. Essential for gauging broad market conditions, risk sentiment, and options pricing context.",
         inputSchema: z.object({}),
         handler: withMetadata(async () => {
-          const tickers = ["TVC:VIX", "TVC:SPX", "TVC:NDQ", "TVC:DJI"];
+          const tickers = ["CBOE:VIX", "SP:SPX", "NASDAQ:NDX", "TVC:DJI"];
           const columns = [
             "close", "change", "change_abs", "high", "low", "open",
             "name", "description",
           ];
-          const rows = await scanStocks({ tickers, columns });
+          const rows = await scanStocks({ tickers, columns, market: "global" });
           return successResult(JSON.stringify(rows, null, 2));
         }, metadata),
       },

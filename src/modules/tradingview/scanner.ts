@@ -15,6 +15,7 @@ export interface ScanRequest {
   timeframe?: string;
   limit?: number;
   sort?: { sortBy: string; sortOrder: "asc" | "desc" };
+  market?: string;
 }
 
 export interface ScanRow {
@@ -22,7 +23,7 @@ export interface ScanRow {
   data: Record<string, number | string | null>;
 }
 
-const API_URL = "https://scanner.tradingview.com/america/scan";
+const BASE_URL = "https://scanner.tradingview.com";
 
 const META_COLUMNS = new Set([
   "name", "description", "type", "subtype", "exchange",
@@ -68,8 +69,9 @@ export async function scanStocks(request: ScanRequest): Promise<ScanRow[]> {
     }
   }
 
+  const market = request.market ?? "america";
   const response = await httpPost<{ data: Array<{ s: string; d: Array<number | string | null> }> }>(
-    API_URL,
+    `${BASE_URL}/${market}/scan`,
     body,
   );
 
