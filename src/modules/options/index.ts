@@ -180,11 +180,78 @@ const maxPainTool: ToolDefinition = {
   }, metadata),
 };
 
+const impliedMoveTool: ToolDefinition = {
+  name: "options_implied_move",
+  description:
+    "Calculate the expected move implied by options pricing (ATM straddle). " +
+    "Essential for earnings plays — shows how much the market expects the stock to move. " +
+    "Compare implied vs historical moves to assess if premium is cheap or expensive.",
+  inputSchema: z.object({
+    symbol: symbolSchema,
+    expiration: z.string().optional()
+      .describe("Expiration date as YYYY-MM-DD. If omitted, uses nearest."),
+  }),
+  handler: withMetadata(async (params) => {
+    const expUnix = parseExpiration(params.expiration as string | undefined);
+    const chain = await fetchOptionChain(params.symbol as string, expUnix);
+    const price = chain.underlyingPrice;
+    const expDate = chain.expirationDates[0]
+      ? new Date(chain.expirationDates[0] * 1000).toISOString().split("T")[0]
+      : "unknown";
+
+    // Find ATM call and put (closest strikes to underlying price)
+    const atmCall = chain.calls.reduce((best, c) =>
+      Math.abs(c.strike - price) < Math.abs(best.strike - price) ? c : best,
+      chain.calls[0],
+    );
+    const atmPut = chain.puts.reduce((best, p) =>
+      Math.abs(p.strike - price) < Math.abs(best.strike - price) ? p : best,
+      chain.puts[0],
+    );
+
+    if (!atmCall || !atmPut) {
+      return successResult(JSON.stringify({
+        symbol: chain.underlyingSymbol,
+        underlyingPrice: price,
+        error: "Insufficient options data to calculate implied move",
+      }, null, 2));
+    }
+
+    // ATM straddle price = ATM call last + ATM put last
+    const callPrice = atmCall.lastPrice || ((atmCall.bid + atmCall.ask) / 2) || 0;
+    const putPrice = atmPut.lastPrice || ((atmPut.bid + atmPut.ask) / 2) || 0;
+    const straddlePrice = callPrice + putPrice;
+    const impliedMoveAbs = straddlePrice;
+    const impliedMovePct = price > 0 ? (straddlePrice / price) * 100 : 0;
+
+    // Average IV from ATM options
+    const avgIv = ((atmCall.impliedVolatility || 0) + (atmPut.impliedVolatility || 0)) / 2;
+
+    return successResult(JSON.stringify({
+      symbol: chain.underlyingSymbol,
+      underlyingPrice: price,
+      expiration: expDate,
+      atmCallStrike: atmCall.strike,
+      atmCallPrice: callPrice,
+      atmPutStrike: atmPut.strike,
+      atmPutPrice: putPrice,
+      straddlePrice,
+      impliedMove: Math.round(impliedMovePct * 100) / 100,
+      impliedMoveAbsolute: Math.round(impliedMoveAbs * 100) / 100,
+      impliedVolatility: Math.round(avgIv * 10000) / 100,
+      expectedRange: {
+        low: Math.round((price - impliedMoveAbs) * 100) / 100,
+        high: Math.round((price + impliedMoveAbs) * 100) / 100,
+      },
+    }, null, 2));
+  }, metadata),
+};
+
 export function createOptionsModule(): ModuleDefinition {
   return {
     name: "options",
-    description: "Stock options chains, Greeks, unusual activity, and max pain from Yahoo Finance (no API key required)",
+    description: "Stock options chains, Greeks, unusual activity, implied move, and max pain from Yahoo Finance (no API key required)",
     requiredEnvVars: [],
-    tools: [expirationsTool, chainTool, unusualActivityTool, maxPainTool],
+    tools: [expirationsTool, chainTool, unusualActivityTool, maxPainTool, impliedMoveTool],
   };
 }

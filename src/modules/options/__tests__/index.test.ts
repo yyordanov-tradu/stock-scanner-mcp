@@ -37,16 +37,17 @@ function makeMockChain(overrides: Partial<OptionChain> = {}): OptionChain {
 }
 
 describe("createOptionsModule", () => {
-  it("has 4 tools and no required env vars", () => {
+  it("has 5 tools and no required env vars", () => {
     const mod = createOptionsModule();
     expect(mod.name).toBe("options");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(4);
+    expect(mod.tools).toHaveLength(5);
     expect(mod.tools.map(t => t.name)).toEqual([
       "options_expirations",
       "options_chain",
       "options_unusual_activity",
       "options_max_pain",
+      "options_implied_move",
     ]);
   });
 });
@@ -318,5 +319,62 @@ describe("options_max_pain", () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.error).toBe(true);
     expect(data.message).toContain("No options data found");
+  });
+});
+
+describe("options_implied_move", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it("calculates implied move from ATM straddle", async () => {
+    // underlyingPrice = 180.25
+    // ATM call (strike 180) lastPrice = 5.5
+    // ATM put (strike 180) lastPrice = 4.2
+    // straddle = 9.7, implied move = 9.7/180.25 = 5.38%
+    mockFetch.mockResolvedValue(makeMockChain());
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_implied_move")!;
+    const result = await tool.handler({ symbol: "AAPL" });
+
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.symbol).toBe("AAPL");
+    expect(data.underlyingPrice).toBe(180.25);
+    expect(data.atmCallStrike).toBe(180);
+    expect(data.atmPutStrike).toBe(180);
+    expect(data.atmCallPrice).toBe(5.5);
+    expect(data.atmPutPrice).toBe(4.2);
+    expect(data.straddlePrice).toBe(9.7);
+    expect(data.impliedMove).toBeCloseTo(5.38, 1);
+    expect(data.impliedMoveAbsolute).toBe(9.7);
+    expect(data.expectedRange.low).toBeCloseTo(170.55, 1);
+    expect(data.expectedRange.high).toBeCloseTo(189.95, 1);
+    expect(data.impliedVolatility).toBeGreaterThan(0);
+    expect(data.expiration).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("finds closest ATM strike when no exact match", async () => {
+    // underlyingPrice = 182 — between 180 and 185 strikes
+    const chain = makeMockChain({ underlyingPrice: 182 });
+    mockFetch.mockResolvedValue(chain);
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_implied_move")!;
+    const result = await tool.handler({ symbol: "AAPL" });
+
+    const data = JSON.parse(result.content[0].text);
+    // 180 is closer to 182 than 185
+    expect(data.atmCallStrike).toBe(180);
+    expect(data.atmPutStrike).toBe(180);
+  });
+
+  it("returns error when no options data available", async () => {
+    mockFetch.mockResolvedValue(makeMockChain({ calls: [], puts: [] }));
+    const mod = createOptionsModule();
+    const tool = mod.tools.find(t => t.name === "options_implied_move")!;
+    const result = await tool.handler({ symbol: "AAPL" });
+
+    const data = JSON.parse(result.content[0].text);
+    expect(data.error).toContain("Insufficient");
   });
 });
