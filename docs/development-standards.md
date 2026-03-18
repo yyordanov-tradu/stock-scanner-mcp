@@ -115,8 +115,13 @@ export async function getSomething(
 - Every response type MUST have a TypeScript interface (no `any` except legacy code)
 - Every URL parameter MUST use `encodeURIComponent()`
 - Every function MUST check cache before HTTP call
-- API keys MUST be passed via headers, never URL query params
+- API keys SHOULD be passed via headers; URL query param auth is allowed when the external API requires it (see Documented Deviations below)
 - Cache keys MUST be unique and include all varying parameters
+
+**Documented Deviations:** If an external API does not support header-based auth (e.g., FRED requires `?api_key=`), this is allowed but MUST be:
+1. Documented in the PR description
+2. Noted in the module's `client.ts` with a comment explaining why
+3. Verified that `shared/http.ts` `sanitizeUrl()` redacts the key from error messages
 
 ---
 
@@ -195,6 +200,20 @@ if (data["Error Message"]) throw new Error(`Alpha Vantage Error: ${data["Error M
 if (data["Note"]) throw new Error(`Alpha Vantage Rate Limit: ${data["Note"]}`);
 ```
 
+#### Defensive Array Access
+
+When external APIs return arrays (e.g., `seriess`, `observations`, `results`), ALWAYS guard against empty arrays before accessing `[0]`. Throw a descriptive error instead of letting a `TypeError` bubble up through `withMetadata()` with a cryptic message:
+
+```typescript
+// GOOD — descriptive error
+const series = data.seriess[0];
+if (!series) throw new Error(`Series not found: ${seriesId}`);
+
+// BAD — cryptic TypeError if array is empty
+const s = data.seriess[0];
+return { id: s.id, title: s.title }; // TypeError: Cannot read properties of undefined
+```
+
 ### Layer 2: `withMetadata()` Wrapper (standardized)
 
 All tool handlers MUST be wrapped with `withMetadata()`. It:
@@ -210,7 +229,7 @@ All tool handlers MUST be wrapped with `withMetadata()`. It:
 
 ### Response Shape Consistency
 
-All tool handlers within a module MUST return the same response shape. The standard shape is `JSON.stringify(rows, null, 2)` where `rows` is the `ScanRow[]` array from `scanStocks()` or equivalent. Do NOT invent custom wrapper objects (e.g. `{ tickers, metrics, data }`) — this forces LLMs to handle multiple response formats from the same module.
+All tool handlers within a module MUST return the same response shape. The standard shape is `JSON.stringify(data, null, 2)` where `data` is the typed array or object returned by the client function. Do NOT invent custom wrapper objects (e.g. `{ tickers, metrics, data }`) — this forces LLMs to handle multiple response formats from the same module.
 
 If a tool needs a genuinely different shape, document it in the tool description and add a test verifying the shape.
 
@@ -259,7 +278,6 @@ All HTTP calls MUST go through `shared/http.ts`. Direct `fetch()` calls are proh
 - **Schema validation edge cases** MUST be tested when zod constraints are non-trivial (e.g., `.min(2).max(5)` on an array — test both below-min and above-max inputs)
 - **Partial data** — test behavior when some items return data and others don't (e.g., 1 of 3 tickers not found)
 - **Integration tests** (`src/__tests__/integration.test.ts`) MUST be updated when tool counts change
-- **PRs without test coverage for changed code will be rejected**
 
 ### Test Structure
 
@@ -283,12 +301,12 @@ describe("functionName", () => {
 
     const result = await functionUnderTest("api-key", "AAPL");
 
-    // Verify URL construction
+    // Verify URL construction (use the actual header name for the module, e.g. "X-Finnhub-Token")
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("expected/url?symbol=AAPL"),
       expect.objectContaining({
         headers: expect.objectContaining({
-          "X-Api-Token": "api-key",
+          "X-Finnhub-Token": "api-key",
         }),
       }),
     );
@@ -304,6 +322,7 @@ describe("functionName", () => {
 |----------|-------|
 | Happy path | Correct URL, headers, parsed response |
 | Edge cases | Empty arrays, null fields, unknown symbols |
+| Invalid input | Empty API response arrays, unknown IDs, series/symbol not found |
 | Caching | Use `vi.useFakeTimers()` for TTL behavior |
 | Error handling | Non-ok responses, network failures, rate limits |
 | Module wiring | Tool count, tool names, required env vars |
@@ -352,9 +371,10 @@ npm run test:watch    # Watch mode during development
 3. Create `index.ts` with `create{Name}Module()` factory
 4. Create `__tests__/client.test.ts` with tests for every client function
 5. Register in `index.ts` → `buildAllModules()` (conditionally if needs API key)
-6. Update integration test tool counts in `src/__tests__/integration.test.ts`
-7. Update `CLAUDE.md` module table
-8. Update help text in `src/index.ts` (MODULES section)
+6. Add env var to `src/config.ts` → `parseConfig()` if module requires an API key
+7. Update integration test tool counts in `src/__tests__/integration.test.ts`
+8. Update `CLAUDE.md` module table
+9. Update help text in `src/index.ts` (MODULES section)
 
 ---
 
@@ -364,7 +384,7 @@ npm run test:watch    # Watch mode during development
 2. Include both `name` and `description` metadata columns if tool returns stock/instrument data
 3. Use the same response shape as other tools in the module (usually `JSON.stringify(rows, null, 2)`)
 4. Write an LLM-friendly tool description — include value scales, limitations, and disambiguation from similar tools
-5. Add a **dedicated handler test** in `__tests__/scanner.test.ts` (or equivalent) verifying columns, input resolution, and response shape
+5. Add a **dedicated handler test** in the module's `__tests__/` directory (e.g. `client.test.ts`) verifying columns, input resolution, and response shape
 6. Add **edge case tests** for any non-trivial schema constraints (min/max array length, etc.)
 7. Update tool count assertions in the module test (`mod.tools.toHaveLength(N)`) and tool name list
 8. Update integration test tool counts in `src/__tests__/integration.test.ts`
@@ -382,3 +402,16 @@ npm run build         # Build — must succeed
 ```
 
 All three MUST pass. No exceptions.
+
+### Documentation Freshness
+
+Every code change MUST check whether `CLAUDE.md` or files it references need updating. Common triggers:
+
+- **New module** → update module count, tool count, project structure tree, module table, env vars
+- **New/removed tool** → update tool count
+- **New env var** → add to Configuration section
+- **Version bump** → update version in Status section
+- **New shared utility** → check if `development-standards.md` §9 needs a row
+- **Changed conventions** → update both `development-standards.md` (detailed) and `CLAUDE.md` (summary)
+
+**Rule:** If your PR changes behavior documented in `CLAUDE.md` or `docs/development-standards.md`, update those files in the same PR. Stale docs mislead both human and LLM contributors.
