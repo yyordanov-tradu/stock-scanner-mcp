@@ -9,6 +9,7 @@ import { createFinnhubModule } from "../modules/finnhub/index.js";
 import { createAlphaVantageModule } from "../modules/alpha-vantage/index.js";
 import { createOptionsModule } from "../modules/options/index.js";
 import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
+import { createFredModule } from "../modules/fred/index.js";
 import type { ModuleDefinition } from "../shared/types.js";
 
 function buildAllModules(env: Record<string, string | undefined>): ModuleDefinition[] {
@@ -22,6 +23,7 @@ function buildAllModules(env: Record<string, string | undefined>): ModuleDefinit
   ];
   if (env.FINNHUB_API_KEY) modules.push(createFinnhubModule(env.FINNHUB_API_KEY));
   if (env.ALPHA_VANTAGE_API_KEY) modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
+  if (env.FRED_API_KEY) modules.push(createFredModule(env.FRED_API_KEY));
   return modules;
 }
 
@@ -40,27 +42,29 @@ describe("full module wiring", () => {
     expect(totalTools).toBe(29); // 10 + 4 + 6 + 3 + 5 + 1 (free modules only)
   });
 
-  it("enables all 8 modules with all API keys", () => {
+  it("enables all 9 modules with all API keys", () => {
     const env = {
       FINNHUB_API_KEY: "test-finnhub-key",
       ALPHA_VANTAGE_API_KEY: "test-av-key",
+      FRED_API_KEY: "test-fred-key",
     };
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
-    expect(enabled).toHaveLength(8);
+    expect(enabled).toHaveLength(9);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(43); // 10 + 4 + 6 + 3 + 5 + 1 + 9 + 5
+    expect(totalTools).toBe(47); // 10 + 4 + 6 + 3 + 5 + 1 + 9 + 5 + 4
   });
 
-  it("all 43 tool names are unique", () => {
+  it("all 47 tool names are unique", () => {
     const env = {
       FINNHUB_API_KEY: "key",
       ALPHA_VANTAGE_API_KEY: "key",
+      FRED_API_KEY: "key",
     };
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
     const allNames = enabled.flatMap((m) => m.tools.map((t) => t.name));
-    expect(new Set(allNames).size).toBe(43);
+    expect(new Set(allNames).size).toBe(47);
   });
 
   it("respects --modules filter", () => {
@@ -74,7 +78,7 @@ describe("full module wiring", () => {
   });
 
   it("every tool handler catches exceptions", async () => {
-    const env = { FINNHUB_API_KEY: "key", ALPHA_VANTAGE_API_KEY: "key" };
+    const env = { FINNHUB_API_KEY: "key", ALPHA_VANTAGE_API_KEY: "key", FRED_API_KEY: "key" };
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
 

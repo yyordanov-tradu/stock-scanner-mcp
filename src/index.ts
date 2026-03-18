@@ -21,6 +21,7 @@ import { createFinnhubModule } from "./modules/finnhub/index.js";
 import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
 import { createOptionsModule } from "./modules/options/index.js";
 import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
+import { createFredModule } from "./modules/fred/index.js";
 
 function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
   const modules: ModuleDefinition[] = [
@@ -40,6 +41,10 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
   }
 
+  if (env.FRED_API_KEY) {
+    modules.push(createFredModule(env.FRED_API_KEY));
+  }
+
   return modules;
 }
 
@@ -57,15 +62,16 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
 
-MODULES (39 tools total)
-  tradingview        7 tools  Stock scanning, quotes, technicals       (no key)
+MODULES (47 tools total)
+  tradingview        10 tools Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
-  options            4 tools  Options chains, Greeks, unusual activity  (no key)
+  options            5 tools  Options chains, Greeks, unusual activity  (no key)
   options-cboe       1 tool   CBOE put/call ratio sentiment            (no key)
   finnhub            9 tools  Quotes, profiles, peers, news, earnings  (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)
+  fred               4 tools  Economic calendar, indicators, rates     (FRED_API_KEY)
 
 SETUP (Claude Code)
   Add to ~/.claude.json or .mcp.json:
@@ -77,7 +83,8 @@ SETUP (Claude Code)
         "args": ["-y", "stock-scanner-mcp"],
         "env": {
           "FINNHUB_API_KEY": "your-key",
-          "ALPHA_VANTAGE_API_KEY": "your-key"
+          "ALPHA_VANTAGE_API_KEY": "your-key",
+          "FRED_API_KEY": "your-key"
         }
       }
     }

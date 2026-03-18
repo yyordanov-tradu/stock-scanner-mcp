@@ -2,8 +2,8 @@
 
 ## Status
 
-**Version:** 1.6.0 — Published on npm as `stock-scanner-mcp`
-**Modules:** 8 implemented (43 tools total)
+**Version:** 1.7.0 — Published on npm as `stock-scanner-mcp`
+**Modules:** 9 implemented (47 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/`
 
@@ -38,7 +38,8 @@ stock-scanner-mcp/
 │   │   ├── alpha-vantage/    # Prices + fundamentals (ALPHA_VANTAGE_API_KEY)
 │   │   ├── coingecko/        # Crypto market data (no key)
 │   │   ├── options/          # Options chains, Greeks, unusual activity (no key)
-│   │   └── options-cboe/     # CBOE put/call ratio sentiment (no key)
+│   │   ├── options-cboe/     # CBOE put/call ratio sentiment (no key)
+│   │   └── fred/             # US economic data — calendar, indicators (FRED_API_KEY)
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
@@ -68,6 +69,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ### Environment Variables (secrets)
 - `FINNHUB_API_KEY` -- enables Finnhub module (news, earnings)
 - `ALPHA_VANTAGE_API_KEY` -- enables Alpha Vantage module (quotes, fundamentals)
+- `FRED_API_KEY` -- enables FRED module (economic calendar, indicators, rates)
 
 ### CLI Arguments (preferences)
 - `--modules` -- comma-separated list of modules to enable (default: all available)
@@ -91,6 +93,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | options-cboe | (none) | Always |
 | finnhub | FINNHUB_API_KEY | When key set |
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
+| fred | FRED_API_KEY | When key set |
 
 ## Dual-LLM Development
 
@@ -121,7 +124,7 @@ Read it before writing any code. Key rules summarized below:
 - **Every code change MUST include corresponding tests.** No exceptions. New functions need unit tests, modified functions need updated tests. PRs without test coverage for changed code will be rejected.
 - All HTTP calls go through `shared/http.ts` (never raw `fetch`), with 10s timeout via AbortController
 - All tool handlers wrapped with `withMetadata()` — handlers MUST NEVER throw to MCP client
-- All URL parameters use `encodeURIComponent()`; API keys passed via headers, never query params
+- All URL parameters use `encodeURIComponent()`; API keys passed via headers (URL query param auth allowed when API requires it — see development-standards.md §2 Documented Deviations)
 - Response payloads truncated to control token usage
 - In-memory TTL cache (`shared/cache.ts`) for all external API calls
 - Tool descriptions must be LLM-readable, disambiguated from similar tools, honest about limitations, and include value scales for ratings/scores
@@ -131,6 +134,7 @@ Read it before writing any code. Key rules summarized below:
 - Schema defaults declared via `.default()` in zod (not manual fallbacks) so LLMs see them
 - All response types must have TypeScript interfaces (no `any` in new code)
 - Imports must use `.js` extension (ESM requirement)
+- **Every code change MUST check if `CLAUDE.md` or `docs/development-standards.md` need updating** (module counts, tool counts, env vars, project structure, version — see development-standards.md §13 Documentation Freshness)
 
 ### Module Pattern
 
@@ -149,6 +153,12 @@ npm run lint    # tsc --noEmit
 npm test        # vitest
 npm run build   # tsup
 ```
+
+## Git Workflow
+
+- **Never commit directly to `main`.** Main is protected. Always create a feature branch first (e.g. `feat/descriptive-name`, `fix/issue-description`).
+- Create the branch **before** writing any code, not after.
+- All work goes through PRs — push the feature branch, create a PR against `main`.
 
 ## Pre-Flight Checklist (MANDATORY)
 
