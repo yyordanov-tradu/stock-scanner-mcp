@@ -2,14 +2,10 @@
 
 ## Status
 
-**Phase:** Design & planning complete. Implementation not started.
+**Version:** 1.6.0 — Published on npm as `stock-scanner-mcp`
+**Modules:** 8 implemented (43 tools total)
 
-- Brainstorm: `docs/2026-03-12-brainstorm-session.md`
-- Architecture: `docs/architecture.md`
-- Implementation plan: `docs/plans/2026-03-12-stock-scanner-plugin.md`
-- Task files (15): `docs/plans/tasks/task-01-scaffolding.md` through `task-15-readme.md`
-
-**To start implementation:** Use `superpowers:executing-plans` or `superpowers:subagent-driven-development` skill with the plan.
+Planning docs (historical): `docs/architecture.md`, `docs/plans/`
 
 ## Project Overview
 
@@ -21,14 +17,12 @@ A modular, open-source MCP (Model Context Protocol) server that provides Claude 
 - **Runtime:** Node.js
 - **Protocol:** MCP over stdio (JSON-RPC)
 - **SDK:** `@modelcontextprotocol/sdk`
-- **Build:** tsc (TypeScript compiler)
+- **Build:** tsup (bundles to ESM)
 - **Test:** vitest
 - **Schema:** zod
 - **Distribution:** npm (`npx stock-scanner-mcp`)
 
-## Planned Project Structure
-
-> **Note:** Not yet scaffolded. See `docs/plans/tasks/task-01-scaffolding.md` for setup.
+## Project Structure
 
 ```
 stock-scanner-mcp/
@@ -48,7 +42,9 @@ stock-scanner-mcp/
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
-│       └── types.ts          # Shared types
+│       ├── types.ts          # Shared types + result builders
+│       ├── resolver.ts       # Ticker resolution (AAPL → NASDAQ:AAPL)
+│       └── utils.ts          # withMetadata() wrapper
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
@@ -56,14 +52,15 @@ stock-scanner-mcp/
 
 ## Key Commands
 
-> **Note:** These commands will work after task-01 (scaffolding) is complete.
-
 ```bash
-npm install
-npm run build
-node dist/index.js
-node dist/index.js --modules tradingview,finnhub
-npm test
+npm install           # Install dependencies
+npm run build         # Build with tsup → dist/
+npm run dev           # Watch mode (rebuild on save)
+npm test              # Run all tests (vitest)
+npm run test:watch    # Watch mode tests
+npm run lint          # Type-check (tsc --noEmit)
+node dist/index.js    # Run MCP server
+node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ```
 
 ## Configuration
@@ -127,7 +124,10 @@ Read it before writing any code. Key rules summarized below:
 - All URL parameters use `encodeURIComponent()`; API keys passed via headers, never query params
 - Response payloads truncated to control token usage
 - In-memory TTL cache (`shared/cache.ts`) for all external API calls
-- Tool descriptions must be LLM-readable, disambiguated from similar tools, and honest about limitations
+- Tool descriptions must be LLM-readable, disambiguated from similar tools, honest about limitations, and include value scales for ratings/scores
+- All tools in a module MUST use the same response shape (standard: `JSON.stringify(rows, null, 2)`)
+- Tools returning stock data MUST include both `name` and `description` metadata columns
+- Every new tool handler MUST have a dedicated test (columns, input resolution, response shape, edge cases)
 - Schema defaults declared via `.default()` in zod (not manual fallbacks) so LLMs see them
 - All response types must have TypeScript interfaces (no `any` in new code)
 - Imports must use `.js` extension (ESM requirement)
