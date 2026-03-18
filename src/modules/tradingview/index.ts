@@ -33,6 +33,27 @@ export function createTradingviewModule(): ModuleDefinition {
         }, metadata),
       },
       {
+        name: "tradingview_compare_stocks",
+        description: "Returns price, change, market cap, P/E, EPS, revenue, dividend yield, RSI, and analyst recommendation rating (-1 sell to +1 buy) for 2-5 stocks. Revenue growth rate and analyst price targets are not available.",
+        inputSchema: z.object({
+          tickers: z.array(z.string()).min(2).max(5).describe("2-5 stock tickers to compare (e.g. AAPL, MSFT)"),
+        }),
+        handler: withMetadata(async (input) => {
+          const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
+          const columns = [
+            "name", "description", "close", "change", "market_cap_basic", "price_earnings_ttm",
+            "earnings_per_share_basic_ttm", "total_revenue_fq",
+            "dividend_yield_recent", "RSI", "Recommend.All"
+          ];
+          const rows = await scanStocks({
+            tickers: resolvedTickers,
+            columns,
+          });
+
+          return successResult(JSON.stringify(rows, null, 2));
+        }, metadata),
+      },
+      {
         name: "tradingview_quote",
         description: "Get a 15-minute delayed quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap, and pre-market/after-hours data when available. Data is delayed ~15 minutes during market hours — use finnhub_quote for real-time prices if available. If a ticker returns empty results, retry with the correct exchange prefix (e.g. 'NYSE:CDE', 'AMEX:XYZ').",
         inputSchema: z.object({
