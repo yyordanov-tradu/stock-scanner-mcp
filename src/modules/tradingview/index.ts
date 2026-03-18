@@ -77,15 +77,18 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_top_gainers",
-        description: "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
+        description: "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M. OTC penny stocks excluded by default.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
+          include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
         handler: withMetadata(async (input) => {
-          const filters = [
-            { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
-          ];
+          const filters = [];
+          if (!input.include_otc) {
+            filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
+            filters.push({ left: "volume", operation: "greater", right: 100_000 });
+          }
           const rows = await scanStocks({
             exchange: input.exchange,
             columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
@@ -97,15 +100,18 @@ export function createTradingviewModule(): ModuleDefinition {
       },
       {
         name: "tradingview_top_losers",
-        description: "Get today's top losing stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M.",
+        description: "Get today's top losing stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M. OTC penny stocks excluded by default.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
+          include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
         handler: withMetadata(async (input) => {
-          const filters = [
-            { left: "market_cap_basic", operation: "greater", right: 100_000_000 },
-          ];
+          const filters = [];
+          if (!input.include_otc) {
+            filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
+            filters.push({ left: "volume", operation: "greater", right: 100_000 });
+          }
           const rows = await scanStocks({
             exchange: input.exchange,
             columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
@@ -149,6 +155,25 @@ export function createTradingviewModule(): ModuleDefinition {
             "name", "description",
           ];
           const rows = await scanStocks({ tickers, columns, market: "global" });
+          return successResult(JSON.stringify(rows, null, 2));
+        }, metadata),
+      },
+      {
+        name: "tradingview_sector_performance",
+        description: "Get performance of S&P 500 sector ETFs (XLK, XLF, XLE, XLV, XLI, XLP, XLU, XLY, XLC, XLRE, XLB). Shows which sectors are leading or lagging today. Essential for sector rotation analysis.",
+        inputSchema: z.object({}),
+        handler: withMetadata(async () => {
+          const sectorEtfs = [
+            "AMEX:XLK", "AMEX:XLF", "AMEX:XLE", "AMEX:XLV", "AMEX:XLI",
+            "AMEX:XLP", "AMEX:XLU", "AMEX:XLY", "AMEX:XLC", "AMEX:XLRE", "AMEX:XLB",
+          ];
+          const rows = await scanStocks({
+            tickers: sectorEtfs,
+            columns: [
+              "close", "change", "change_abs", "volume", "name", "description",
+              "Perf.W", "Perf.1M", "Perf.3M", "Perf.YTD",
+            ],
+          });
           return successResult(JSON.stringify(rows, null, 2));
         }, metadata),
       },

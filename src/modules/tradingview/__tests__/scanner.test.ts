@@ -155,12 +155,12 @@ describe("scanStocks", () => {
 });
 
 describe("createTradingviewModule", () => {
-  it("returns module with 6 tools and no required env vars", async () => {
+  it("returns module with 9 tools and no required env vars", async () => {
     const { createTradingviewModule } = await import("../index.js");
     const mod = createTradingviewModule();
     expect(mod.name).toBe("tradingview");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(8);
+    expect(mod.tools).toHaveLength(9);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "tradingview_scan",
       "tradingview_quote",
@@ -169,6 +169,7 @@ describe("createTradingviewModule", () => {
       "tradingview_top_losers",
       "tradingview_top_volume",
       "tradingview_market_indices",
+      "tradingview_sector_performance",
       "tradingview_volume_breakout",
     ]);
   });
