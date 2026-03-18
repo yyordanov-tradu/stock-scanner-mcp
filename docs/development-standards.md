@@ -144,6 +144,8 @@ Tool descriptions are consumed by LLMs to decide which tool to call. They MUST b
 3. **Specific about defaults** — mention default values for optional params
 4. **Honest about limitations** — mention API key requirements, data delays, rate limits
 
+5. **Scale/range documented** — if a field returns a rating, score, or non-obvious numeric range, state the scale (e.g., "recommendation rating from -1 (strong sell) to +1 (strong buy)")
+
 **Good:**
 ```
 "Get a real-time stock quote from Finnhub (requires API key): current price, change,
@@ -151,9 +153,17 @@ percent change, day high/low, open, and previous close. Use tradingview_quote fo
 keyless alternative."
 ```
 
+```
+"Returns analyst recommendation rating (-1 sell to +1 buy) and RSI (0-100)."
+```
+
 **Bad:**
 ```
 "Get stock quote."
+```
+
+```
+"Returns analyst recommendation."  // What scale? What do values mean?
 ```
 
 ### Schema Defaults
@@ -198,6 +208,16 @@ All tool handlers MUST be wrapped with `withMetadata()`. It:
 
 **Rule:** Tool handlers MUST NEVER throw unhandled exceptions to the MCP client.
 
+### Response Shape Consistency
+
+All tool handlers within a module MUST return the same response shape. The standard shape is `JSON.stringify(rows, null, 2)` where `rows` is the `ScanRow[]` array from `scanStocks()` or equivalent. Do NOT invent custom wrapper objects (e.g. `{ tickers, metrics, data }`) — this forces LLMs to handle multiple response formats from the same module.
+
+If a tool needs a genuinely different shape, document it in the tool description and add a test verifying the shape.
+
+### Metadata Columns
+
+When a tool returns data about stocks/instruments, ALWAYS include both `name` (short identifier) and `description` (full company name) columns. Users and LLMs need the human-readable name for context. Check existing tools in the same module for the standard set of metadata columns and match them.
+
 ---
 
 ## 6. HTTP Client
@@ -232,6 +252,12 @@ All HTTP calls MUST go through `shared/http.ts`. Direct `fetch()` calls are proh
 - **Every new client function** MUST have at least one unit test
 - **Every modified function** MUST have its tests updated if behavior changed
 - **Every module** MUST have a test verifying tool count and tool names
+- **Every new tool handler** MUST have a dedicated test that verifies:
+  1. Correct columns/parameters sent to the underlying API call
+  2. Input resolution (e.g., ticker resolution from simple → exchange-qualified)
+  3. Response structure matches expected shape
+- **Schema validation edge cases** MUST be tested when zod constraints are non-trivial (e.g., `.min(2).max(5)` on an array — test both below-min and above-max inputs)
+- **Partial data** — test behavior when some items return data and others don't (e.g., 1 of 3 tickers not found)
 - **Integration tests** (`src/__tests__/integration.test.ts`) MUST be updated when tool counts change
 - **PRs without test coverage for changed code will be rejected**
 
@@ -332,7 +358,20 @@ npm run test:watch    # Watch mode during development
 
 ---
 
-## 12. Code Quality Gates
+## 12. Adding a New Tool to an Existing Module — Checklist
+
+1. Add the tool definition in the module's `index.ts` (follow naming: `{module}_{action}`)
+2. Include both `name` and `description` metadata columns if tool returns stock/instrument data
+3. Use the same response shape as other tools in the module (usually `JSON.stringify(rows, null, 2)`)
+4. Write an LLM-friendly tool description — include value scales, limitations, and disambiguation from similar tools
+5. Add a **dedicated handler test** in `__tests__/scanner.test.ts` (or equivalent) verifying columns, input resolution, and response shape
+6. Add **edge case tests** for any non-trivial schema constraints (min/max array length, etc.)
+7. Update tool count assertions in the module test (`mod.tools.toHaveLength(N)`) and tool name list
+8. Update integration test tool counts in `src/__tests__/integration.test.ts`
+
+---
+
+## 13. Code Quality Gates
 
 Before any PR is merged:
 
