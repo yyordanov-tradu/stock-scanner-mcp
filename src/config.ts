@@ -24,6 +24,7 @@ export function parseConfig(args: string[]): Config {
     env: {
       FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
       ALPHA_VANTAGE_API_KEY: process.env.ALPHA_VANTAGE_API_KEY,
+      FRED_API_KEY: process.env.FRED_API_KEY,
     },
   };
 }
