@@ -39,7 +39,7 @@ describe("getEconomicCalendar", () => {
     expect(result[2].release_name).toBe("Employment Situation");
   });
 
-  it("passes API key as query parameter", async () => {
+  it("passes API key and realtime_start as query parameters", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ release_dates: [] }),
@@ -51,6 +51,9 @@ describe("getEconomicCalendar", () => {
     expect(calledUrl).toContain("api_key=my-fred-key");
     expect(calledUrl).toContain("include_release_dates_with_no_data=true");
     expect(calledUrl).toContain("file_type=json");
+    // Should filter to today and future dates only
+    const today = new Date().toISOString().slice(0, 10);
+    expect(calledUrl).toContain(`realtime_start=${today}`);
   });
 
   it("returns empty array when no upcoming releases", async () => {
