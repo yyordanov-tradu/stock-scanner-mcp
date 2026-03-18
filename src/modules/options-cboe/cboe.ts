@@ -1,11 +1,7 @@
 import { TtlCache } from "../../shared/cache.js";
 import { httpGet } from "../../shared/http.js";
 
-const CSV_URLS: Record<string, string> = {
-  total: "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv",
-  equity: "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/equitypc.csv",
-  index: "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/indexpcarchive.csv",
-};
+const BASE_URL = "https://cdn.cboe.com/data/us/options/market_statistics/daily";
 
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
@@ -19,55 +15,105 @@ export interface PutCallEntry {
   putCallRatio: number;
 }
 
-function parseDate(mmddyyyy: string): string {
-  const parts = mmddyyyy.trim().split("/");
-  if (parts.length !== 3) return "";
-  const [mm, dd, yyyy] = parts;
-  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+/** CBOE JSON response shape (per-day endpoint). */
+interface CboeDailyResponse {
+  ratios: Array<{ name: string; value: string }>;
+  "SUM OF ALL PRODUCTS"?: Array<{ name: string; call: number; put: number; total: number }>;
+  "EQUITY OPTIONS"?: Array<{ name: string; call: number; put: number; total: number }>;
+  "INDEX OPTIONS"?: Array<{ name: string; call: number; put: number; total: number }>;
 }
 
-function parseCsvRows(csv: string): PutCallEntry[] {
-  const lines = csv.split("\n");
-  const entries: PutCallEntry[] = [];
+/** Maps our type param to the ratio name in CBOE JSON + volume section key. */
+const TYPE_MAP: Record<string, { ratioName: string; volumeKey: keyof CboeDailyResponse }> = {
+  total: { ratioName: "TOTAL PUT/CALL RATIO", volumeKey: "SUM OF ALL PRODUCTS" },
+  equity: { ratioName: "EQUITY PUT/CALL RATIO", volumeKey: "EQUITY OPTIONS" },
+  index: { ratioName: "INDEX PUT/CALL RATIO", volumeKey: "INDEX OPTIONS" },
+};
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+function formatDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-    const cols = line.split(",");
-    if (cols.length < 5) continue;
+function isWeekend(d: Date): boolean {
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
 
-    const date = parseDate(cols[0]);
-    if (!date) continue;
+function parseDailyJson(json: CboeDailyResponse, date: string, type: string): PutCallEntry | null {
+  const mapping = TYPE_MAP[type];
+  if (!mapping) return null;
 
-    const callVolume = Number(cols[1]);
-    const putVolume = Number(cols[2]);
-    const totalVolume = Number(cols[3]);
-    const putCallRatio = Number(cols[4]);
+  const ratioObj = json.ratios?.find(r => r.name === mapping.ratioName);
+  if (!ratioObj) return null;
 
-    if (isNaN(callVolume) || isNaN(putVolume) || isNaN(totalVolume) || isNaN(putCallRatio)) {
-      continue;
+  const putCallRatio = Number(ratioObj.value);
+  if (isNaN(putCallRatio)) return null;
+
+  const volumeSection = json[mapping.volumeKey] as Array<{ name: string; call: number; put: number; total: number }> | undefined;
+  const volumeRow = volumeSection?.find(v => v.name === "VOLUME");
+
+  return {
+    date,
+    callVolume: volumeRow?.call ?? 0,
+    putVolume: volumeRow?.put ?? 0,
+    totalVolume: volumeRow?.total ?? 0,
+    putCallRatio,
+  };
+}
+
+async function fetchDay(date: string): Promise<CboeDailyResponse | null> {
+  const url = `${BASE_URL}/${date}_daily_options`;
+  try {
+    return await httpGet<CboeDailyResponse>(url);
+  } catch (err) {
+    // 403/404 = non-trading day (weekend, holiday) — skip silently
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("HTTP 403") || msg.includes("HTTP 404")) {
+      return null;
     }
-
-    entries.push({ date, callVolume, putVolume, totalVolume, putCallRatio });
+    throw err;
   }
-
-  return entries;
 }
 
-async function fetchCsv(type: string): Promise<PutCallEntry[]> {
-  const url = CSV_URLS[type];
-  if (!url) {
+async function fetchDays(type: string, days: number): Promise<PutCallEntry[]> {
+  const mapping = TYPE_MAP[type];
+  if (!mapping) {
     throw new Error(`Unknown put/call ratio type: ${type}`);
   }
 
-  const text = await httpGet<string>(url, { responseType: "text" });
-  const entries = parseCsvRows(text);
-  entries.sort((a, b) => b.date.localeCompare(a.date));
+  const entries: PutCallEntry[] = [];
+  const cursor = new Date();
+  // Start from yesterday (today's data may not be published yet)
+  cursor.setDate(cursor.getDate() - 1);
+
+  // Try at most days * 2 calendar days to account for weekends/holidays
+  const maxAttempts = days * 2 + 10;
+  let attempts = 0;
+
+  while (entries.length < days && attempts < maxAttempts) {
+    attempts++;
+    if (isWeekend(cursor)) {
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    }
+
+    const dateStr = formatDate(cursor);
+    const json = await fetchDay(dateStr);
+    if (json) {
+      const entry = parseDailyJson(json, dateStr, type);
+      if (entry) {
+        entries.push(entry);
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
   return entries;
 }
 
 export async function getPutCallRatio(type: string, days: number): Promise<PutCallEntry[]> {
-  const allEntries = await cache.getOrFetch(`pcr:${type}`, () => fetchCsv(type));
-  return allEntries.slice(0, days);
+  return cache.getOrFetch(`pcr:${type}:${days}`, () => fetchDays(type, days));
 }
