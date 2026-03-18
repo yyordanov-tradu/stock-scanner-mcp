@@ -91,7 +91,7 @@ describe("yahoo-session", () => {
     });
 
     const { getSession } = await import("../yahoo-session.js");
-    await expect(getSession()).rejects.toThrow("crumb request failed (429)");
+    await expect(getSession()).rejects.toThrow("IP rate limited (429)");
   });
 
   it("throws when crumb response contains error text", async () => {
