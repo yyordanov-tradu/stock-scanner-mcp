@@ -126,7 +126,8 @@ export async function getEconomicCalendar(
   apiKey: string,
   limit = 60,
 ): Promise<FredReleaseDate[]> {
-  const cacheKey = `calendar:${limit}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = `calendar:${today}:${limit}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached as FredReleaseDate[];
 
@@ -136,6 +137,7 @@ export async function getEconomicCalendar(
     `${BASE_URL}/releases/dates` +
     `?api_key=${encodeURIComponent(apiKey)}` +
     `&file_type=json` +
+    `&realtime_start=${today}` +
     `&include_release_dates_with_no_data=true` +
     `&sort_order=asc` +
     `&limit=${limit}`;
