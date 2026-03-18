@@ -155,14 +155,15 @@ describe("scanStocks", () => {
 });
 
 describe("createTradingviewModule", () => {
-  it("returns module with 9 tools and no required env vars", async () => {
+  it("returns module with 10 tools and no required env vars", async () => {
     const { createTradingviewModule } = await import("../index.js");
     const mod = createTradingviewModule();
     expect(mod.name).toBe("tradingview");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(9);
+    expect(mod.tools).toHaveLength(10);
     expect(mod.tools.map((t) => t.name)).toEqual([
       "tradingview_scan",
+      "tradingview_compare_stocks",
       "tradingview_quote",
       "tradingview_technicals",
       "tradingview_top_gainers",
@@ -172,6 +173,38 @@ describe("createTradingviewModule", () => {
       "tradingview_sector_performance",
       "tradingview_volume_breakout",
     ]);
+  });
+
+  it("compare_stocks tool sends correct columns and resolves tickers", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { s: "NASDAQ:AAPL", d: ["Apple Inc", "Apple description", 150, 1.2, 3e12, 28.5, 6.15, 3.9e11, 0.5, 55, 0.7] },
+          { s: "NASDAQ:MSFT", d: ["Microsoft Corp", "MSFT description", 420, 0.8, 2.8e12, 35.2, 11.9, 2.1e11, 0.7, 60, 0.8] },
+        ],
+      }),
+    }));
+
+    const { createTradingviewModule } = await import("../index.js");
+    const mod = createTradingviewModule();
+    const tool = mod.tools.find(t => t.name === "tradingview_compare_stocks")!;
+    const result = await tool.handler({ tickers: ["AAPL", "MSFT"] });
+
+    const callBody = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(callBody.columns).toContain("description");
+    expect(callBody.columns).toContain("close");
+    expect(callBody.columns).toContain("market_cap_basic");
+    expect(callBody.columns).toContain("price_earnings_ttm");
+    expect(callBody.columns).toContain("RSI");
+    expect(callBody.columns).toContain("Recommend.All");
+    expect(callBody.symbols.tickers).toEqual(["NASDAQ:AAPL", "NASDAQ:MSFT"]);
+
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed).toBeDefined();
+    expect(Array.isArray(parsed)).toBe(true);
+
+    vi.restoreAllMocks();
   });
 
   it("tool handlers return valid JSON strings, not [object Object]", async () => {
