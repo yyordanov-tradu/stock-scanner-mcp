@@ -142,6 +142,11 @@ async function main() {
       server.registerTool(tool.name, {
         description: tool.description,
         inputSchema: tool.inputSchema,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: true,
+        },
       }, async (params) => {
         try {
           return await tool.handler(params as Record<string, unknown>);
