@@ -115,7 +115,7 @@ DOCS
   https://github.com/yyordanov-tradu/stock-scanner-mcp
 `.trimStart();
 
-  console.log(help);
+  process.stdout.write(help + "\n");
 }
 
 async function main() {
