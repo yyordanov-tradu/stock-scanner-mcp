@@ -6,7 +6,7 @@
 
 A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings and economic events — all from your terminal.
 
-**47 tools** across **9 modules** — 6 modules work with zero API keys.
+**49 tools** across **10 modules** — 7 modules work with zero API keys.
 
 **[Wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki)** — Full tool reference, example prompts, advanced strategies, and troubleshooting guide.
 
@@ -38,7 +38,7 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 }
 ```
 
-### With API keys (optional, enables all 47 tools):
+### With API keys (optional, enables all 49 tools):
 
 ```json
 {
@@ -69,10 +69,11 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | finnhub | 9 | `FINNHUB_API_KEY` | Quotes, news, earnings, analyst ratings, short interest |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
 | fred | 4 | `FRED_API_KEY` | Economic calendar, indicators (CPI, GDP, rates), historical data |
+| sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
 
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
-## Available Tools (47 total)
+## Available Tools (49 total)
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -166,6 +167,13 @@ Modules auto-enable when their required environment variables are set. Modules w
 | `fred_indicator_history` | Historical values with unit transforms (YoY %, change, level) |
 | `fred_search` | Discover FRED series IDs by keyword |
 
+### Sentiment — Fear & Greed Indexes (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `sentiment_fear_greed` | CNN Fear & Greed Index — composite score (0-100) with 7 sub-indicators and trend data |
+| `sentiment_crypto_fear_greed` | Crypto Fear & Greed Index — daily score (0-100) with historical values and classification |
+
 ## Configuration
 
 ### Environment Variables
@@ -211,6 +219,8 @@ Once configured, just ask Claude naturally:
 - "Any unusual options activity on TSLA?"
 - "What's the max pain for SPY this week?"
 - "Show me the put/call ratio trend for the last 30 days"
+- "What's the current Fear & Greed Index?"
+- "How is crypto sentiment right now?"
 
 ## Development
 
@@ -238,7 +248,8 @@ src/
 │   ├── options-cboe/     # 1 tool  — CBOE put/call ratio sentiment
 │   ├── finnhub/          # 9 tools — quotes, news, earnings, analyst ratings, short interest
 │   ├── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
-│   └── fred/             # 4 tools — economic calendar, indicators, historical data
+│   ├── fred/             # 4 tools — economic calendar, indicators, historical data
+│   └── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
