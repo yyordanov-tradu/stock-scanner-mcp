@@ -2,7 +2,7 @@
 
 ## Status
 
-**Version:** 1.7.0 — Published on npm as `stock-scanner-mcp`
+**Version:** 1.9.0 — Published on npm as `stock-scanner-mcp`
 **Modules:** 9 implemented (47 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/`
@@ -60,6 +60,7 @@ npm run dev           # Watch mode (rebuild on save)
 npm test              # Run all tests (vitest)
 npm run test:watch    # Watch mode tests
 npm run lint          # Type-check (tsc --noEmit)
+npm run validate-tools # Tool description quality check
 node dist/index.js    # Run MCP server
 node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ```

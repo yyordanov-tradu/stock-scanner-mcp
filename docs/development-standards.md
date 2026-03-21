@@ -415,6 +415,14 @@ All four MUST pass. No exceptions.
 
 Runs in CI alongside lint and test. See `src/scripts/validate-tools.ts` for implementation.
 
+### Code Hygiene
+
+Before committing:
+- **No dead code** — remove unused functions, variables, and constants. If code is written but never called, delete it.
+- **No hardcoded counts in tests** — use dynamic checks or regex patterns instead of literal values (e.g., `expect(result).toMatch(/All \d+ tools/)` instead of `expect(result).toContain("All 47 tools")`). Hardcoded counts break every time a tool is added.
+- **Specific `git add`** — add files by name, not `git add -A` or `git add .`. Broad adds risk committing IDE config, local artifacts, or generated files.
+- **Check `.gitignore`** — before committing new file types (scripts, wiki drafts, config), verify `.gitignore` excludes local-only artifacts (`.idea/`, `wiki/`, `*.lock` files from tools).
+
 ### Documentation Freshness
 
 Every code change MUST check whether `CLAUDE.md` or files it references need updating. Common triggers:
