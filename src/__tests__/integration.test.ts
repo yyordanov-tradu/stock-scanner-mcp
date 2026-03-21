@@ -34,7 +34,7 @@ describe("full module wiring", () => {
     vi.unstubAllEnvs();
   });
 
-  it("enables 6 free modules with no API keys", () => {
+  it("enables 7 free modules with no API keys", () => {
     const modules = buildAllModules({});
     const enabled = resolveEnabledModules(modules, {});
     expect(enabled.map((m) => m.name)).toEqual([
@@ -44,7 +44,7 @@ describe("full module wiring", () => {
     expect(totalTools).toBe(31); // 10 + 4 + 6 + 3 + 5 + 1 + 2 (free modules only)
   });
 
-  it("enables all 9 modules with all API keys", () => {
+  it("enables all 10 modules with all API keys", () => {
     const env = {
       FINNHUB_API_KEY: "test-finnhub-key",
       ALPHA_VANTAGE_API_KEY: "test-av-key",
@@ -57,7 +57,7 @@ describe("full module wiring", () => {
     expect(totalTools).toBe(49); // 10 + 4 + 6 + 3 + 5 + 1 + 2 + 9 + 5 + 4
   });
 
-  it("all 47 tool names are unique", () => {
+  it("all 49 tool names are unique", () => {
     const env = {
       FINNHUB_API_KEY: "key",
       ALPHA_VANTAGE_API_KEY: "key",

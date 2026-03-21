@@ -63,7 +63,7 @@ const INDICATOR_LABELS: Record<string, string> = {
 };
 
 export async function getFearAndGreed(): Promise<FearGreedResult> {
-  const cacheKey = "fear-greed";
+  const cacheKey = "sentiment:fear-greed";
   const cached = cache.get(cacheKey);
   if (cached) return cached as FearGreedResult;
 
@@ -71,20 +71,26 @@ export async function getFearAndGreed(): Promise<FearGreedResult> {
     headers: CNN_HEADERS,
   });
 
-  const indicatorKeys = Object.keys(INDICATOR_LABELS) as Array<keyof typeof INDICATOR_LABELS>;
-  const indicators: FearGreedIndicator[] = indicatorKeys.map((key) => ({
-    name: INDICATOR_LABELS[key],
-    score: Math.round((data as any)[key]?.score ?? 0),
-    rating: (data as any)[key]?.rating ?? "unknown",
-  }));
+  const fg = data.fear_and_greed;
+  if (!fg) throw new Error("CNN Fear & Greed API response missing 'fear_and_greed' field");
+
+  const indicatorKeys = Object.keys(INDICATOR_LABELS) as Array<keyof CnnResponse>;
+  const indicators: FearGreedIndicator[] = indicatorKeys.map((key) => {
+    const ind = data[key] as CnnIndicatorData | undefined;
+    return {
+      name: INDICATOR_LABELS[key as string],
+      score: Math.round(ind?.score ?? 0),
+      rating: ind?.rating ?? "unknown",
+    };
+  });
 
   const result: FearGreedResult = {
-    score: Math.round(data.fear_and_greed.score),
-    rating: data.fear_and_greed.rating,
-    previousClose: Math.round(data.fear_and_greed.previous_close),
-    previous1Week: Math.round(data.fear_and_greed.previous_1_week),
-    previous1Month: Math.round(data.fear_and_greed.previous_1_month),
-    previous1Year: Math.round(data.fear_and_greed.previous_1_year),
+    score: Math.round(fg.score),
+    rating: fg.rating,
+    previousClose: Math.round(fg.previous_close),
+    previous1Week: Math.round(fg.previous_1_week),
+    previous1Month: Math.round(fg.previous_1_month),
+    previous1Year: Math.round(fg.previous_1_year),
     indicators,
   };
 
@@ -99,7 +105,7 @@ export interface CryptoFearGreedResult {
 }
 
 export async function getCryptoFearAndGreed(): Promise<CryptoFearGreedResult> {
-  const cacheKey = "crypto-fear-greed";
+  const cacheKey = "sentiment:crypto-fear-greed";
   const cached = cache.get(cacheKey);
   if (cached) return cached as CryptoFearGreedResult;
 

@@ -53,6 +53,9 @@ describe("getFearAndGreed", () => {
     expect(result.indicators[0]).toHaveProperty("name");
     expect(result.indicators[0]).toHaveProperty("score");
     expect(result.indicators[0]).toHaveProperty("rating");
+
+    const calledUrl = (fetch as any).mock.calls[0][0];
+    expect(calledUrl).toContain("production.dataviz.cnn.io/index/fearandgreed");
   });
 
   it("sends browser User-Agent and CNN Referer headers", async () => {
@@ -109,6 +112,9 @@ describe("getCryptoFearAndGreed", () => {
     expect(result.score).toBe(12);
     expect(result.rating).toBe("extreme fear");
     expect(result.timestamp).toContain("2026-");
+
+    const calledUrl = (fetch as any).mock.calls[0][0];
+    expect(calledUrl).toContain("api.alternative.me/fng");
   });
 
   it("caches results", async () => {
@@ -133,5 +139,19 @@ describe("getCryptoFearAndGreed", () => {
 
     const { getCryptoFearAndGreed } = await import("../client.js");
     await expect(getCryptoFearAndGreed()).rejects.toThrow("No crypto Fear & Greed data available");
+  });
+});
+
+describe("createSentimentModule", () => {
+  it("returns module with 2 tools and no required env vars", async () => {
+    const { createSentimentModule } = await import("../index.js");
+    const mod = createSentimentModule();
+    expect(mod.name).toBe("sentiment");
+    expect(mod.requiredEnvVars).toEqual([]);
+    expect(mod.tools).toHaveLength(2);
+    expect(mod.tools.map((t) => t.name)).toEqual([
+      "sentiment_fear_greed",
+      "sentiment_crypto_fear_greed",
+    ]);
   });
 });
