@@ -112,6 +112,7 @@ export async function getCryptoFearAndGreed(): Promise<CryptoFearGreedResult> {
   }>(ALTERNATIVE_ME_URL);
 
   const entry = data.data[0];
+  if (!entry) throw new Error("No crypto Fear & Greed data available");
   const result: CryptoFearGreedResult = {
     score: parseInt(entry.value, 10),
     rating: entry.value_classification.toLowerCase(),

@@ -22,6 +22,7 @@ import { createAlphaVantageModule } from "../modules/alpha-vantage/index.js";
 import { createOptionsModule } from "../modules/options/index.js";
 import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
 import { createFredModule } from "../modules/fred/index.js";
+import { createSentimentModule } from "../modules/sentiment/index.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ const MODULE_PREFIX_MAP: Record<string, string[]> = {
   finnhub: ["finnhub_"],
   "alpha-vantage": ["alphavantage_"],
   fred: ["fred_"],
+  sentiment: ["sentiment_"],
 };
 
 const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
@@ -50,6 +52,7 @@ const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   finnhub: ["finnhub"],
   "alpha-vantage": ["alpha vantage", "alphavantage"],
   fred: ["fred", "economic", "federal reserve"],
+  sentiment: ["sentiment", "fear", "greed", "cnn", "alternative"],
 };
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -235,6 +238,7 @@ function buildAllModules(): ModuleDefinition[] {
     createFinnhubModule("mock-key"),
     createAlphaVantageModule("mock-key"),
     createFredModule("mock-key"),
+    createSentimentModule(),
   ];
 }
 

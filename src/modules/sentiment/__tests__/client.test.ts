@@ -124,4 +124,14 @@ describe("getCryptoFearAndGreed", () => {
     await getCryptoFearAndGreed();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+
+  it("throws on empty data array", async () => {
+    (fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    const { getCryptoFearAndGreed } = await import("../client.js");
+    await expect(getCryptoFearAndGreed()).rejects.toThrow("No crypto Fear & Greed data available");
+  });
 });
