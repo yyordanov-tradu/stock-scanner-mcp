@@ -87,7 +87,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const analystRatingsTool: ToolDefinition = {
     name: "finnhub_analyst_ratings",
-    description: "Get analyst consensus recommendations for a stock.",
+    description: "Get analyst consensus recommendations for a stock. Returns counts of Strong Buy, Buy, Hold, Sell, Strong Sell ratings and the last 4 months of rating history.",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
