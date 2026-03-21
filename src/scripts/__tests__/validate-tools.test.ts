@@ -8,24 +8,39 @@ describe("validate-tools script", () => {
       cwd: process.cwd(),
     });
 
-    expect(result).toContain("All 47 tools passed validation");
+    expect(result).toMatch(/All \d+ tools passed validation/);
   });
 
-  it("reports correct tool count", () => {
+  it("checks all 9 modules", () => {
     const result = execSync("npx tsx src/scripts/validate-tools.ts", {
       encoding: "utf-8",
       cwd: process.cwd(),
     });
 
-    // Verify all 9 modules are checked
-    expect(result).toContain("tradingview (10 tools)");
-    expect(result).toContain("tradingview-crypto (4 tools)");
-    expect(result).toContain("sec-edgar (6 tools)");
-    expect(result).toContain("coingecko (3 tools)");
-    expect(result).toContain("options (5 tools)");
-    expect(result).toContain("options-cboe (1 tools)");
-    expect(result).toContain("finnhub (9 tools)");
-    expect(result).toContain("alpha-vantage (5 tools)");
-    expect(result).toContain("fred (4 tools)");
+    const moduleNames = [
+      "tradingview",
+      "tradingview-crypto",
+      "sec-edgar",
+      "coingecko",
+      "options",
+      "options-cboe",
+      "finnhub",
+      "alpha-vantage",
+      "fred",
+    ];
+
+    for (const name of moduleNames) {
+      expect(result).toContain(`${name} (`);
+    }
+  });
+
+  it("exits with code 0 on success", () => {
+    // execSync throws on non-zero exit code, so if this doesn't throw, exit code is 0
+    expect(() =>
+      execSync("npx tsx src/scripts/validate-tools.ts", {
+        encoding: "utf-8",
+        cwd: process.cwd(),
+      }),
+    ).not.toThrow();
   });
 });

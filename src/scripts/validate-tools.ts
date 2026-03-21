@@ -52,11 +52,6 @@ const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   fred: ["fred", "economic", "federal reserve"],
 };
 
-const SCORE_KEYWORDS = [
-  "recommend", "rating", "score", "rank", "signal",
-  "buy", "sell", "neutral", "bullish", "bearish",
-];
-
 // ── Types ────────────────────────────────────────────────────────────
 
 interface Issue {
@@ -93,22 +88,6 @@ function hasDescription(zodField: z.ZodType<unknown>): boolean {
   // Check inner type for ZodOptional, ZodDefault, ZodNullable
   if (def.innerType) return hasDescription(def.innerType);
 
-  return false;
-}
-
-function hasZodDefault(zodField: z.ZodType<unknown>): boolean {
-  const def = (zodField as { _def?: { typeName?: string; innerType?: z.ZodType<unknown> } })._def;
-  if (!def) return false;
-  if (def.typeName === "ZodDefault") return true;
-  if (def.innerType) return hasZodDefault(def.innerType);
-  return false;
-}
-
-function isOptional(zodField: z.ZodType<unknown>): boolean {
-  const def = (zodField as { _def?: { typeName?: string; innerType?: z.ZodType<unknown> } })._def;
-  if (!def) return false;
-  if (def.typeName === "ZodOptional" || def.typeName === "ZodDefault") return true;
-  if (def.innerType) return isOptional(def.innerType);
   return false;
 }
 
@@ -293,7 +272,6 @@ function validate(): boolean {
 
     // Print module results
     const toolNames = mod.tools.map((t) => t.name);
-    const failedTools = new Set(moduleIssues.map((i) => i.tool));
 
     console.log(`${mod.name} (${mod.tools.length} tools)`);
     for (const name of toolNames) {
