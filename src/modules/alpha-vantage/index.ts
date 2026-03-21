@@ -27,7 +27,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
 
   const dailyTool = {
     name: "alphavantage_daily",
-    description: "Get daily OHLCV price history from Alpha Vantage. Returns up to 100 most recent trading days.",
+    description: "Get daily OHLCV price history from Alpha Vantage. Returns up to 100 most recent trading days. Rate limit: 25 calls/day, 5 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
       limit: z.number().optional().describe("Number of days to return (default: 30, max: 100)"),
@@ -45,7 +45,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
 
   const overviewTool = {
     name: "alphavantage_overview",
-    description: "Get company fundamentals from Alpha Vantage. Includes PE ratio, market cap, sector, industry, earnings, and analyst target price. Supports batch requests (limit 5).",
+    description: "Get company fundamentals from Alpha Vantage. Includes PE ratio, market cap, sector, industry, earnings, and analyst target price. Supports batch requests (limit 5). Rate limit: 25 calls/day, 5 calls/min (free tier).",
     inputSchema: z.object({
       symbols: z.union([z.string(), z.array(z.string())]).describe("One or more stock symbols (e.g. 'AAPL' or ['AAPL', 'MSFT'])"),
     }),
@@ -66,7 +66,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
 
   const earningsHistoryTool = {
     name: "alphavantage_earnings_history",
-    description: "Get historical earnings data (EPS actual vs estimate) for a specific ticker.",
+    description: "Get historical earnings data (EPS actual vs estimate) for a specific ticker. Rate limit: 25 calls/day, 5 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
       limit: z.number().optional().describe("Number of quarters to return (default: 8, max: 20)"),
@@ -84,7 +84,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
 
   const dividendHistoryTool = {
     name: "alphavantage_dividend_history",
-    description: "Get historical dividend data for a specific ticker.",
+    description: "Get historical dividend data for a specific ticker. Rate limit: 25 calls/day, 5 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     }),

@@ -42,3 +42,29 @@ jobs:
 
       - name: Verify dist exists
         run: test -f dist/index.js
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          if grep -rn --include="*.ts" -E "(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][A-Za-z0-9]{16,}" src/ | grep -v __tests__/ | grep -v ".example"; then
+            echo "::error::Possible hardcoded secrets found"
+            exit 1
+          fi
+
+      - name: Check for console.log in production code
+        run: |
+          if grep -rn --include="*.ts" -E "console\.(log|debug)" src/ | grep -v __tests__/ | grep -v "scripts/"; then
+            echo "::error::console.log/debug found in production code (use console.error for MCP stderr logging)"
+            exit 1
+          fi
+
+      - name: Check for raw fetch calls
+        run: |
+          if grep -rn --include="*.ts" "\bfetch(" src/modules/ | grep -v __tests__/ | grep -v "shared/http"; then
+            echo "::error::Raw fetch() found — use shared/http.ts instead"
+            exit 1
+          fi

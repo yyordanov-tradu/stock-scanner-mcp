@@ -18,7 +18,8 @@ export function createFredModule(apiKey: string): ModuleDefinition {
       "Get upcoming US economic release dates (FOMC, CPI, PPI, NFP, GDP, PCE, " +
       "jobless claims, retail sales, ISM, treasury rates). " +
       "Filters to high-impact releases only. " +
-      "Use this to identify macro catalysts that could move markets.",
+      "Use this to identify macro catalysts that could move markets. " +
+      "Rate limit: 120 calls/min (free tier).",
     inputSchema: z.object({
       limit: z
         .number()
@@ -39,7 +40,8 @@ export function createFredModule(apiKey: string): ModuleDefinition {
       "Accepts FRED series IDs (e.g. 'CPIAUCSL', 'DFF', 'UNRATE') or common aliases: " +
       "cpi, core_cpi, ppi, gdp, unemployment, nonfarm_payrolls, fed_funds, " +
       "treasury_10y, treasury_2y, initial_claims, core_pce. " +
-      "Returns the indicator metadata (title, frequency, units) and latest observation.",
+      "Returns the indicator metadata (title, frequency, units) and latest observation. " +
+      "Rate limit: 120 calls/min (free tier).",
     inputSchema: z.object({
       series_id: z
         .string()
@@ -59,7 +61,8 @@ export function createFredModule(apiKey: string): ModuleDefinition {
       "Supports units transformation: 'lin' (raw level), 'chg' (change), " +
       "'pc1' (% change from year ago — useful for YoY inflation), " +
       "'pch' (% change from prior period). " +
-      "Use 'pc1' with CPI/PPI to get YoY inflation rates directly.",
+      "Use 'pc1' with CPI/PPI to get YoY inflation rates directly. " +
+      "Rate limit: 120 calls/min (free tier).",
     inputSchema: z.object({
       series_id: z.string().describe("FRED series ID or alias"),
       start_date: z.string().describe("Start date YYYY-MM-DD"),
@@ -87,7 +90,8 @@ export function createFredModule(apiKey: string): ModuleDefinition {
     description:
       "Search FRED for economic data series by keyword. " +
       "Returns series IDs that can be used with fred_indicator and fred_indicator_history. " +
-      "Results sorted by relevance. Use to discover series IDs for niche indicators.",
+      "Results sorted by relevance. Use to discover series IDs for niche indicators. " +
+      "Rate limit: 120 calls/min (free tier).",
     inputSchema: z.object({
       query: z.string().describe("Search keywords (e.g. 'consumer price index', 'housing starts')"),
       limit: z.number().optional().default(10).describe("Max results (default: 10, max: 50)"),

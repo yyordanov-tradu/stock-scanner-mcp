@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
     "validate-tools": "tsx src/scripts/validate-tools.ts",
+    "validate-structure": "tsx src/scripts/validate-structure.ts",
     "prepublishOnly": "npm run build && npm test"
   },
   "files": [
