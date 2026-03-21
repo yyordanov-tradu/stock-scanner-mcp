@@ -396,12 +396,24 @@ npm run test:watch    # Watch mode during development
 Before any PR is merged:
 
 ```bash
-npm run lint          # TypeScript type checking — must pass
-npm test              # All tests — must pass
-npm run build         # Build — must succeed
+npm run lint            # TypeScript type checking — must pass
+npm test                # All tests — must pass
+npm run validate-tools  # Tool description quality — must pass
+npm run build           # Build — must succeed
 ```
 
-All three MUST pass. No exceptions.
+All four MUST pass. No exceptions.
+
+### Tool Description Validation
+
+`npm run validate-tools` checks every MCP tool definition for:
+
+1. **Description quality** — minimum 50 chars, mentions data source (or tool name implies it)
+2. **Schema quality** — every zod parameter has `.describe()`
+3. **Structural consistency** — tool names follow `{module}_{action}` prefix convention, no duplicates
+4. **Value-scale documentation** — tools returning recommendations/ratings document the scale
+
+Runs in CI alongside lint and test. See `src/scripts/validate-tools.ts` for implementation.
 
 ### Documentation Freshness
 

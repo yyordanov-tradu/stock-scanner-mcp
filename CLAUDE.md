@@ -149,9 +149,10 @@ Every module follows: `index.ts` (factory) + `client.ts` (HTTP + cache) + `__tes
 ### Quality Gates (must pass before merge)
 
 ```bash
-npm run lint    # tsc --noEmit
-npm test        # vitest
-npm run build   # tsup
+npm run lint            # tsc --noEmit
+npm test                # vitest
+npm run validate-tools  # tool description quality
+npm run build           # tsup
 ```
 
 ## Git Workflow

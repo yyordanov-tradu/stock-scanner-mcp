@@ -34,6 +34,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Validate tools
+        run: npm run validate-tools
+
       - name: Build
         run: npm run build
 
