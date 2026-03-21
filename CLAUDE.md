@@ -5,7 +5,7 @@
 **Version:** 1.10.0 — Published on npm as `stock-scanner-mcp`
 **Modules:** 10 implemented (49 tools total)
 
-Planning docs (historical): `docs/architecture.md`, `docs/plans/`
+Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 
 ## Project Overview
 
@@ -62,6 +62,7 @@ npm test              # Run all tests (vitest)
 npm run test:watch    # Watch mode tests
 npm run lint          # Type-check (tsc --noEmit)
 npm run validate-tools # Tool description quality check
+npm test -- --run src/modules/sentiment/__tests__/client.test.ts  # Run single test file
 node dist/index.js    # Run MCP server
 node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ```
@@ -97,24 +98,6 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
 | fred | FRED_API_KEY | When key set |
 | sentiment | (none) | Always |
-
-## Dual-LLM Development
-
-This project uses two LLMs to ensure best quality:
-
-- **Claude (Anthropic)** — Reviews Gemini's work; also implements features independently.
-- **Gemini (Google)** — Reviews Claude's work; also implements features independently.
-
-Each reviews the other's PRs and code to catch issues a single LLM might miss.
-
-### Coordination
-
-- Planned work is coordinated via markdown files in `docs/duo-planning/`.
-- **Activity Log** (in `docs/plans/dual-llm-execution-plan.md`, bottom section) is the primary communication channel between Claude and Gemini. Both LLMs MUST:
-  1. **Read it** at the start of every session
-  2. **Append an entry** after completing any sync work, PR, review, or coordination decision
-- Before starting any planned work, also check `docs/duo-planning/` for existing plans or assignments.
-- Both LLMs communicate through these files — update them as work progresses.
 
 ## Development Standards
 
