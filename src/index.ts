@@ -22,6 +22,7 @@ import { createAlphaVantageModule } from "./modules/alpha-vantage/index.js";
 import { createOptionsModule } from "./modules/options/index.js";
 import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 import { createFredModule } from "./modules/fred/index.js";
+import { createSentimentModule } from "./modules/sentiment/index.js";
 
 interface ModuleCatalogEntry {
   name: string;
@@ -40,6 +41,7 @@ const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "finnhub", envVar: "FINNHUB_API_KEY", toolCount: 9, factory: (env) => env.FINNHUB_API_KEY ? createFinnhubModule(env.FINNHUB_API_KEY) : null },
   { name: "alpha-vantage", envVar: "ALPHA_VANTAGE_API_KEY", toolCount: 5, factory: (env) => env.ALPHA_VANTAGE_API_KEY ? createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY) : null },
   { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (env) => env.FRED_API_KEY ? createFredModule(env.FRED_API_KEY) : null },
+  { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
 ];
 
 const TOTAL_TOOLS = MODULE_CATALOG.reduce((n, m) => n + m.toolCount, 0);
@@ -52,6 +54,7 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createCoingeckoModule(),
     createOptionsModule(),
     createOptionsCboeModule(),
+    createSentimentModule(),
   ];
 
   if (env.FINNHUB_API_KEY) {
@@ -83,13 +86,14 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
 
-MODULES (47 tools total)
+MODULES (49 tools total)
   tradingview        10 tools Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
   coingecko          3 tools  Crypto market data and trending          (no key)
   options            5 tools  Options chains, Greeks, unusual activity  (no key)
   options-cboe       1 tool   CBOE put/call ratio sentiment            (no key)
+  sentiment          2 tools  Market & crypto Fear & Greed sentiment   (no key)
   finnhub            9 tools  Quotes, profiles, peers, news, earnings  (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)
   fred               4 tools  Economic calendar, indicators, rates     (FRED_API_KEY)

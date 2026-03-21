@@ -3,7 +3,7 @@
 ## Status
 
 **Version:** 1.9.0 — Published on npm as `stock-scanner-mcp`
-**Modules:** 9 implemented (47 tools total)
+**Modules:** 10 implemented (49 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/`
 
@@ -39,7 +39,8 @@ stock-scanner-mcp/
 │   │   ├── coingecko/        # Crypto market data (no key)
 │   │   ├── options/          # Options chains, Greeks, unusual activity (no key)
 │   │   ├── options-cboe/     # CBOE put/call ratio sentiment (no key)
-│   │   └── fred/             # US economic data — calendar, indicators (FRED_API_KEY)
+│   │   ├── fred/             # US economic data — calendar, indicators (FRED_API_KEY)
+│   │   └── sentiment/        # Market & crypto Fear & Greed sentiment (no key)
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
@@ -95,6 +96,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | finnhub | FINNHUB_API_KEY | When key set |
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
 | fred | FRED_API_KEY | When key set |
+| sentiment | (none) | Always |
 
 ## Dual-LLM Development
 
