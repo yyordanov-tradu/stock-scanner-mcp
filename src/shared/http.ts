@@ -100,3 +100,10 @@ export async function httpGet<T = unknown>(
     clearTimeout(timer);
   }
 }
+
+export async function httpFetch(
+  url: string | URL | globalThis.Request,
+  init?: RequestInit
+): Promise<Response> {
+  return fetch(url, init);
+}

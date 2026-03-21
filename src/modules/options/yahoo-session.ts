@@ -1,3 +1,5 @@
+import { httpFetch } from "../../shared/http.js";
+
 /**
  * Yahoo Finance session manager.
  *
@@ -42,7 +44,7 @@ async function createSession(): Promise<YahooSession> {
 
   let cookie: string;
   try {
-    const cookieResp = await fetch(COOKIE_URL, {
+    const cookieResp = await httpFetch(COOKIE_URL, {
       method: "GET",
       headers: { 
         "User-Agent": YAHOO_USER_AGENT,
@@ -80,7 +82,7 @@ async function createSession(): Promise<YahooSession> {
 
   let crumb: string;
   try {
-    const crumbResp = await fetch(CRUMB_URL, {
+    const crumbResp = await httpFetch(CRUMB_URL, {
       method: "GET",
       headers: {
         "User-Agent": YAHOO_USER_AGENT,

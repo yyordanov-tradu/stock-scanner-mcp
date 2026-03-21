@@ -20,7 +20,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const marketNewsTool: ToolDefinition = {
     name: "finnhub_market_news",
-    description: "Get latest market news by category (general, forex, crypto, merger).",
+    description: "Get latest market news by category (general, forex, crypto, merger). Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       category: z.string().optional().describe("Category: general, forex, crypto, merger"),
       limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
@@ -37,7 +37,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const companyNewsTool: ToolDefinition = {
     name: "finnhub_company_news",
-    description: "Get recent news for a specific company by ticker symbol.",
+    description: "Get recent news for a specific company by ticker symbol. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
       from: z.string().describe("From date (YYYY-MM-DD)"),
@@ -59,7 +59,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const earningsCalendarTool: ToolDefinition = {
     name: "finnhub_earnings_calendar",
-    description: "Get upcoming or historical earnings reports within a date range.",
+    description: "Get upcoming or historical earnings reports within a date range. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       from: z.string().describe("Start date (YYYY-MM-DD)"),
       to: z.string().describe("End date (YYYY-MM-DD)"),
@@ -87,7 +87,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const analystRatingsTool: ToolDefinition = {
     name: "finnhub_analyst_ratings",
-    description: "Get analyst consensus recommendations for a stock. Returns counts of Strong Buy, Buy, Hold, Sell, Strong Sell ratings and the last 4 months of rating history.",
+    description: "Get analyst consensus recommendations for a stock. Returns counts of Strong Buy, Buy, Hold, Sell, Strong Sell ratings and the last 4 months of rating history. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
@@ -105,7 +105,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const companyProfileTool: ToolDefinition = {
     name: "finnhub_company_profile",
-    description: "Get company profile: name, industry, market cap, IPO date, logo, website, share count, and exchange.",
+    description: "Get company profile: name, industry, market cap, IPO date, logo, website, share count, and exchange. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
@@ -118,7 +118,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const peersTool: ToolDefinition = {
     name: "finnhub_peers",
-    description: "Get a list of peer/comparable companies in the same industry for a given stock.",
+    description: "Get a list of peer/comparable companies in the same industry for a given stock. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
@@ -131,7 +131,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const marketStatusTool: ToolDefinition = {
     name: "finnhub_market_status",
-    description: "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market).",
+    description: "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market). Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       exchange: z.string().default("US").describe("Exchange code. Examples: US, L (London), T (Tokyo), HK"),
     }),
@@ -144,7 +144,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const quoteTool: ToolDefinition = {
     name: "finnhub_quote",
-    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Preferred over tradingview_quote during market hours for live prices. Use tradingview_quote as a keyless fallback when Finnhub is unavailable.",
+    description: "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Preferred over tradingview_quote during market hours for live prices. Use tradingview_quote as a keyless fallback when Finnhub is unavailable. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
@@ -166,7 +166,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
 
   const shortInterestTool: ToolDefinition = {
     name: "finnhub_short_interest",
-    description: "Get short interest and other key financial metrics for a stock.",
+    description: "Get short interest and other key financial metrics for a stock. Rate limit: 60 calls/min (free tier).",
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),

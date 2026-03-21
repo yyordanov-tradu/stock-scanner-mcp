@@ -23,6 +23,27 @@ import { createOptionsModule } from "./modules/options/index.js";
 import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 import { createFredModule } from "./modules/fred/index.js";
 
+interface ModuleCatalogEntry {
+  name: string;
+  envVar: string | null;
+  toolCount: number;
+  factory: (env: Record<string, string | undefined>) => ModuleDefinition | null;
+}
+
+const MODULE_CATALOG: ModuleCatalogEntry[] = [
+  { name: "tradingview", envVar: null, toolCount: 10, factory: () => createTradingviewModule() },
+  { name: "tradingview-crypto", envVar: null, toolCount: 4, factory: () => createTradingviewCryptoModule() },
+  { name: "sec-edgar", envVar: null, toolCount: 6, factory: () => createSecEdgarModule() },
+  { name: "coingecko", envVar: null, toolCount: 3, factory: () => createCoingeckoModule() },
+  { name: "options", envVar: null, toolCount: 5, factory: () => createOptionsModule() },
+  { name: "options-cboe", envVar: null, toolCount: 1, factory: () => createOptionsCboeModule() },
+  { name: "finnhub", envVar: "FINNHUB_API_KEY", toolCount: 9, factory: (env) => env.FINNHUB_API_KEY ? createFinnhubModule(env.FINNHUB_API_KEY) : null },
+  { name: "alpha-vantage", envVar: "ALPHA_VANTAGE_API_KEY", toolCount: 5, factory: (env) => env.ALPHA_VANTAGE_API_KEY ? createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY) : null },
+  { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (env) => env.FRED_API_KEY ? createFredModule(env.FRED_API_KEY) : null },
+];
+
+const TOTAL_TOOLS = MODULE_CATALOG.reduce((n, m) => n + m.toolCount, 0);
+
 function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
   const modules: ModuleDefinition[] = [
     createTradingviewModule(),
@@ -94,7 +115,7 @@ DOCS
   https://github.com/yyordanov-tradu/stock-scanner-mcp
 `.trimStart();
 
-  console.log(help);
+  process.stdout.write(help + "\n");
 }
 
 async function main() {
@@ -114,6 +135,8 @@ async function main() {
     version: pkg.version,
   });
 
+  const enabledNames = new Set(enabled.map((m) => m.name));
+
   for (const mod of enabled) {
     for (const tool of mod.tools) {
       server.registerTool(tool.name, {
@@ -131,8 +154,23 @@ async function main() {
         }
       });
     }
-    console.error(`Registered ${mod.tools.length} tools from ${mod.name}`);
   }
+
+  // Startup module status log
+  console.error(`[stock-scanner-mcp] v${pkg.version}\n`);
+  console.error("Modules:");
+  for (const entry of MODULE_CATALOG) {
+    if (enabledNames.has(entry.name)) {
+      const reason = entry.envVar ? `${entry.envVar} set` : "no key required";
+      console.error(`  \u2713 ${entry.name.padEnd(18)} enabled (${reason})`);
+    } else if (config.enabledModules && !config.enabledModules.includes(entry.name)) {
+      console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (excluded by --modules)`);
+    } else if (entry.envVar) {
+      console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (${entry.envVar} not set)`);
+    }
+  }
+  const registeredTools = enabled.reduce((n, m) => n + m.tools.length, 0);
+  console.error(`\nTools registered: ${registeredTools}/${TOTAL_TOOLS}`);
 
   // -- MCP Prompts: analysis workflows & usage rules --
 
@@ -207,10 +245,7 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(
-    `stock-scanner MCP server running -- ${enabled.length} modules, ` +
-    `${enabled.reduce((n, m) => n + m.tools.length, 0)} tools`,
-  );
+  console.error("Server ready.");
 }
 
 main().catch((err) => {
