@@ -137,7 +137,7 @@ Read it before writing any code. Key rules summarized below:
 - Schema defaults declared via `.default()` in zod (not manual fallbacks) so LLMs see them
 - All response types must have TypeScript interfaces (no `any` in new code)
 - Imports must use `.js` extension (ESM requirement)
-- **Every code change MUST check if `CLAUDE.md` or `docs/development-standards.md` need updating** (module counts, tool counts, env vars, project structure, version — see development-standards.md §13 Documentation Freshness)
+- **Every code change MUST check if `CLAUDE.md`, `README.md`, or `docs/development-standards.md` need updating** (module counts, tool counts, env vars, project structure, version — see development-standards.md §13 Documentation Freshness)
 
 ### Module Pattern
 
