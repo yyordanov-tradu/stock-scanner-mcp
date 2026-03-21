@@ -4,3 +4,6 @@ dist/
 .env
 .worktrees/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+.idea/
+wiki/
