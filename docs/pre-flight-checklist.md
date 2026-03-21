@@ -27,7 +27,13 @@
    ```
    If tests fail on main, fix them before starting new work.
 
-5. **Only then** create your feature branch or worktree.
+5. **Check for untracked files:**
+   ```bash
+   git status
+   ```
+   If there are untracked files that shouldn't be committed (IDE config, local drafts), add them to `.gitignore` before creating your branch.
+
+6. **Only then** create your feature branch or worktree.
 
 ## Why
 
