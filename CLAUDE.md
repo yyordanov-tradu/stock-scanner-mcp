@@ -2,10 +2,10 @@
 
 ## Status
 
-**Version:** 1.9.0 — Published on npm as `stock-scanner-mcp`
+**Version:** 1.10.0 — Published on npm as `stock-scanner-mcp`
 **Modules:** 10 implemented (49 tools total)
 
-Planning docs (historical): `docs/architecture.md`, `docs/plans/`
+Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 
 ## Project Overview
 
@@ -62,6 +62,7 @@ npm test              # Run all tests (vitest)
 npm run test:watch    # Watch mode tests
 npm run lint          # Type-check (tsc --noEmit)
 npm run validate-tools # Tool description quality check
+npm test -- --run src/modules/sentiment/__tests__/client.test.ts  # Run single test file
 node dist/index.js    # Run MCP server
 node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ```
@@ -98,24 +99,6 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | fred | FRED_API_KEY | When key set |
 | sentiment | (none) | Always |
 
-## Dual-LLM Development
-
-This project uses two LLMs to ensure best quality:
-
-- **Claude (Anthropic)** — Reviews Gemini's work; also implements features independently.
-- **Gemini (Google)** — Reviews Claude's work; also implements features independently.
-
-Each reviews the other's PRs and code to catch issues a single LLM might miss.
-
-### Coordination
-
-- Planned work is coordinated via markdown files in `docs/duo-planning/`.
-- **Activity Log** (in `docs/plans/dual-llm-execution-plan.md`, bottom section) is the primary communication channel between Claude and Gemini. Both LLMs MUST:
-  1. **Read it** at the start of every session
-  2. **Append an entry** after completing any sync work, PR, review, or coordination decision
-- Before starting any planned work, also check `docs/duo-planning/` for existing plans or assignments.
-- Both LLMs communicate through these files — update them as work progresses.
-
 ## Development Standards
 
 **Full reference:** [`docs/development-standards.md`](docs/development-standards.md) — architecture, patterns, naming, testing, error handling, and new module checklist.
@@ -137,7 +120,7 @@ Read it before writing any code. Key rules summarized below:
 - Schema defaults declared via `.default()` in zod (not manual fallbacks) so LLMs see them
 - All response types must have TypeScript interfaces (no `any` in new code)
 - Imports must use `.js` extension (ESM requirement)
-- **Every code change MUST check if `CLAUDE.md` or `docs/development-standards.md` need updating** (module counts, tool counts, env vars, project structure, version — see development-standards.md §13 Documentation Freshness)
+- **Every code change MUST check if `CLAUDE.md`, `README.md`, or `docs/development-standards.md` need updating** (module counts, tool counts, env vars, project structure, version — see development-standards.md §13 Documentation Freshness)
 
 ### Module Pattern
 
