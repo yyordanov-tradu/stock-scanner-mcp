@@ -15,11 +15,9 @@
    git checkout main && git pull origin main
    ```
 
-3. **Read activity log and check for Gemini activity** (dual-LLM coordination):
-   - Read activity log in `docs/plans/dual-llm-execution-plan.md` (bottom section) — primary communication channel
-   - Review open PRs from Gemini that may conflict with planned work
-   - Check `docs/duo-planning/` for in-progress assignments
-   - After completing work, append your entry to the activity log
+3. **Review open PRs:**
+   - Check if any open PRs might conflict with planned work
+   - Review any pending review comments
 
 4. **Verify clean baseline:**
    ```bash
@@ -37,8 +35,7 @@
 
 ## Why
 
-Multiple LLMs work on this repo concurrently. Skipping these steps has caused:
+Skipping these steps has caused:
 - Stale test expectations (tests passing locally but failing on main)
 - Merge conflicts from building on outdated code
-- Duplicated work when two LLMs pick up the same task
 - Push rejections because remote had commits we didn't pull

@@ -41,6 +41,9 @@ stock-scanner-mcp/
 │   │   ├── options-cboe/     # CBOE put/call ratio sentiment (no key)
 │   │   ├── fred/             # US economic data — calendar, indicators (FRED_API_KEY)
 │   │   └── sentiment/        # Market & crypto Fear & Greed sentiment (no key)
+│   ├── sidecar/
+│   │   ├── index.ts          # HTTP sidecar entry point (port 3100)
+│   │   └── server.ts         # HTTP request handler (13 endpoints)
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache

@@ -250,6 +250,9 @@ src/
 │   ├── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
 │   ├── fred/             # 4 tools — economic calendar, indicators, historical data
 │   └── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
+├── sidecar/
+│   ├── index.ts          # HTTP sidecar entry point (port 3100)
+│   └── server.ts         # HTTP request handler (13 endpoints)
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
@@ -257,6 +260,17 @@ src/
     ├── resolver.ts       # Ticker/exchange resolution
     └── utils.ts          # withMetadata error wrapper
 ```
+
+## HTTP Sidecar Mode
+
+An optional HTTP server that exposes module client functions over REST. Designed for integrations that need market data without MCP (e.g., trading bots, LLM pipelines).
+
+```bash
+stock-scanner-sidecar              # Start on default port 3100
+stock-scanner-sidecar --port 8080  # Custom port
+```
+
+Endpoints include `/tradingview/scan`, `/finnhub/company-news`, `/sentiment/fear-greed`, `/options/chain`, `/fred/indicator`, and more. Gated endpoints (Finnhub, FRED) require API keys via environment variables. CORS is restricted to localhost origins.
 
 ## Rate Limits
 
