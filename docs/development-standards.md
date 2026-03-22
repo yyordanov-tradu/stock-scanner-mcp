@@ -356,7 +356,8 @@ npm run test:watch    # Watch mode during development
 |--------|--------|
 | Build tool | tsup (not tsc directly) |
 | Format | ESM only (`"type": "module"` in package.json) |
-| Entry | `src/index.ts` → `dist/index.js` |
+| Entry (MCP) | `src/index.ts` → `dist/index.js` |
+| Entry (sidecar) | `src/sidecar/index.ts` → `dist/sidecar/index.js` |
 | Imports | MUST use `.js` extension (e.g., `from "./client.js"`) |
 | Target | ES2022 |
 | Type checking | `npm run lint` (tsc --noEmit) |
