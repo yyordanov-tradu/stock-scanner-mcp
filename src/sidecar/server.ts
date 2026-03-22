@@ -18,13 +18,28 @@ export interface SidecarConfig {
   fredApiKey?: string;
 }
 
-const SYMBOL_RE = /^[A-Z]{1,10}$/i;
+const SYMBOL_RE = /^[A-Z][A-Z0-9._-]{0,19}$/i;
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
 
-function json(res: http.ServerResponse, status: number, body: unknown): void {
+const LOCALHOST_ORIGINS = new Set(["http://localhost", "http://127.0.0.1"]);
+
+function getAllowedOrigin(req: http.IncomingMessage): string {
+  const origin = req.headers.origin ?? "";
+  // Allow localhost on any port
+  try {
+    const parsed = new URL(origin);
+    const base = `${parsed.protocol}//${parsed.hostname}`;
+    if (LOCALHOST_ORIGINS.has(base)) return origin;
+  } catch { /* invalid origin */ }
+  return "http://localhost";
+}
+
+function json(res: http.ServerResponse, req: http.IncomingMessage, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": getAllowedOrigin(req),
+    "Vary": "Origin",
   });
   res.end(payload);
 }
@@ -32,7 +47,16 @@ function json(res: http.ServerResponse, status: number, body: unknown): void {
 function parseBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error("Request body too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", () => {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString()));
@@ -57,9 +81,10 @@ export function createServer(config: SidecarConfig): http.Server {
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": getAllowedOrigin(req),
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
+        "Vary": "Origin",
       });
       res.end();
       return;
@@ -72,7 +97,7 @@ export function createServer(config: SidecarConfig): http.Server {
     try {
       // --- Health ---
       if (path === "/health" && req.method === "GET") {
-        json(res, 200, { status: "ok" });
+        json(res, req, 200, { status: "ok" });
         return;
       }
 
@@ -80,7 +105,7 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/tradingview/scan" && req.method === "POST") {
         const body = await parseBody(req);
         const result = await scanStocks(body as Parameters<typeof scanStocks>[0]);
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
@@ -88,14 +113,14 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/tradingview-crypto/scan" && req.method === "POST") {
         const body = await parseBody(req);
         const result = await scanCrypto(body as Parameters<typeof scanCrypto>[0]);
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
       // --- Finnhub endpoints (gated) ---
       if (path.startsWith("/finnhub/")) {
         if (!finnhubApiKey) {
-          json(res, 404, { error: "FINNHUB_API_KEY not configured" });
+          json(res, req, 404, { error: "FINNHUB_API_KEY not configured" });
           return;
         }
 
@@ -104,12 +129,12 @@ export function createServer(config: SidecarConfig): http.Server {
           const from = params.get("from");
           const to = params.get("to");
           if (!from || !to) {
-            json(res, 400, { error: "Missing required parameters: from, to" });
+            json(res, req, 400, { error: "Missing required parameters: from, to" });
             return;
           }
           const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
           const result = await getCompanyNews(finnhubApiKey, symbol, from, to, limit);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
 
@@ -117,27 +142,27 @@ export function createServer(config: SidecarConfig): http.Server {
           const from = params.get("from");
           const to = params.get("to");
           if (!from || !to) {
-            json(res, 400, { error: "Missing required parameters: from, to" });
+            json(res, req, 400, { error: "Missing required parameters: from, to" });
             return;
           }
           const symbol = params.get("symbol") ?? undefined;
           if (symbol) validateSymbol(symbol);
           const result = await getEarningsCalendar(finnhubApiKey, from, to, symbol);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
 
         if (path === "/finnhub/analyst-ratings" && req.method === "GET") {
           const symbol = validateSymbol(params.get("symbol"));
           const result = await getAnalystRecommendations(finnhubApiKey, symbol);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
 
         if (path === "/finnhub/short-interest" && req.method === "GET") {
           const symbol = validateSymbol(params.get("symbol"));
           const result = await getShortInterest(finnhubApiKey, symbol);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
       }
@@ -146,7 +171,7 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/sec-edgar/filings" && req.method === "GET") {
         const query = params.get("query");
         if (!query) {
-          json(res, 400, { error: "Missing required parameter: query" });
+          json(res, req, 400, { error: "Missing required parameter: query" });
           return;
         }
         const dateRange = params.get("dateRange") ?? undefined;
@@ -154,7 +179,7 @@ export function createServer(config: SidecarConfig): http.Server {
         const tickers = params.get("tickers") ? params.get("tickers")!.split(",") : undefined;
         const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
         const result = await searchFilings({ query, dateRange, forms, tickers, limit });
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
@@ -163,59 +188,59 @@ export function createServer(config: SidecarConfig): http.Server {
         const symbol = validateSymbol(params.get("symbol"));
         const expiration = params.get("expiration") ? Number(params.get("expiration")) : undefined;
         const result = await fetchOptionChain(symbol, expiration);
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
       // --- Sentiment ---
       if (path === "/sentiment/fear-greed" && req.method === "GET") {
         const result = await getFearAndGreed();
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
       if (path === "/sentiment/crypto-fear-greed" && req.method === "GET") {
         const result = await getCryptoFearAndGreed();
-        json(res, 200, result);
+        json(res, req, 200, result);
         return;
       }
 
       // --- FRED endpoints (gated) ---
       if (path.startsWith("/fred/")) {
         if (!fredApiKey) {
-          json(res, 404, { error: "FRED_API_KEY not configured" });
+          json(res, req, 404, { error: "FRED_API_KEY not configured" });
           return;
         }
 
         if (path === "/fred/indicator" && req.method === "GET") {
           const series = params.get("series");
           if (!series) {
-            json(res, 400, { error: "Missing required parameter: series" });
+            json(res, req, 400, { error: "Missing required parameter: series" });
             return;
           }
           const result = await getIndicator(fredApiKey, series);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
 
         if (path === "/fred/calendar" && req.method === "GET") {
           const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
           const result = await getEconomicCalendar(fredApiKey, limit);
-          json(res, 200, result);
+          json(res, req, 200, result);
           return;
         }
       }
 
       // --- 404 ---
-      json(res, 404, { error: "Not found" });
+      json(res, req, 404, { error: "Not found" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      // Parameter validation errors -> 400
-      if (message.startsWith("Missing required parameter") || message.startsWith("Invalid symbol")) {
-        json(res, 400, { error: message });
-        return;
-      }
-      json(res, 500, { error: message });
+      const is400 =
+        message.startsWith("Missing required parameter") ||
+        message.startsWith("Invalid symbol") ||
+        message === "Invalid JSON body" ||
+        message === "Request body too large";
+      json(res, req, is400 ? 400 : 500, { error: message });
     }
   });
 

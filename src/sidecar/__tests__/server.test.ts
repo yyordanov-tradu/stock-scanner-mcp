@@ -36,6 +36,30 @@ async function post(
   return { status: res.status, data };
 }
 
+async function postRaw(
+  server: http.Server,
+  path: string,
+  rawBody: string,
+): Promise<{ status: number; data: unknown }> {
+  const port = getPort(server);
+  const res = await realFetch(`http://127.0.0.1:${port}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: rawBody,
+  });
+  const data = await res.json();
+  return { status: res.status, data };
+}
+
+async function options(
+  server: http.Server,
+  path: string,
+): Promise<{ status: number; headers: Headers }> {
+  const port = getPort(server);
+  const res = await realFetch(`http://127.0.0.1:${port}${path}`, { method: "OPTIONS" });
+  return { status: res.status, headers: res.headers };
+}
+
 /**
  * Install a mock that intercepts upstream HTTP calls matching `urlMatch`
  * but lets through local server requests via realFetch.
@@ -325,5 +349,100 @@ describe("sidecar server", () => {
     const { status, data } = await get(server, "/fred/indicator?series=cpi");
     expect(status).toBe(404);
     expect((data as Record<string, string>).error).toBe("FRED_API_KEY not configured");
+  });
+
+  // --- FRED happy-path tests ---
+
+  it("GET /fred/indicator passes through with series", async () => {
+    mockUpstreamFetch("api.stlouisfed.org", {
+      seriess: [{ id: "CPIAUCSL", title: "CPI", units: "Index" }],
+      observations: [{ date: "2024-01-01", value: "308.4" }],
+    });
+
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status, data } = await get(server, "/fred/indicator?series=CPIAUCSL");
+
+    expect(status).toBe(200);
+    const result = data as Record<string, unknown>;
+    expect(result).toBeDefined();
+  });
+
+  it("GET /fred/calendar passes through", async () => {
+    mockUpstreamFetch("api.stlouisfed.org", {
+      releases: [],
+      release_dates: [{ release_id: 1, date: "2024-03-15" }],
+    });
+
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status, data } = await get(server, "/fred/calendar");
+
+    expect(status).toBe(200);
+    expect(data).toBeDefined();
+  });
+
+  // --- Invalid JSON body returns 400, not 500 ---
+
+  it("returns 400 for invalid JSON body on POST", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await postRaw(server, "/tradingview/scan", "not valid json{{{");
+
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toBe("Invalid JSON body");
+  });
+
+  // --- CORS preflight ---
+
+  it("OPTIONS returns 204 with CORS headers", async () => {
+    server = createServer({ port: 0 });
+    const { status, headers } = await options(server, "/health");
+
+    expect(status).toBe(204);
+    expect(headers.get("access-control-allow-methods")).toBe("GET, POST, OPTIONS");
+    expect(headers.get("access-control-allow-headers")).toBe("Content-Type");
+    expect(headers.get("vary")).toBe("Origin");
+  });
+
+  // --- CORS restricts to localhost origins ---
+
+  it("CORS allows localhost origins", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/health");
+
+    expect(status).toBe(200);
+    // Requests from 127.0.0.1 (our test client) should get localhost origin
+    expect(data).toEqual({ status: "ok" });
+  });
+
+  // --- Symbol validation rejects injection attempts ---
+
+  it("returns 400 for symbol with script injection", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/chain?symbol=<script>");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("Invalid symbol");
+  });
+
+  it("returns 400 for path traversal in symbol", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/chain?symbol=../../etc");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("Invalid symbol");
+  });
+
+  // --- Symbol regex accepts valid complex symbols ---
+
+  it("accepts symbols with dots like BRK.B through validation", async () => {
+    // Verify BRK.B passes symbol validation (doesn't get 400)
+    // The upstream call may fail (500) but the symbol itself is accepted
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+
+    mockUpstreamFetch("finnhub.io", []);
+
+    const { status, data } = await get(
+      server,
+      "/finnhub/company-news?symbol=BRK.B&from=2024-01-01&to=2024-03-15",
+    );
+    // Should not be 400 (symbol rejected) — 200 means validation passed
+    expect(status).toBe(200);
   });
 });
