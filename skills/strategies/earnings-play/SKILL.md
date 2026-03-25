@@ -40,7 +40,7 @@ Select the nearest post-earnings expiration from `options_expirations` results.
 
 | Tool | Parameters | Priority |
 |------|-----------|----------|
-| `options_implied_move` | symbol=ticker | REQUIRED |
+| `options_implied_move` | symbol=ticker, expiration=nearest post-earnings expiration from Wave 1 | REQUIRED |
 | `options_chain` | symbol=ticker, expiration=nearest post-earnings | REQUIRED |
 | `options_unusual_activity` | symbol=ticker | ENRICHMENT |
 | `options_max_pain` | symbol=ticker | ENRICHMENT |

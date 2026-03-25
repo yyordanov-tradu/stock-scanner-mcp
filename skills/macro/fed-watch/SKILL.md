@@ -20,9 +20,9 @@ Announce at start: "Running Fed Watch -- collecting rate history, inflation tren
 | Tool                        | Parameters                                                  | Priority    |
 |-----------------------------|-------------------------------------------------------------|-------------|
 | `fred_indicator`            | series_id=fed_funds                                         | REQUIRED    |
-| `fred_indicator_history`    | series_id=fed_funds, start=12 months ago, end=today         | REQUIRED    |
-| `fred_indicator_history`    | series_id=cpi, start=12 months ago, end=today, units=pc1    | REQUIRED    |
-| `fred_indicator_history`    | series_id=core_pce, start=12 months ago, end=today, units=pc1 | REQUIRED |
+| `fred_indicator_history`    | series_id=fed_funds, start_date=12 months ago, end_date=today | REQUIRED    |
+| `fred_indicator_history`    | series_id=cpi, start_date=12 months ago, end_date=today, units=pc1 | REQUIRED    |
+| `fred_indicator_history`    | series_id=core_pce, start_date=12 months ago, end_date=today, units=pc1 | REQUIRED |
 | `fred_indicator`            | series_id=unemployment                                      | REQUIRED    |
 | `fred_indicator`            | series_id=initial_claims                                    | ENRICHMENT  |
 | `fred_indicator`            | series_id=treasury_2y                                       | REQUIRED    |
