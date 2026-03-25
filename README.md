@@ -7,6 +7,7 @@
 A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings and economic events — all from your terminal.
 
 **49 tools** across **10 modules** — 7 modules work with zero API keys.
+**16 trading skills** — ready-made workflows like `/morning-briefing`, `/earnings-play AAPL`, `/risk-check TSLA`.
 
 **[Wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki)** — Full tool reference, example prompts, advanced strategies, and troubleshooting guide.
 
@@ -222,6 +223,37 @@ Once configured, just ask Claude naturally:
 - "What's the current Fear & Greed Index?"
 - "How is crypto sentiment right now?"
 
+## Trading Skills for Claude Code
+
+16 ready-made trading workflows that chain multiple tools into professional analysis. Install them as Claude Code slash commands and run full analyses with a single command.
+
+### Install Skills
+
+```bash
+# Clone the repo (if you haven't already)
+git clone https://github.com/yyordanov-tradu/stock-scanner-mcp.git
+cd stock-scanner-mcp
+
+# Copy all skills to your Claude Code user scope
+cp -r skills/*/ ~/.claude/skills/
+```
+
+Then in Claude Code, type `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA`, etc.
+
+### Available Skills
+
+| Category | Skills | What They Do |
+|----------|--------|-------------|
+| **Daily Routines** | `/morning-briefing`, `/market-close-recap`, `/crypto-briefing` | Pre-market scan, EOD recap, crypto overview |
+| **Analysis** | `/analyze-stock TICKER`, `/compare TICKER1 TICKER2`, `/analyze-crypto COIN` | Deep dives and side-by-side comparisons |
+| **Strategies** | `/swing-setup`, `/earnings-play TICKER`, `/options-flow TICKER`, `/dividend-screen` | Swing trades, earnings options, smart money, income screen |
+| **Macro** | `/macro-dashboard`, `/fed-watch`, `/sector-rotation` | Economic indicators, Fed outlook, sector rotation |
+| **Risk** | `/insider-tracker TICKER`, `/smart-money TICKER`, `/risk-check TICKER` | Insider trades, institutional flow, pre-trade risk scorecard |
+
+Each skill orchestrates 5-14 tools in parallel, cross-references the data, and outputs a structured verdict with direction, confidence, and key levels. Skills degrade gracefully when optional API keys are missing.
+
+See [skills/README.md](skills/README.md) for the full catalog, API key requirements, and customization guide.
+
 ## Development
 
 ```bash
@@ -252,7 +284,7 @@ src/
 │   └── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
 ├── sidecar/
 │   ├── index.ts          # HTTP sidecar entry point (port 3100)
-│   └── server.ts         # HTTP request handler (13 endpoints)
+│   └── server.ts         # HTTP request handler (50 endpoints)
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
