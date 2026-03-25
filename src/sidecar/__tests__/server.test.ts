@@ -445,4 +445,501 @@ describe("sidecar server", () => {
     // Should not be 400 (symbol rejected) — 200 means validation passed
     expect(status).toBe(200);
   });
+
+  // ========================================================================
+  // TradingView GET routes
+  // ========================================================================
+
+  // --- TradingView: Quote ---
+  it("GET /tradingview/quote returns quote data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:AAPL", d: [178.5, 2.3, 1.5, 50000000, 2800000000000, "AAPL", "Apple Inc.", null, null, null, null, null, null, null, null] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/quote?tickers=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /tradingview/quote without tickers", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/tradingview/quote");
+    expect(status).toBe(400);
+  });
+
+  // --- TradingView: Technicals ---
+  it("GET /tradingview/technicals returns technical data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:AAPL", d: Array(25).fill(0.5) }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/technicals?tickers=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /tradingview/technicals without tickers", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/tradingview/technicals");
+    expect(status).toBe(400);
+  });
+
+  // --- TradingView: Compare ---
+  it("GET /tradingview/compare returns comparison data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [
+        { s: "NASDAQ:AAPL", d: Array(11).fill(100) },
+        { s: "NASDAQ:MSFT", d: Array(11).fill(200) },
+      ],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/compare?tickers=AAPL,MSFT");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /tradingview/compare without tickers", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/tradingview/compare");
+    expect(status).toBe(400);
+  });
+
+  // --- TradingView: Top gainers ---
+  it("GET /tradingview/top-gainers returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:AAPL", d: [178.5, 5.2, 8.5, 50000000, "AAPL", "Apple", 2800000000000] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/top-gainers");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- TradingView: Top losers ---
+  it("GET /tradingview/top-losers returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:XYZ", d: [10.5, -5.2, -0.55, 1000000, "XYZ", "Test", 500000000] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/top-losers");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- TradingView: Top volume ---
+  it("GET /tradingview/top-volume returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:AAPL", d: [50000000, 178.5, 2.3, "AAPL", "Apple", 2800000000000] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/top-volume");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- TradingView: Market indices ---
+  it("GET /tradingview/market-indices returns index data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [
+        { s: "CBOE:VIX", d: [15.5, -2.1, -0.33, 16.0, 15.2, 15.8, "VIX", "Volatility Index"] },
+      ],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/market-indices");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- TradingView: Sector performance ---
+  it("GET /tradingview/sector-performance returns sector data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "AMEX:XLK", d: [200, 1.5, 3.0, 5000000, "XLK", "Technology Select Sector", 0.02, 0.05, 0.1, 0.15] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/sector-performance");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- TradingView: Volume breakout ---
+  it("GET /tradingview/volume-breakout returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "NASDAQ:AAPL", d: [50000000, 3.5, 178.5, 2.3, "AAPL", "Apple", 2800000000000, 55, 0.5] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/volume-breakout");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // ========================================================================
+  // TradingView Crypto GET routes
+  // ========================================================================
+
+  // --- TradingView Crypto: Quote ---
+  it("GET /tradingview-crypto/quote returns crypto quote data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "BINANCE:BTCUSDT", d: [65000, 1.5, 950, 5000000000, 1200000000000, "Bitcoin / TetherUS"] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview-crypto/quote?symbols=BTCUSDT");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /tradingview-crypto/quote without symbols", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/tradingview-crypto/quote");
+    expect(status).toBe(400);
+  });
+
+  // --- TradingView Crypto: Technicals ---
+  it("GET /tradingview-crypto/technicals returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "BINANCE:BTCUSDT", d: Array(17).fill(0.5) }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview-crypto/technicals?symbols=BTCUSDT");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /tradingview-crypto/technicals without symbols", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/tradingview-crypto/technicals");
+    expect(status).toBe(400);
+  });
+
+  // --- TradingView Crypto: Top gainers ---
+  it("GET /tradingview-crypto/top-gainers returns data", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [{ s: "BINANCE:ETHUSDT", d: [3500, 5.2, 175, 2000000000, 400000000000, "Ethereum / TetherUS"] }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview-crypto/top-gainers");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // ========================================================================
+  // Finnhub new routes
+  // ========================================================================
+
+  // --- Finnhub: Market news ---
+  it("GET /finnhub/market-news returns news articles", async () => {
+    mockUpstreamFetch("finnhub.io", [{ category: "general", headline: "Market update", datetime: 1710500000, source: "Reuters", summary: "test", url: "https://example.com", id: 1, related: "" }]);
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status, data } = await get(server, "/finnhub/market-news");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- Finnhub: Company profile ---
+  it("GET /finnhub/company-profile returns profile data", async () => {
+    mockUpstreamFetch("finnhub.io", { name: "Apple Inc", ticker: "AAPL", country: "US", currency: "USD", exchange: "NASDAQ", finnhubIndustry: "Technology", ipo: "1980-12-12", logo: "", marketCapitalization: 2800000, phone: "", shareOutstanding: 15000, weburl: "" });
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status, data } = await get(server, "/finnhub/company-profile?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).name).toBe("Apple Inc");
+  });
+
+  it("returns 400 for /finnhub/company-profile without symbol", async () => {
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status } = await get(server, "/finnhub/company-profile");
+    expect(status).toBe(400);
+  });
+
+  // --- Finnhub: Peers ---
+  it("GET /finnhub/peers returns peer symbols", async () => {
+    mockUpstreamFetch("finnhub.io", ["MSFT", "GOOG", "META"]);
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status, data } = await get(server, "/finnhub/peers?symbol=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- Finnhub: Market status ---
+  it("GET /finnhub/market-status returns status", async () => {
+    mockUpstreamFetch("finnhub.io", { exchange: "US", holiday: null, isOpen: true, session: "regular", t: 1710500000, timezone: "America/New_York" });
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status, data } = await get(server, "/finnhub/market-status");
+    expect(status).toBe(200);
+    expect((data as any).exchange).toBe("US");
+  });
+
+  // --- Finnhub: Quote ---
+  it("GET /finnhub/quote returns quote", async () => {
+    mockUpstreamFetch("finnhub.io", { c: 178.5, d: 2.3, dp: 1.3, h: 180, l: 176, o: 177, pc: 176.2, t: 1710500000 });
+    server = createServer({ port: 0, finnhubApiKey: "test-key" });
+    const { status, data } = await get(server, "/finnhub/quote?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).c).toBe(178.5);
+  });
+
+  // ========================================================================
+  // SEC-EDGAR new routes
+  // ========================================================================
+
+  // --- SEC-EDGAR: Insider trades ---
+  it("GET /sec-edgar/insider-trades returns insider data", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("company_tickers.json")) {
+        return new Response(JSON.stringify({ "0": { cik_str: 320193, ticker: "AAPL", title: "Apple Inc." } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (urlStr.includes("submissions/CIK")) {
+        return new Response(JSON.stringify({
+          cik: "0000320193",
+          name: "Apple Inc.",
+          filings: { recent: { accessionNumber: ["0001234-24-000001"], filingDate: ["2026-03-20"], form: ["4"], primaryDocument: ["doc.xml"], primaryDocDescription: ["FORM 4"] } },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (urlStr.includes("Archives/edgar")) {
+        return new Response("<ownershipDocument><rptOwnerName>John Doe</rptOwnerName></ownershipDocument>", { status: 200, headers: { "Content-Type": "text/xml" } });
+      }
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/sec-edgar/insider-trades?ticker=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /sec-edgar/insider-trades without ticker", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/sec-edgar/insider-trades");
+    expect(status).toBe(400);
+  });
+
+  // --- SEC-EDGAR: Company facts ---
+  it("GET /sec-edgar/company-facts returns facts data", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("company_tickers.json")) {
+        return new Response(JSON.stringify({ "0": { cik_str: 320193, ticker: "AAPL", title: "Apple Inc." } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (urlStr.includes("companyfacts")) {
+        return new Response(JSON.stringify({ cik: 320193, entityName: "Apple Inc.", facts: { "us-gaap": {} } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/sec-edgar/company-facts?ticker=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).entityName).toBe("Apple Inc.");
+  });
+
+  // --- SEC-EDGAR: Institutional holdings ---
+  it("GET /sec-edgar/institutional-holdings returns holdings", async () => {
+    mockUpstreamFetch("efts.sec.gov", { hits: { hits: [] } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/sec-edgar/institutional-holdings?query=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /sec-edgar/institutional-holdings without query", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/sec-edgar/institutional-holdings");
+    expect(status).toBe(400);
+  });
+
+  // --- SEC-EDGAR: Ownership filings ---
+  it("GET /sec-edgar/ownership-filings returns filings", async () => {
+    mockUpstreamFetch("efts.sec.gov", { hits: { hits: [] } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/sec-edgar/ownership-filings?ticker=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- /edgar/filings alias ---
+  it("GET /edgar/filings works as alias for /sec-edgar/filings", async () => {
+    mockUpstreamFetch("efts.sec.gov", { hits: { hits: [] } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/edgar/filings?query=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /edgar/filings without query", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/edgar/filings");
+    expect(status).toBe(400);
+  });
+
+  // ========================================================================
+  // Options new routes
+  // ========================================================================
+
+  // --- Options: Put/Call ratio ---
+  it("GET /options/put-call-ratio returns ratio data", async () => {
+    mockUpstreamFetch("cdn.cboe.com", {
+      ratios: [{ name: "TOTAL PUT/CALL RATIO", value: "0.85" }],
+      "SUM OF ALL PRODUCTS": [{ name: "VOLUME", call: 5000000, put: 4250000, total: 9250000 }],
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/put-call-ratio?type=total&days=1");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- Options: Expirations ---
+  it("returns 400 for /options/expirations without symbol", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/options/expirations");
+    expect(status).toBe(400);
+  });
+
+  it("returns 400 for /options/unusual-activity without symbol", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/options/unusual-activity");
+    expect(status).toBe(400);
+  });
+
+  it("returns 400 for /options/max-pain without symbol", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/options/max-pain");
+    expect(status).toBe(400);
+  });
+
+  it("returns 400 for /options/implied-move without symbol", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/options/implied-move");
+    expect(status).toBe(400);
+  });
+
+  // ========================================================================
+  // CoinGecko routes
+  // ========================================================================
+
+  // --- CoinGecko: Coin detail ---
+  it("GET /coingecko/coin returns coin data", async () => {
+    mockUpstreamFetch("api.coingecko.com", { id: "bitcoin", symbol: "btc", name: "Bitcoin", market_data: { current_price: { usd: 65000 }, market_cap: { usd: 1200000000000 }, total_volume: { usd: 30000000000 }, high_24h: { usd: 66000 }, low_24h: { usd: 64000 }, price_change_24h: 500, price_change_percentage_24h: 0.77, ath: { usd: 69000 }, ath_change_percentage: { usd: -5.8 } }, description: { en: "Bitcoin is a decentralized cryptocurrency" } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/coingecko/coin?coinId=bitcoin");
+    expect(status).toBe(200);
+    expect((data as any).symbol).toBe("btc");
+  });
+
+  it("returns 400 for /coingecko/coin without coinId", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/coingecko/coin");
+    expect(status).toBe(400);
+  });
+
+  // --- CoinGecko: Trending ---
+  it("GET /coingecko/trending returns trending coins", async () => {
+    mockUpstreamFetch("api.coingecko.com", { coins: [{ item: { id: "bitcoin", name: "Bitcoin", symbol: "btc", market_cap_rank: 1, price_btc: 1.0, score: 0 } }] });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/coingecko/trending");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- CoinGecko: Global ---
+  it("GET /coingecko/global returns global data", async () => {
+    mockUpstreamFetch("api.coingecko.com", { data: { total_market_cap: { usd: 2500000000000 }, total_volume: { usd: 100000000000 }, market_cap_percentage: { btc: 50, eth: 18 }, active_cryptocurrencies: 10000, market_cap_change_percentage_24h_usd: 1.5 } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/coingecko/global");
+    expect(status).toBe(200);
+    expect((data as any).totalMarketCap).toBeDefined();
+  });
+
+  // ========================================================================
+  // FRED new routes
+  // ========================================================================
+
+  // --- FRED: Indicator history ---
+  it("GET /fred/indicator-history returns history data", async () => {
+    mockUpstreamFetch("api.stlouisfed.org", { observations: [{ date: "2024-01-01", value: "308.4" }, { date: "2024-02-01", value: "310.1" }] });
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status, data } = await get(server, "/fred/indicator-history?series=CPIAUCSL&startDate=2024-01-01&endDate=2024-03-01");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /fred/indicator-history without required params", async () => {
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status } = await get(server, "/fred/indicator-history?series=CPI");
+    expect(status).toBe(400);
+  });
+
+  // --- FRED: Search ---
+  it("GET /fred/search returns search results", async () => {
+    mockUpstreamFetch("api.stlouisfed.org", { seriess: [{ id: "CPIAUCSL", title: "Consumer Price Index", frequency: "Monthly", units: "Index", popularity: 95, last_updated: "2024-03-01" }] });
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status, data } = await get(server, "/fred/search?query=consumer+price");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /fred/search without query", async () => {
+    server = createServer({ port: 0, fredApiKey: "test-key" });
+    const { status } = await get(server, "/fred/search");
+    expect(status).toBe(400);
+  });
+
+  // ========================================================================
+  // Alpha Vantage routes
+  // ========================================================================
+
+  // --- Alpha Vantage: Gating ---
+  it("returns 404 for /alpha-vantage/* when ALPHA_VANTAGE_API_KEY not configured", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/alpha-vantage/quote?symbol=AAPL");
+    expect(status).toBe(404);
+    expect((data as any).error).toBe("ALPHA_VANTAGE_API_KEY not configured");
+  });
+
+  // --- Alpha Vantage: Quote ---
+  it("GET /alpha-vantage/quote returns quote data", async () => {
+    mockUpstreamFetch("alphavantage.co", { "Global Quote": { "01. symbol": "AAPL", "02. open": "177.00", "03. high": "180.00", "04. low": "176.50", "05. price": "178.50", "06. volume": "50000000", "07. latest trading day": "2024-03-15", "08. previous close": "176.20", "09. change": "2.30", "10. change percent": "1.305%" } });
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status, data } = await get(server, "/alpha-vantage/quote?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).symbol).toBe("AAPL");
+  });
+
+  it("returns 400 for /alpha-vantage/quote without symbol", async () => {
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status } = await get(server, "/alpha-vantage/quote");
+    expect(status).toBe(400);
+  });
+
+  // --- Alpha Vantage: Overview ---
+  it("GET /alpha-vantage/overview returns company overview", async () => {
+    mockUpstreamFetch("alphavantage.co", { Symbol: "AAPL", Name: "Apple Inc", Description: "Tech company", Exchange: "NASDAQ", Sector: "Technology", Industry: "Consumer Electronics", MarketCapitalization: "2800000000000", PERatio: "28.5", PEGRatio: "2.1", BookValue: "4.15", DividendYield: "0.005", EPS: "6.25", RevenuePerShareTTM: "24.3", ProfitMargin: "0.25", "52WeekHigh": "199.62", "52WeekLow": "164.08", AnalystTargetPrice: "195.00" });
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status, data } = await get(server, "/alpha-vantage/overview?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).symbol).toBe("AAPL");
+  });
+
+  // --- Alpha Vantage: Daily ---
+  it("GET /alpha-vantage/daily returns daily prices", async () => {
+    mockUpstreamFetch("alphavantage.co", { "Meta Data": { "2. Symbol": "AAPL" }, "Time Series (Daily)": { "2024-03-15": { "1. open": "177.00", "2. high": "180.00", "3. low": "176.50", "4. close": "178.50", "5. volume": "50000000" } } });
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status, data } = await get(server, "/alpha-vantage/daily?symbol=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  // --- Alpha Vantage: Earnings ---
+  it("GET /alpha-vantage/earnings returns earnings data", async () => {
+    mockUpstreamFetch("alphavantage.co", { symbol: "AAPL", annualEarnings: [{ fiscalDateEnding: "2023-09-30", reportedEPS: "6.13" }], quarterlyEarnings: [{ fiscalDateEnding: "2023-12-31", reportedDate: "2024-02-01", reportedEPS: "2.18", estimatedEPS: "2.10", surprise: "0.08", surprisePercentage: "3.81" }] });
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status, data } = await get(server, "/alpha-vantage/earnings?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).symbol).toBe("AAPL");
+  });
+
+  // --- Alpha Vantage: Dividends ---
+  it("GET /alpha-vantage/dividends returns dividend data", async () => {
+    mockUpstreamFetch("alphavantage.co", { symbol: "AAPL", data: [{ ex_dividend_date: "2024-02-09", declaration_date: "2024-02-01", record_date: "2024-02-12", payment_date: "2024-02-15", amount: "0.24" }] });
+    server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
+    const { status, data } = await get(server, "/alpha-vantage/dividends?symbol=AAPL");
+    expect(status).toBe(200);
+    expect((data as any).symbol).toBe("AAPL");
+  });
 });
