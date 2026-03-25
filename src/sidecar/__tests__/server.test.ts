@@ -640,7 +640,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, finnhubApiKey: "test-key" });
     const { status, data } = await get(server, "/finnhub/company-profile?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).name).toBe("Apple Inc");
+    expect((data as Record<string, unknown>).name).toBe("Apple Inc");
   });
 
   it("returns 400 for /finnhub/company-profile without symbol", async () => {
@@ -664,7 +664,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, finnhubApiKey: "test-key" });
     const { status, data } = await get(server, "/finnhub/market-status");
     expect(status).toBe(200);
-    expect((data as any).exchange).toBe("US");
+    expect((data as Record<string, unknown>).exchange).toBe("US");
   });
 
   // --- Finnhub: Quote ---
@@ -673,7 +673,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, finnhubApiKey: "test-key" });
     const { status, data } = await get(server, "/finnhub/quote?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).c).toBe(178.5);
+    expect((data as Record<string, unknown>).c).toBe(178.5);
   });
 
   // ========================================================================
@@ -726,7 +726,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/sec-edgar/company-facts?ticker=AAPL");
     expect(status).toBe(200);
-    expect((data as any).entityName).toBe("Apple Inc.");
+    expect((data as Record<string, unknown>).entityName).toBe("Apple Inc.");
   });
 
   // --- SEC-EDGAR: Institutional holdings ---
@@ -809,6 +809,200 @@ describe("sidecar server", () => {
     expect(status).toBe(400);
   });
 
+  // --- Options: Expirations happy path ---
+  // Uses GOOG to avoid cache collision with earlier AAPL options tests
+  it("GET /options/expirations returns expiration dates", async () => {
+    const mockYahooResponse = {
+      optionChain: {
+        result: [{
+          underlyingSymbol: "GOOG",
+          expirationDates: [1710500000, 1711100000],
+          strikes: [170, 175, 180],
+          quote: { regularMarketPrice: 178.5 },
+          options: [{ expirationDate: 1710500000, calls: [], puts: [] }],
+        }],
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
+      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
+      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/expirations?symbol=GOOG");
+    expect(status).toBe(200);
+    expect((data as Record<string, unknown>).symbol).toBe("GOOG");
+    expect(Array.isArray((data as Record<string, unknown>).expirations)).toBe(true);
+  });
+
+  // --- Options: Unusual activity happy path ---
+  // Uses TSLA to avoid cache collision with earlier AAPL options tests
+  it("GET /options/unusual-activity returns unusual contracts", async () => {
+    const mockYahooResponse = {
+      optionChain: {
+        result: [{
+          underlyingSymbol: "TSLA",
+          expirationDates: [1710500000],
+          strikes: [170, 175, 180],
+          quote: { regularMarketPrice: 178.5 },
+          options: [{
+            expirationDate: 1710500000,
+            calls: [{ contractSymbol: "TSLA240315C00170000", strike: 170, lastPrice: 9.5, bid: 9.3, ask: 9.7, volume: 5000, openInterest: 100, impliedVolatility: 0.25, inTheMoney: true }],
+            puts: [{ contractSymbol: "TSLA240315P00180000", strike: 180, lastPrice: 2.5, bid: 2.3, ask: 2.7, volume: 3000, openInterest: 50, impliedVolatility: 0.3, inTheMoney: false }],
+          }],
+        }],
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
+      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
+      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/unusual-activity?symbol=TSLA");
+    expect(status).toBe(200);
+    expect((data as Record<string, unknown>).symbol).toBe("TSLA");
+    expect(Array.isArray((data as Record<string, unknown>).unusual)).toBe(true);
+  });
+
+  // --- Options: Max pain happy path ---
+  // Uses AMZN to avoid cache collision with earlier AAPL options tests
+  it("GET /options/max-pain returns max pain data", async () => {
+    const mockYahooResponse = {
+      optionChain: {
+        result: [{
+          underlyingSymbol: "AMZN",
+          expirationDates: [1710500000],
+          strikes: [170, 175, 180],
+          quote: { regularMarketPrice: 178.5 },
+          options: [{
+            expirationDate: 1710500000,
+            calls: [{ contractSymbol: "AMZN240315C00175000", strike: 175, lastPrice: 5, bid: 4.8, ask: 5.2, volume: 1000, openInterest: 5000, impliedVolatility: 0.25, inTheMoney: true }],
+            puts: [{ contractSymbol: "AMZN240315P00180000", strike: 180, lastPrice: 3, bid: 2.8, ask: 3.2, volume: 800, openInterest: 3000, impliedVolatility: 0.3, inTheMoney: false }],
+          }],
+        }],
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
+      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
+      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/max-pain?symbol=AMZN");
+    expect(status).toBe(200);
+    expect((data as Record<string, unknown>).symbol).toBe("AMZN");
+    expect(typeof (data as Record<string, unknown>).maxPain).toBe("number");
+  });
+
+  // --- Options: Implied move happy path ---
+  // Uses MSFT to avoid cache collision with earlier AAPL options tests
+  it("GET /options/implied-move returns implied move data", async () => {
+    const mockYahooResponse = {
+      optionChain: {
+        result: [{
+          underlyingSymbol: "MSFT",
+          expirationDates: [1710500000],
+          strikes: [410, 420],
+          quote: { regularMarketPrice: 415 },
+          options: [{
+            expirationDate: 1710500000,
+            calls: [{ contractSymbol: "MSFT240315C00420000", strike: 420, lastPrice: 5.0, bid: 4.8, ask: 5.2, volume: 1000, openInterest: 5000, impliedVolatility: 0.22, inTheMoney: false }],
+            puts: [{ contractSymbol: "MSFT240315P00410000", strike: 410, lastPrice: 4.0, bid: 3.8, ask: 4.2, volume: 800, openInterest: 3000, impliedVolatility: 0.24, inTheMoney: false }],
+          }],
+        }],
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
+      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
+      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/implied-move?symbol=MSFT");
+    expect(status).toBe(200);
+    const result = data as Record<string, unknown>;
+    expect(result.symbol).toBe("MSFT");
+    expect(typeof result.straddlePrice).toBe("number");
+    expect(typeof result.impliedMove).toBe("number");
+    expect(result.expectedRange).toBeDefined();
+  });
+
+  // ========================================================================
+  // SEC-EDGAR: Company filings
+  // ========================================================================
+
+  it("GET /sec-edgar/company-filings returns filing data", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("company_tickers.json")) {
+        return new Response(JSON.stringify({ "0": { cik_str: 320193, ticker: "AAPL", title: "Apple Inc." } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (urlStr.includes("submissions/CIK")) {
+        return new Response(JSON.stringify({
+          cik: "0000320193",
+          name: "Apple Inc.",
+          filings: { recent: { accessionNumber: ["0001234-24-000001"], filingDate: ["2026-03-20"], form: ["10-K"], primaryDocument: ["doc.htm"], primaryDocDescription: ["ANNUAL REPORT"] } },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(url, init);
+    }));
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/sec-edgar/company-filings?ticker=AAPL");
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns 400 for /sec-edgar/company-filings without ticker", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/sec-edgar/company-filings");
+    expect(status).toBe(400);
+  });
+
+  // ========================================================================
+  // API-key gating tests
+  // ========================================================================
+
+  it("returns 404 for /finnhub/* when FINNHUB_API_KEY not configured", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/finnhub/market-news");
+    expect(status).toBe(404);
+    expect((data as Record<string, string>).error).toBe("FINNHUB_API_KEY not configured");
+  });
+
+  it("returns 404 for /fred/* when FRED_API_KEY not configured", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/fred/search?query=cpi");
+    expect(status).toBe(404);
+    expect((data as Record<string, string>).error).toBe("FRED_API_KEY not configured");
+  });
+
+  // ========================================================================
+  // Numeric parameter validation
+  // ========================================================================
+
+  it("returns 400 for non-numeric limit parameter", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/top-gainers?limit=abc");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("Invalid limit");
+  });
+
+  it("returns 400 for non-numeric days parameter", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/options/put-call-ratio?days=xyz");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("Invalid days");
+  });
+
   // ========================================================================
   // CoinGecko routes
   // ========================================================================
@@ -819,7 +1013,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/coingecko/coin?coinId=bitcoin");
     expect(status).toBe(200);
-    expect((data as any).symbol).toBe("btc");
+    expect((data as Record<string, unknown>).symbol).toBe("btc");
   });
 
   it("returns 400 for /coingecko/coin without coinId", async () => {
@@ -843,7 +1037,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/coingecko/global");
     expect(status).toBe(200);
-    expect((data as any).totalMarketCap).toBeDefined();
+    expect((data as Record<string, unknown>).totalMarketCap).toBeDefined();
   });
 
   // ========================================================================
@@ -889,7 +1083,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/alpha-vantage/quote?symbol=AAPL");
     expect(status).toBe(404);
-    expect((data as any).error).toBe("ALPHA_VANTAGE_API_KEY not configured");
+    expect((data as Record<string, unknown>).error).toBe("ALPHA_VANTAGE_API_KEY not configured");
   });
 
   // --- Alpha Vantage: Quote ---
@@ -898,7 +1092,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
     const { status, data } = await get(server, "/alpha-vantage/quote?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).symbol).toBe("AAPL");
+    expect((data as Record<string, unknown>).symbol).toBe("AAPL");
   });
 
   it("returns 400 for /alpha-vantage/quote without symbol", async () => {
@@ -913,7 +1107,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
     const { status, data } = await get(server, "/alpha-vantage/overview?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).symbol).toBe("AAPL");
+    expect((data as Record<string, unknown>).symbol).toBe("AAPL");
   });
 
   // --- Alpha Vantage: Daily ---
@@ -931,7 +1125,7 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
     const { status, data } = await get(server, "/alpha-vantage/earnings?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).symbol).toBe("AAPL");
+    expect((data as Record<string, unknown>).symbol).toBe("AAPL");
   });
 
   // --- Alpha Vantage: Dividends ---
@@ -940,6 +1134,35 @@ describe("sidecar server", () => {
     server = createServer({ port: 0, alphaVantageApiKey: "test-key" });
     const { status, data } = await get(server, "/alpha-vantage/dividends?symbol=AAPL");
     expect(status).toBe(200);
-    expect((data as any).symbol).toBe("AAPL");
+    expect((data as Record<string, unknown>).symbol).toBe("AAPL");
+  });
+
+  // ========================================================================
+  // POST body validation
+  // ========================================================================
+
+  it("returns 400 for POST /tradingview/scan with non-object body", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await post(server, "/tradingview/scan", [1, 2, 3]);
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("expected a JSON object");
+  });
+
+  it("returns 400 for POST /tradingview-crypto/scan with non-object body", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await post(server, "/tradingview-crypto/scan", "not an object");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("expected a JSON object");
+  });
+
+  // ========================================================================
+  // Integer enforcement for parseIntParam
+  // ========================================================================
+
+  it("returns 400 for float limit parameter", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/tradingview/top-gainers?limit=3.7");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("Invalid limit");
   });
 });

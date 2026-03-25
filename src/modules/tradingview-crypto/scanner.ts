@@ -3,7 +3,7 @@ import { CRYPTO_COLUMNS, CRYPTO_TIMEFRAMES } from "./columns.js";
 
 export interface CryptoScanRequest {
   tickers?: string[];
-  filters?: Array<{ left: string; operation: string; right: number | string | number[] }>;
+  filters?: Array<{ left: string; operation: string; right: number | string | number[] | string[] }>;
   columns?: string[];
   timeframe?: string;
   limit?: number;

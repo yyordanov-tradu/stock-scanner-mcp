@@ -1,21 +1,32 @@
 import * as http from "node:http";
 import { scanStocks } from "../modules/tradingview/scanner.js";
+import type { ScanFilter } from "../modules/tradingview/scanner.js";
 import { scanCrypto } from "../modules/tradingview-crypto/scanner.js";
 import {
   getCompanyNews,
   getEarningsCalendar,
   getAnalystRecommendations,
   getShortInterest,
+  getMarketNews,
+  getCompanyProfile,
+  getPeers,
+  getMarketStatus,
+  getQuote as getFinnhubQuote,
 } from "../modules/finnhub/client.js";
-import { searchFilings } from "../modules/sec-edgar/client.js";
+import {
+  searchFilings,
+  getCompanyFilings,
+  getCompanyFacts,
+  getInsiderTrades,
+  getInstitutionalHoldings,
+  getOwnershipFilings,
+} from "../modules/sec-edgar/client.js";
 import { fetchOptionChain } from "../modules/options/client.js";
+import type { OptionContract } from "../modules/options/client.js";
 import { getFearAndGreed, getCryptoFearAndGreed } from "../modules/sentiment/client.js";
-import { getIndicator, getEconomicCalendar } from "../modules/fred/client.js";
-import { getCompanyFilings, getCompanyFacts, getInsiderTrades, getInstitutionalHoldings, getOwnershipFilings } from "../modules/sec-edgar/client.js";
-import { getMarketNews, getCompanyProfile, getPeers, getMarketStatus, getQuote as getFinnhubQuote } from "../modules/finnhub/client.js";
+import { getIndicator, getEconomicCalendar, getIndicatorHistory, searchSeries } from "../modules/fred/client.js";
 import { getQuote as getAvQuote, getDailyPrices, getOverview, getEarningsHistory, getDividendHistory } from "../modules/alpha-vantage/client.js";
 import { getCoinDetail, getTrending, getGlobal } from "../modules/coingecko/client.js";
-import { getIndicatorHistory, searchSeries } from "../modules/fred/client.js";
 import { getPutCallRatio } from "../modules/options-cboe/cboe.js";
 import { resolveTicker } from "../shared/resolver.js";
 
@@ -82,6 +93,22 @@ function validateSymbol(symbol: string | null): string {
   return symbol;
 }
 
+function parseIntParam(params: URLSearchParams, name: string): number | undefined {
+  const raw = params.get(name);
+  if (raw === null) return undefined;
+  const n = Number(raw);
+  if (Number.isNaN(n) || !Number.isFinite(n) || !Number.isInteger(n)) throw new Error(`Invalid ${name} parameter`);
+  return n;
+}
+
+function parseFloatParam(params: URLSearchParams, name: string, fallback: number): number {
+  const raw = params.get(name);
+  if (raw === null) return fallback;
+  const n = Number(raw);
+  if (Number.isNaN(n) || !Number.isFinite(n)) throw new Error(`Invalid ${name} parameter`);
+  return n;
+}
+
 export function createServer(config: SidecarConfig): http.Server {
   const { finnhubApiKey, fredApiKey, alphaVantageApiKey } = config;
 
@@ -112,6 +139,10 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- TradingView stock scan ---
       if (path === "/tradingview/scan" && req.method === "POST") {
         const body = await parseBody(req);
+        if (typeof body !== "object" || body === null || Array.isArray(body)) {
+          json(res, req, 400, { error: "Invalid request body: expected a JSON object" });
+          return;
+        }
         const result = await scanStocks(body as Parameters<typeof scanStocks>[0]);
         json(res, req, 200, result);
         return;
@@ -177,8 +208,8 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/tradingview/top-gainers" && req.method === "GET") {
         const exchange = params.get("exchange") ?? undefined;
         const includeOtc = params.get("include_otc") === "true";
-        const limit = params.get("limit") ? Number(params.get("limit")) : 20;
-        const filters: any[] = [];
+        const limit = parseIntParam(params, "limit") ?? 20;
+        const filters: ScanFilter[] = [];
         if (!includeOtc) {
           filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
           filters.push({ left: "volume", operation: "greater", right: 100_000 });
@@ -187,6 +218,7 @@ export function createServer(config: SidecarConfig): http.Server {
           exchange,
           columns: ["close", "change", "change_abs", "volume", "name", "description", "market_cap_basic"],
           filters, limit,
+          sort: { sortBy: "change", sortOrder: "desc" },
         });
         json(res, req, 200, rows);
         return;
@@ -196,8 +228,8 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/tradingview/top-losers" && req.method === "GET") {
         const exchange = params.get("exchange") ?? undefined;
         const includeOtc = params.get("include_otc") === "true";
-        const limit = params.get("limit") ? Number(params.get("limit")) : 20;
-        const filters: any[] = [];
+        const limit = parseIntParam(params, "limit") ?? 20;
+        const filters: ScanFilter[] = [];
         if (!includeOtc) {
           filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
           filters.push({ left: "volume", operation: "greater", right: 100_000 });
@@ -216,8 +248,8 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/tradingview/top-volume" && req.method === "GET") {
         const exchange = params.get("exchange") ?? undefined;
         const includeOtc = params.get("include_otc") === "true";
-        const limit = params.get("limit") ? Number(params.get("limit")) : 20;
-        const filters: any[] = [];
+        const limit = parseIntParam(params, "limit") ?? 20;
+        const filters: ScanFilter[] = [];
         if (!includeOtc) {
           filters.push({ left: "market_cap_basic", operation: "greater", right: 100_000_000 });
         }
@@ -259,7 +291,7 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- TradingView: Volume breakout ---
       if (path === "/tradingview/volume-breakout" && req.method === "GET") {
         const exchange = params.get("exchange") ?? undefined;
-        const limit = params.get("limit") ? Number(params.get("limit")) : 20;
+        const limit = parseIntParam(params, "limit") ?? 20;
         const rows = await scanStocks({
           exchange,
           columns: ["volume", "relative_volume_10d_calc", "close", "change", "name", "description", "market_cap_basic", "RSI", "MACD.macd"],
@@ -278,6 +310,10 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- TradingView crypto scan ---
       if (path === "/tradingview-crypto/scan" && req.method === "POST") {
         const body = await parseBody(req);
+        if (typeof body !== "object" || body === null || Array.isArray(body)) {
+          json(res, req, 400, { error: "Invalid request body: expected a JSON object" });
+          return;
+        }
         const result = await scanCrypto(body as Parameters<typeof scanCrypto>[0]);
         json(res, req, 200, result);
         return;
@@ -327,8 +363,8 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- TradingView Crypto: Top gainers ---
       if (path === "/tradingview-crypto/top-gainers" && req.method === "GET") {
         const exchange = params.get("exchange") ?? undefined;
-        const limit = params.get("limit") ? Number(params.get("limit")) : 20;
-        const filters: any[] = [{ left: "change", operation: "greater", right: 0 }];
+        const limit = parseIntParam(params, "limit") ?? 20;
+        const filters: Array<{ left: string; operation: string; right: number | string | number[] | string[] }> = [{ left: "change", operation: "greater", right: 0 }];
         if (exchange) {
           filters.push({ left: "exchange", operation: "equal", right: exchange });
         } else {
@@ -339,7 +375,7 @@ export function createServer(config: SidecarConfig): http.Server {
         }
         const rows = await scanCrypto({
           filters,
-          columns: ["close", "change", "change_abs", "volume", "market_cap_calc", "description"],
+          columns: ["change", "change_abs", "close", "volume", "market_cap_calc", "description"],
           limit: Math.min(limit, 50),
         });
         json(res, req, 200, rows);
@@ -361,7 +397,7 @@ export function createServer(config: SidecarConfig): http.Server {
             json(res, req, 400, { error: "Missing required parameters: from, to" });
             return;
           }
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await getCompanyNews(finnhubApiKey, symbol, from, to, limit);
           json(res, req, 200, result);
           return;
@@ -397,7 +433,7 @@ export function createServer(config: SidecarConfig): http.Server {
 
         if (path === "/finnhub/market-news" && req.method === "GET") {
           const category = params.get("category") ?? "general";
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await getMarketNews(finnhubApiKey, category, limit);
           json(res, req, 200, result);
           return;
@@ -432,8 +468,8 @@ export function createServer(config: SidecarConfig): http.Server {
         }
       }
 
-      // --- SEC EDGAR ---
-      if (path === "/sec-edgar/filings" && req.method === "GET") {
+      // --- SEC EDGAR (also /edgar/filings alias) ---
+      if ((path === "/sec-edgar/filings" || path === "/edgar/filings") && req.method === "GET") {
         const query = params.get("query");
         if (!query) {
           json(res, req, 400, { error: "Missing required parameter: query" });
@@ -442,7 +478,7 @@ export function createServer(config: SidecarConfig): http.Server {
         const dateRange = params.get("dateRange") ?? undefined;
         const forms = params.get("forms") ? params.get("forms")!.split(",") : undefined;
         const tickers = params.get("tickers") ? params.get("tickers")!.split(",") : undefined;
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+        const limit = parseIntParam(params, "limit");
         const result = await searchFilings({ query, dateRange, forms, tickers, limit });
         json(res, req, 200, result);
         return;
@@ -452,7 +488,7 @@ export function createServer(config: SidecarConfig): http.Server {
       if (path === "/sec-edgar/company-filings" && req.method === "GET") {
         const ticker = validateSymbol(params.get("ticker"));
         const forms = params.get("forms") ? params.get("forms")!.split(",") : undefined;
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+        const limit = parseIntParam(params, "limit");
         const result = await getCompanyFilings({ ticker, forms, limit });
         json(res, req, 200, result);
         return;
@@ -469,7 +505,7 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- SEC EDGAR: Insider trades ---
       if (path === "/sec-edgar/insider-trades" && req.method === "GET") {
         const ticker = validateSymbol(params.get("ticker"));
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+        const limit = parseIntParam(params, "limit");
         const result = await getInsiderTrades(ticker, limit);
         json(res, req, 200, result);
         return;
@@ -482,7 +518,7 @@ export function createServer(config: SidecarConfig): http.Server {
           json(res, req, 400, { error: "Missing required parameter: query" });
           return;
         }
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+        const limit = parseIntParam(params, "limit");
         const result = await getInstitutionalHoldings(query, limit);
         json(res, req, 200, result);
         return;
@@ -491,24 +527,8 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- SEC EDGAR: Ownership filings (13D/13G) ---
       if (path === "/sec-edgar/ownership-filings" && req.method === "GET") {
         const ticker = validateSymbol(params.get("ticker"));
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+        const limit = parseIntParam(params, "limit");
         const result = await getOwnershipFilings(ticker, limit);
-        json(res, req, 200, result);
-        return;
-      }
-
-      // Also add an alias for /edgar/filings -> /sec-edgar/filings
-      if (path === "/edgar/filings" && req.method === "GET") {
-        const query = params.get("query");
-        if (!query) {
-          json(res, req, 400, { error: "Missing required parameter: query" });
-          return;
-        }
-        const dateRange = params.get("dateRange") ?? undefined;
-        const forms = params.get("forms") ? params.get("forms")!.split(",") : undefined;
-        const tickers = params.get("tickers") ? params.get("tickers")!.split(",") : undefined;
-        const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
-        const result = await searchFilings({ query, dateRange, forms, tickers, limit });
         json(res, req, 200, result);
         return;
       }
@@ -516,7 +536,7 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- Options ---
       if (path === "/options/chain" && req.method === "GET") {
         const symbol = validateSymbol(params.get("symbol"));
-        const expiration = params.get("expiration") ? Number(params.get("expiration")) : undefined;
+        const expiration = parseIntParam(params, "expiration");
         const result = await fetchOptionChain(symbol, expiration);
         json(res, req, 200, result);
         return;
@@ -536,13 +556,13 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- Options: Unusual activity ---
       if (path === "/options/unusual-activity" && req.method === "GET") {
         const symbol = validateSymbol(params.get("symbol"));
-        const minRatio = params.get("volume_oi_ratio") ? Number(params.get("volume_oi_ratio")) : 3.0;
-        const minVol = params.get("min_volume") ? Number(params.get("min_volume")) : 100;
+        const minRatio = parseFloatParam(params, "volume_oi_ratio", 3.0);
+        const minVol = parseFloatParam(params, "min_volume", 100);
         const side = params.get("side") ?? "both";
         const chain = await fetchOptionChain(symbol);
         const allContracts = [
-          ...chain.calls.map((c: any) => ({ ...c, side: "call" as const })),
-          ...chain.puts.map((c: any) => ({ ...c, side: "put" as const })),
+          ...chain.calls.map((c: OptionContract) => ({ ...c, side: "call" as const })),
+          ...chain.puts.map((c: OptionContract) => ({ ...c, side: "put" as const })),
         ];
         let unusual = allContracts
           .filter(c => c.volume >= minVol && c.openInterest >= 10)
@@ -578,9 +598,9 @@ export function createServer(config: SidecarConfig): http.Server {
         const expDate = chain.expirationDates[0]
           ? new Date(chain.expirationDates[0] * 1000).toISOString().split("T")[0]
           : "unknown";
-        const atmCall = chain.calls.reduce((best: any, c: any) =>
+        const atmCall = chain.calls.reduce((best: OptionContract, c: OptionContract) =>
           Math.abs(c.strike - price) < Math.abs(best.strike - price) ? c : best, chain.calls[0]);
-        const atmPut = chain.puts.reduce((best: any, p: any) =>
+        const atmPut = chain.puts.reduce((best: OptionContract, p: OptionContract) =>
           Math.abs(p.strike - price) < Math.abs(best.strike - price) ? p : best, chain.puts[0]);
         if (!atmCall || !atmPut) {
           json(res, req, 200, { symbol: chain.underlyingSymbol, underlyingPrice: price, error: "Insufficient options data" });
@@ -606,7 +626,7 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- Options CBOE: Put/Call ratio ---
       if (path === "/options/put-call-ratio" && req.method === "GET") {
         const type = params.get("type") ?? "total";
-        const days = params.get("days") ? Number(params.get("days")) : 10;
+        const days = parseIntParam(params, "days") ?? 10;
         const result = await getPutCallRatio(type, days);
         json(res, req, 200, result);
         return;
@@ -644,7 +664,7 @@ export function createServer(config: SidecarConfig): http.Server {
         }
 
         if (path === "/fred/calendar" && req.method === "GET") {
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await getEconomicCalendar(fredApiKey, limit);
           json(res, req, 200, result);
           return;
@@ -674,7 +694,7 @@ export function createServer(config: SidecarConfig): http.Server {
             json(res, req, 400, { error: "Missing required parameter: query" });
             return;
           }
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await searchSeries(fredApiKey, query, limit);
           json(res, req, 200, result);
           return;
@@ -697,7 +717,7 @@ export function createServer(config: SidecarConfig): http.Server {
 
         if (path === "/alpha-vantage/daily" && req.method === "GET") {
           const symbol = validateSymbol(params.get("symbol"));
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await getDailyPrices(alphaVantageApiKey, symbol, limit);
           json(res, req, 200, result);
           return;
@@ -712,7 +732,7 @@ export function createServer(config: SidecarConfig): http.Server {
 
         if (path === "/alpha-vantage/earnings" && req.method === "GET") {
           const symbol = validateSymbol(params.get("symbol"));
-          const limit = params.get("limit") ? Number(params.get("limit")) : undefined;
+          const limit = parseIntParam(params, "limit");
           const result = await getEarningsHistory(alphaVantageApiKey, symbol, limit);
           json(res, req, 200, result);
           return;
@@ -756,8 +776,7 @@ export function createServer(config: SidecarConfig): http.Server {
       const message = err instanceof Error ? err.message : String(err);
       const is400 =
         message.startsWith("Missing required parameter") ||
-        message.startsWith("Invalid symbol") ||
-        message === "Invalid JSON body" ||
+        message.startsWith("Invalid ") ||
         message === "Request body too large";
       json(res, req, is400 ? 400 : 500, { error: message });
     }
