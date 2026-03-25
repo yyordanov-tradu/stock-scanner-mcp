@@ -1,7 +1,7 @@
 {
   "name": "stock-scanner-mcp",
   "mcpName": "io.github.yyordanov-tradu/stock-scanner-mcp",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "MCP server providing Claude Code with real-time stock and crypto market data, SEC filings, insider trades, and technical analysis",
   "type": "module",
   "bin": {
