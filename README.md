@@ -230,13 +230,27 @@ Once configured, just ask Claude naturally:
 ### Install Skills
 
 ```bash
-# Clone the repo (if you haven't already)
-git clone https://github.com/yyordanov-tradu/stock-scanner-mcp.git
-cd stock-scanner-mcp
+# Install all skills (recommended)
+npx stock-scanner-mcp install-skills
 
-# Copy all skills to your Claude Code user scope
-cp -r skills/*/ ~/.claude/skills/
+# Install to project scope only
+npx stock-scanner-mcp install-skills --scope project
+
+# Install one category
+npx stock-scanner-mcp install-skills --category macro
+
+# List available skills
+npx stock-scanner-mcp install-skills --list
 ```
+
+<details>
+<summary>Manual alternative</summary>
+
+```bash
+git clone https://github.com/yyordanov-tradu/stock-scanner-mcp.git
+cp -r stock-scanner-mcp/skills/*/ ~/.claude/skills/
+```
+</details>
 
 Then in Claude Code, type `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA`, etc.
 
