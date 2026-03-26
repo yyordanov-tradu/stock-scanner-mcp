@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -9,6 +9,7 @@ import {
   parseInstallArgs,
   installSkills,
 } from "../skills-installer.js";
+import type { SkillInfo } from "../skills-installer.js";
 
 // Resolve skills dir relative to this test file, not process.cwd()
 const __testDir = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,13 @@ describe("skills-installer", () => {
       expect(briefing!.description.length).toBeGreaterThan(10);
     });
 
+    it("discovers depth-2 skills like market-data", () => {
+      const skills = discoverSkills(SKILLS_DIR);
+      const marketData = skills.find(s => s.name === "market-data");
+      expect(marketData).toBeDefined();
+      expect(marketData!.category).toBe("market-data");
+    });
+
     it("has no empty descriptions", () => {
       const skills = discoverSkills(SKILLS_DIR);
       for (const s of skills) {
@@ -76,8 +84,8 @@ describe("skills-installer", () => {
   describe("resolveDestination", () => {
     it("returns ~/.claude/skills for user scope", () => {
       const dest = resolveDestination("user");
-      expect(dest).toContain(".claude");
-      expect(dest.endsWith("skills")).toBe(true);
+      const expected = path.join(os.homedir(), ".claude", "skills");
+      expect(dest).toBe(expected);
     });
 
     it("returns .claude/skills for project scope", () => {
@@ -114,6 +122,16 @@ describe("skills-installer", () => {
       expect(opts).toEqual({ scope: "project", category: "daily", list: false, force: true });
     });
 
+    it("handles --scope without following value", () => {
+      const opts = parseInstallArgs(["--scope"]);
+      expect(opts.scope).toBe("user"); // keeps default
+    });
+
+    it("handles --category without following value", () => {
+      const opts = parseInstallArgs(["--category"]);
+      expect(opts.category).toBeUndefined();
+    });
+
     it("ignores invalid scope values, keeps default", () => {
       expect(parseInstallArgs(["--scope", "invalid"]).scope).toBe("user");
     });
@@ -130,6 +148,11 @@ describe("skills-installer", () => {
 
     afterEach(() => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("returns zero counts for empty skills array", async () => {
+      const result = await installSkills([], tmpDir, true);
+      expect(result).toEqual({ installed: 0, skipped: 0 });
     });
 
     it("copies SKILL.md files to destination with flat skill-name dirs", async () => {
@@ -181,6 +204,44 @@ describe("skills-installer", () => {
       const restored = fs.readFileSync(targetPath, "utf-8");
       const original = fs.readFileSync(skills[0].srcPath, "utf-8");
       expect(restored).toBe(original);
+    });
+  });
+
+  // --- getSkillsDir ---
+
+  describe("getSkillsDir", () => {
+    it("returns a path ending in 'skills'", async () => {
+      const { getSkillsDir } = await import("../skills-installer.js");
+      const dir = getSkillsDir();
+      expect(dir.endsWith("skills")).toBe(true);
+    });
+  });
+
+  // --- printSkillList ---
+
+  describe("printSkillList", () => {
+    it("prints skills grouped by category to stderr", async () => {
+      const { printSkillList } = await import("../skills-installer.js");
+      const mockError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const skills: SkillInfo[] = [
+        { name: "skill-a", category: "cat1", srcPath: "/fake/a", description: "Description A" },
+        { name: "skill-b", category: "cat1", srcPath: "/fake/b", description: "Description B" },
+        { name: "skill-c", category: "cat2", srcPath: "/fake/c", description: "A very long description that exceeds seventy characters and should be truncated with dots" },
+      ];
+
+      printSkillList(skills);
+
+      const output = mockError.mock.calls.map(c => c[0]).join("\n");
+      expect(output).toContain("3 total");
+      expect(output).toContain("cat1/");
+      expect(output).toContain("cat2/");
+      expect(output).toContain("/skill-a");
+      expect(output).toContain("/skill-c");
+      // Verify truncation
+      expect(output).toContain("...");
+
+      mockError.mockRestore();
     });
   });
 });

@@ -25,7 +25,10 @@ export interface InstallOptions {
  */
 function parseDescription(content: string, fallbackName: string): string {
   const match = content.match(/^description:\s*(.+)$/m);
-  if (!match) return fallbackName;
+  if (!match) {
+    console.error(`  Warning: no description in frontmatter for skill "${fallbackName}"`);
+    return fallbackName;
+  }
   let desc = match[1].trim();
   if ((desc.startsWith('"') && desc.endsWith('"')) || (desc.startsWith("'") && desc.endsWith("'"))) {
     desc = desc.slice(1, -1);
@@ -82,6 +85,15 @@ export function discoverSkills(skillsDir: string, category?: string): SkillInfo[
     }
   }
 
+  // Detect duplicate skill names (flat install would overwrite)
+  const seen = new Set<string>();
+  for (const skill of skills) {
+    if (seen.has(skill.name)) {
+      console.error(`  Warning: duplicate skill name "${skill.name}" (${skill.category}/${skill.name}) — last one wins during install`);
+    }
+    seen.add(skill.name);
+  }
+
   return skills.sort((a, b) =>
     a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
   );
@@ -99,7 +111,9 @@ export function resolveDestination(scope: "user" | "project"): string {
 
 /**
  * Get the bundled skills directory path.
- * No module-scope __dirname — avoids clash with index.ts when tsup bundles.
+ * Uses inline import.meta.url instead of module-scope __dirname.
+ * In the tsup bundle, import.meta.url resolves to dist/index.js for all inlined modules,
+ * so ../skills correctly reaches the package root's skills/ directory.
  */
 export function getSkillsDir(): string {
   const thisDir = path.dirname(fileURLToPath(import.meta.url));
