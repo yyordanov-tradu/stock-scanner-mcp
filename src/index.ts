@@ -7,6 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { parseConfig } from "./config.js";
+import { runInstallSkills } from "./skills-installer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -115,15 +116,27 @@ SETUP (Claude Code)
     }
   }
 
+SUBCOMMANDS
+  install-skills              Install trading skills to ~/.claude/skills/
+    --scope <user|project>    Install scope (default: user)
+    --category <name>         Install only one category
+    --list                    List available skills
+    --force                   Overwrite existing skills
+
 DOCS
   https://github.com/yyordanov-tradu/stock-scanner-mcp
 `.trimStart();
 
-  process.stdout.write(help + "\n");
+  process.stderr.write(help + "\n");
 }
 
 async function main() {
   const args = process.argv.slice(2);
+
+  if (args[0] === "install-skills") {
+    await runInstallSkills(args.slice(1));
+    process.exit(0);
+  }
 
   if (args.includes("--help") || args.includes("-h")) {
     printHelp();

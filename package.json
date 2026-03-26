@@ -19,7 +19,8 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "keywords": [
     "mcp",
