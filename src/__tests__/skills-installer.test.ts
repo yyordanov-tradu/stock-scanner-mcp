@@ -8,6 +8,7 @@ import {
   resolveDestination,
   parseInstallArgs,
   installSkills,
+  runInstallSkills,
 } from "../skills-installer.js";
 import type { SkillInfo } from "../skills-installer.js";
 
@@ -232,7 +233,7 @@ describe("skills-installer", () => {
 
       printSkillList(skills);
 
-      const output = mockError.mock.calls.map(c => c[0]).join("\n");
+      const output = mockError.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(output).toContain("3 total");
       expect(output).toContain("cat1/");
       expect(output).toContain("cat2/");
@@ -242,6 +243,92 @@ describe("skills-installer", () => {
       expect(output).toContain("...");
 
       mockError.mockRestore();
+    });
+  });
+
+  // --- runInstallSkills ---
+
+  describe("runInstallSkills", () => {
+    let tmpDir: string;
+    let mockExit: ReturnType<typeof vi.spyOn>;
+    let mockError: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "skills-run-test-"));
+      mockExit = vi.spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("process.exit called");
+      }) as never);
+      mockError = vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      mockExit.mockRestore();
+      mockError.mockRestore();
+    });
+
+    it("lists skills with --list flag without installing", async () => {
+      await runInstallSkills(["--list"]);
+
+      const output = mockError.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+      expect(output).toContain("Available skills");
+      expect(output).toContain("/morning-briefing");
+      // Should not have called process.exit
+      expect(mockExit).not.toHaveBeenCalled();
+    });
+
+    it("installs skills with --force --scope project", async () => {
+      // Override cwd so project scope writes to our temp dir
+      const originalCwd = process.cwd;
+      process.cwd = () => tmpDir;
+
+      try {
+        await runInstallSkills(["--scope", "project", "--force"]);
+      } finally {
+        process.cwd = originalCwd;
+      }
+
+      const installed = fs.readdirSync(path.join(tmpDir, ".claude", "skills"));
+      expect(installed).toContain("morning-briefing");
+      expect(installed).toContain("risk-check");
+    });
+
+    it("exits with error for invalid category", async () => {
+      await expect(
+        runInstallSkills(["--category", "nonexistent-category-xyz"])
+      ).rejects.toThrow("process.exit called");
+
+      expect(mockExit).toHaveBeenCalledWith(1);
+      const output = mockError.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+      expect(output).toContain("No skills found in category");
+    });
+
+    it("filters by category with --category", async () => {
+      await runInstallSkills(["--list", "--category", "macro"]);
+
+      const output = mockError.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+      expect(output).toContain("macro/");
+      // Should not contain other categories
+      expect(output).not.toContain("daily/");
+    });
+  });
+
+  // --- install-skills entry point ---
+
+  describe("install-skills entry point", () => {
+    it("built artifact exists and runs --list successfully", async () => {
+      const { execFile } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      const execFileAsync = promisify(execFile);
+
+      const entryPath = path.join(__testDir, "..", "..", "dist", "install-skills.js");
+
+      // Skip if not built yet (CI builds before testing)
+      if (!fs.existsSync(entryPath)) return;
+
+      const { stderr } = await execFileAsync("node", [entryPath, "--list"]);
+      expect(stderr).toContain("Available skills");
+      expect(stderr).toContain("/morning-briefing");
     });
   });
 });
