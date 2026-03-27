@@ -231,17 +231,21 @@ Once configured, just ask Claude naturally:
 
 ```bash
 # Install all skills (recommended)
-npx stock-scanner-mcp install-skills
+npx stock-scanner-install-skills
 
 # Install to project scope only
-npx stock-scanner-mcp install-skills --scope project
+npx stock-scanner-install-skills --scope project
 
 # Install one category
-npx stock-scanner-mcp install-skills --category macro
+npx stock-scanner-install-skills --category macro
 
 # List available skills
-npx stock-scanner-mcp install-skills --list
+npx stock-scanner-install-skills --list
 ```
+
+> **Note:** `npx stock-scanner-mcp install-skills` also works if the package is already cached.
+> The dedicated `stock-scanner-install-skills` command is more reliable because npx can drop
+> subcommand arguments when it needs to download the package for the first time.
 
 <details>
 <summary>Manual alternative</summary>

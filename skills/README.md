@@ -8,7 +8,7 @@ Ready-made trading workflows that orchestrate [stock-scanner-mcp](https://www.np
 
 ```bash
 # Install skills to user scope (works in all projects)
-npx stock-scanner-mcp install-skills
+npx stock-scanner-install-skills
 
 # Then in Claude Code, type:
 /morning-briefing
@@ -96,19 +96,19 @@ cp -r skills/daily/morning-briefing ~/.claude/skills/
 
 ```bash
 # Install all skills to user scope
-npx stock-scanner-mcp install-skills
+npx stock-scanner-install-skills
 
 # Install to project scope
-npx stock-scanner-mcp install-skills --scope project
+npx stock-scanner-install-skills --scope project
 
 # Install specific category
-npx stock-scanner-mcp install-skills --category macro
+npx stock-scanner-install-skills --category macro
 
 # List available skills
-npx stock-scanner-mcp install-skills --list
+npx stock-scanner-install-skills --list
 
 # Overwrite existing without prompting
-npx stock-scanner-mcp install-skills --force
+npx stock-scanner-install-skills --force
 ```
 
 ## Customization
