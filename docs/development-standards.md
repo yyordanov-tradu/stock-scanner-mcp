@@ -357,6 +357,7 @@ npm run test:watch    # Watch mode during development
 | Build tool | tsup (not tsc directly) |
 | Format | ESM only (`"type": "module"` in package.json) |
 | Entry (MCP) | `src/index.ts` → `dist/index.js` |
+| Entry (skills CLI) | `src/install-skills.ts` → `dist/install-skills.js` |
 | Entry (sidecar) | `src/sidecar/index.ts` → `dist/sidecar/index.js` |
 | Imports | MUST use `.js` extension (e.g., `from "./client.js"`) |
 | Target | ES2022 |
@@ -436,3 +437,68 @@ Every code change MUST check whether `CLAUDE.md` or files it references need upd
 - **Changed conventions** → update both `development-standards.md` (detailed) and `CLAUDE.md` (summary)
 
 **Rule:** If your PR changes behavior documented in `CLAUDE.md` or `docs/development-standards.md`, update those files in the same PR. Stale docs mislead both human and LLM contributors.
+
+---
+
+## 14. Pre-PR Expert Review Loop (MANDATORY)
+
+After all quality gates (§13) pass but **before committing, pushing, or creating a PR**, every code change MUST go through an iterative multi-expert review loop. This is not optional — it catches issues that automated gates miss.
+
+### Review Panel
+
+Spawn **all 4 agents in parallel** using the Agent tool. Each reviews the full diff from a different lens:
+
+| Agent | `subagent_type` | Focus |
+|-------|-----------------|-------|
+| **TypeScript Expert** | `typescript-expert` | Type safety, generics, edge cases, idiomatic patterns, unnecessary `any`/`as` casts, missing error types, zod schema correctness |
+| **Security Reviewer** | `security-auditor` | Input validation, injection vectors (URL params, headers), secrets in code/logs, auth handling, OWASP top 10 |
+| **Architecture Reviewer** | `architect-review` | Module boundaries, naming conventions (§3), consistency with existing patterns, separation of concerns, code duplication, SOLID principles |
+| **QA Automation** | `test-automator` | Test coverage for changed code, missing edge case tests, test quality (not just existence), integration test updates, flaky test risk |
+
+### Agent Prompt Template
+
+Each agent receives the same prompt structure (customize the `[LENS]` and `[FOCUS_AREAS]` per agent):
+
+```
+Review the following code changes from the perspective of a [LENS].
+
+Project context: This is a modular MCP server (stock-scanner-mcp) built with TypeScript, zod, and vitest. Read docs/development-standards.md for conventions.
+
+Changed files: [LIST FILES]
+
+For each finding, classify as:
+- CRITICAL: Must fix before merge (security vulnerability, data loss risk, broken functionality)
+- MAJOR: Should fix before merge (type safety gap, missing test coverage, convention violation, architectural concern)
+- MINOR: Nice to fix but won't block merge (style, naming preference, minor optimization)
+
+Output format:
+1. List each finding with: severity, file:line, description, suggested fix
+2. End with a summary: total criticals, majors, minors
+3. If zero criticals and zero majors, state: "APPROVED — no blocking issues found"
+```
+
+### The Loop
+
+```
+┌─────────────────────────────────────────────────┐
+│ 1. All quality gates pass (§13)                 │
+│ 2. Spawn 4 review agents in parallel            │
+│ 3. Collect findings from all 4 agents           │
+│ 4. Any CRITICAL or MAJOR findings?              │
+│    ├─ YES → Fix all critical+major issues       │
+│    │        Re-run quality gates (§13)           │
+│    │        Go back to step 2 (new review round) │
+│    └─ NO  → All 4 agents approved               │
+│             Proceed to commit, push, create PR   │
+└─────────────────────────────────────────────────┘
+```
+
+### Rules
+
+1. **All 4 agents MUST run in parallel** — never sequentially. Use a single message with 4 Agent tool calls.
+2. **Every round is a full re-review** — agents see the updated diff, not just the delta. This prevents fix-introduced regressions.
+3. **MINOR findings are logged but do NOT block** — include them in the PR description under a "Known minor issues" section if any remain.
+4. **Maximum 3 rounds** — if critical/major findings persist after 3 rounds, stop and escalate to the user with a summary of unresolved issues. Do not loop indefinitely.
+5. **Review scope is the diff only** — agents review changed/added files, not the entire codebase. Exception: if a change affects a shared utility (§9), the agent should check callers.
+6. **Agent findings are actionable** — if an agent flags something but doesn't suggest a fix, ask it to clarify before implementing a guess.
+7. **Document the review** — in the PR description, include a "Review" section stating how many rounds were needed and a one-line summary from each agent's final approval.

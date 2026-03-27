@@ -7,4 +7,7 @@
 
 import { runInstallSkills } from "./skills-installer.js";
 
-await runInstallSkills(process.argv.slice(2));
+runInstallSkills(process.argv.slice(2)).catch((err) => {
+  console.error("Fatal:", err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

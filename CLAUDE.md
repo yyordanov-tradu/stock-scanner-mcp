@@ -144,6 +144,16 @@ npm run validate-tools  # tool description quality
 npm run build           # tsup
 ```
 
+### Pre-PR Expert Review Loop (MANDATORY)
+
+After quality gates pass but **before committing/pushing/creating a PR**, run an iterative 4-expert review. Full details in [`docs/development-standards.md`](docs/development-standards.md) §14.
+
+1. Spawn 4 review agents **in parallel**: TypeScript Expert, Security Reviewer, Architecture Reviewer, QA Automation
+2. Each classifies findings as CRITICAL / MAJOR / MINOR
+3. If any CRITICAL or MAJOR → fix → re-run quality gates → new review round
+4. Loop until all 4 agents approve (zero critical + zero major). Max 3 rounds.
+5. MINOR findings are logged in PR description but do not block.
+
 ## Git Workflow
 
 - **Never commit directly to `main`.** Main is protected. Always create a feature branch first (e.g. `feat/descriptive-name`, `fix/issue-description`).
