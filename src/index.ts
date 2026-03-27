@@ -124,7 +124,7 @@ SUBCOMMANDS
     --force                   Overwrite existing skills
 
   If npx drops the subcommand (common on first install), use:
-    npx stock-scanner-install-skills
+    npx -p stock-scanner-mcp stock-scanner-install-skills
 
 DOCS
   https://github.com/yyordanov-tradu/stock-scanner-mcp
