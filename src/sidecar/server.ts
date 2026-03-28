@@ -815,6 +815,10 @@ export function createServer(config: SidecarConfig): http.Server {
           json(res, req, 400, { error: "Missing required parameters: amount, from, to" });
           return;
         }
+        if (isNaN(Number(amount))) {
+          json(res, req, 400, { error: "Invalid parameter: amount must be a number" });
+          return;
+        }
         const result = await convertCurrency(Number(amount), from, to);
         json(res, req, 200, result);
         return;

@@ -41,9 +41,12 @@ function buildUrl(path: string, params: Record<string, string | undefined>): str
 function capEndDate(startDate: string, endDate?: string): string {
   const start = new Date(startDate);
   const maxEnd = new Date(start.getTime() + MAX_TIMESERIES_DAYS * 24 * 60 * 60 * 1000);
-  if (!endDate) return maxEnd.toISOString().split("T")[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upperBound = maxEnd < today ? maxEnd : today;
+  if (!endDate) return upperBound.toISOString().split("T")[0];
   const requested = new Date(endDate);
-  const capped = requested < maxEnd ? requested : maxEnd;
+  const capped = requested < upperBound ? requested : upperBound;
   return capped.toISOString().split("T")[0];
 }
 

@@ -1228,6 +1228,13 @@ describe("sidecar server", () => {
     expect(status).toBe(400);
   });
 
+  it("returns 400 for /frankfurter/convert with non-numeric amount", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/convert?amount=abc&from=USD&to=EUR");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("amount must be a number");
+  });
+
   it("GET /frankfurter/currencies returns currency map", async () => {
     mockUpstreamFetch("api.frankfurter.dev", { USD: "United States Dollar", EUR: "Euro", GBP: "British Pound" });
     server = createServer({ port: 0 });

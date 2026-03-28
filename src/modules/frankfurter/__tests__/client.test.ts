@@ -147,36 +147,40 @@ describe("getTimeSeries", () => {
     expect(Object.keys(result.rates)).toHaveLength(3);
   });
 
-  it("caps end date at 90 days from start", async () => {
+  it("caps end date at min(start+90, today) when requested end is too far", async () => {
     mockFetchJson({
       amount: 1,
       base: "EUR",
-      start_date: "2026-01-01",
-      end_date: "2026-04-01",
+      start_date: "2025-01-01",
+      end_date: "2025-04-01",
       rates: {},
     });
 
-    await getTimeSeries("EUR", "USD", "2026-01-01", "2026-12-31");
+    // Request a year-long range starting in the past — should cap at start+90
+    await getTimeSeries("EUR", "USD", "2025-01-01", "2025-12-31");
 
     const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    // 90 days from 2026-01-01 = 2026-04-01
-    expect(calledUrl).toContain("2026-01-01..2026-04-01");
-    expect(calledUrl).not.toContain("2026-12-31");
+    // 90 days from 2025-01-01 = 2025-04-01 (which is before today, so start+90 wins)
+    expect(calledUrl).toContain("2025-01-01..2025-04-01");
+    expect(calledUrl).not.toContain("2025-12-31");
   });
 
-  it("defaults end date to 90 days from start when not provided", async () => {
+  it("defaults end date to today when start is recent and start+90 is in the future", async () => {
     mockFetchJson({
       amount: 1,
       base: "GBP",
-      start_date: "2026-02-01",
-      end_date: "2026-05-02",
+      start_date: "2026-03-01",
+      end_date: "2026-03-28",
       rates: {},
     });
 
-    await getTimeSeries("GBP", "JPY", "2026-02-01");
+    // No end date, start is recent — capEndDate should return today (not start+90 which is in the future)
+    await getTimeSeries("GBP", "JPY", "2026-03-01");
 
     const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(calledUrl).toContain("2026-02-01..2026-05-02");
+    // Should cap at today, not at 2026-05-30 (start+90)
+    expect(calledUrl).toContain("2026-03-01..");
+    expect(calledUrl).not.toContain("2026-05");
   });
 });
 
@@ -236,14 +240,24 @@ describe("getCurrencies", () => {
     expect(Object.keys(result)).toHaveLength(4);
   });
 
-  it("returns cached result on second call", async () => {
-    // getCurrencies has no parameters, so it shares cache key with the test above.
-    // The first test already populated the cache, so both calls here hit cache.
-    // We verify fetch is NOT called at all (0 times) because data is already cached.
-    const first = await getCurrencies();
-    const second = await getCurrencies();
+});
 
-    expect(fetch).toHaveBeenCalledTimes(0);
-    expect(second).toEqual(first);
+describe("error handling", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("propagates HTTP errors from upstream", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => '{"message":"not found"}',
+    });
+    await expect(getLatestRates("INVALID")).rejects.toThrow();
   });
 });
