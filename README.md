@@ -6,7 +6,7 @@
 
 A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings and economic events — all from your terminal.
 
-**49 tools** across **10 modules** — 7 modules work with zero API keys.
+**54 tools** across **11 modules** — 8 modules work with zero API keys.
 **16 trading skills** — ready-made workflows like `/morning-briefing`, `/earnings-play AAPL`, `/risk-check TSLA`.
 
 **[Wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki)** — Full tool reference, example prompts, advanced strategies, and troubleshooting guide.
@@ -39,7 +39,7 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 }
 ```
 
-### With API keys (optional, enables all 49 tools):
+### With API keys (optional, enables all 54 tools):
 
 ```json
 {

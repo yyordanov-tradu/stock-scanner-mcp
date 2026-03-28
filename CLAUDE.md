@@ -3,7 +3,7 @@
 ## Status
 
 **Version:** 1.13.1 — Published on npm as `stock-scanner-mcp`
-**Modules:** 10 implemented (49 tools total)
+**Modules:** 11 implemented (54 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 
@@ -40,7 +40,8 @@ stock-scanner-mcp/
 │   │   ├── options/          # Options chains, Greeks, unusual activity (no key)
 │   │   ├── options-cboe/     # CBOE put/call ratio sentiment (no key)
 │   │   ├── fred/             # US economic data — calendar, indicators (FRED_API_KEY)
-│   │   └── sentiment/        # Market & crypto Fear & Greed sentiment (no key)
+│   │   ├── sentiment/        # Market & crypto Fear & Greed sentiment (no key)
+│   │   └── frankfurter/      # Forex exchange rates — ECB daily rates (no key)
 │   ├── sidecar/
 │   │   ├── index.ts          # HTTP sidecar entry point (port 3100)
 │   │   └── server.ts         # HTTP request handler (50 endpoints)
@@ -101,6 +102,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | alpha-vantage | ALPHA_VANTAGE_API_KEY | When key set |
 | fred | FRED_API_KEY | When key set |
 | sentiment | (none) | Always |
+| frankfurter | (none) | Always |
 
 ## Development Standards
 
