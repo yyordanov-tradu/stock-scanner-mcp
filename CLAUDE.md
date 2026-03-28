@@ -44,7 +44,7 @@ stock-scanner-mcp/
 │   │   └── frankfurter/      # Forex exchange rates — ECB daily rates (no key)
 │   ├── sidecar/
 │   │   ├── index.ts          # HTTP sidecar entry point (port 3100)
-│   │   └── server.ts         # HTTP request handler (50 endpoints)
+│   │   └── server.ts         # HTTP request handler (55 endpoints)
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
