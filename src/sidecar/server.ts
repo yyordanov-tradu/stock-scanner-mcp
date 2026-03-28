@@ -28,6 +28,7 @@ import { getIndicator, getEconomicCalendar, getIndicatorHistory, searchSeries } 
 import { getQuote as getAvQuote, getDailyPrices, getOverview, getEarningsHistory, getDividendHistory } from "../modules/alpha-vantage/client.js";
 import { getCoinDetail, getTrending, getGlobal } from "../modules/coingecko/client.js";
 import { getPutCallRatio } from "../modules/options-cboe/cboe.js";
+import { getLatestRates, getHistoricalRates, getTimeSeries, convertCurrency, getCurrencies } from "../modules/frankfurter/client.js";
 import { resolveTicker } from "../shared/resolver.js";
 
 export interface SidecarConfig {
@@ -766,6 +767,65 @@ export function createServer(config: SidecarConfig): http.Server {
 
       if (path === "/coingecko/global" && req.method === "GET") {
         const result = await getGlobal();
+        json(res, req, 200, result);
+        return;
+      }
+
+      // --- Frankfurter (no API key) ---
+      if (path === "/frankfurter/latest" && req.method === "GET") {
+        const base = params.get("base") ?? "USD";
+        const symbols = params.get("symbols") ?? undefined;
+        const result = await getLatestRates(base, symbols);
+        json(res, req, 200, result);
+        return;
+      }
+
+      if (path === "/frankfurter/historical" && req.method === "GET") {
+        const date = params.get("date");
+        if (!date) {
+          json(res, req, 400, { error: "Missing required parameter: date" });
+          return;
+        }
+        const base = params.get("base") ?? "USD";
+        const symbols = params.get("symbols") ?? undefined;
+        const result = await getHistoricalRates(base, date, symbols);
+        json(res, req, 200, result);
+        return;
+      }
+
+      if (path === "/frankfurter/timeseries" && req.method === "GET") {
+        const startDate = params.get("start_date");
+        const symbols = params.get("symbols");
+        if (!startDate || !symbols) {
+          json(res, req, 400, { error: "Missing required parameters: start_date, symbols" });
+          return;
+        }
+        const base = params.get("base") ?? "USD";
+        const endDate = params.get("end_date") ?? undefined;
+        const result = await getTimeSeries(base, symbols, startDate, endDate);
+        json(res, req, 200, result);
+        return;
+      }
+
+      if (path === "/frankfurter/convert" && req.method === "GET") {
+        const amount = params.get("amount");
+        const from = params.get("from");
+        const to = params.get("to");
+        if (!amount || !from || !to) {
+          json(res, req, 400, { error: "Missing required parameters: amount, from, to" });
+          return;
+        }
+        if (isNaN(Number(amount))) {
+          json(res, req, 400, { error: "Invalid parameter: amount must be a number" });
+          return;
+        }
+        const result = await convertCurrency(Number(amount), from, to);
+        json(res, req, 200, result);
+        return;
+      }
+
+      if (path === "/frankfurter/currencies" && req.method === "GET") {
+        const result = await getCurrencies();
         json(res, req, 200, result);
         return;
       }

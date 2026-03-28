@@ -23,6 +23,7 @@ import { createOptionsModule } from "../modules/options/index.js";
 import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
 import { createFredModule } from "../modules/fred/index.js";
 import { createSentimentModule } from "../modules/sentiment/index.js";
+import { createFrankfurterModule } from "../modules/frankfurter/index.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ const MODULE_PREFIX_MAP: Record<string, string[]> = {
   "alpha-vantage": ["alphavantage_"],
   fred: ["fred_"],
   sentiment: ["sentiment_"],
+  frankfurter: ["frankfurter_"],
 };
 
 const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
@@ -53,6 +55,7 @@ const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   "alpha-vantage": ["alpha vantage", "alphavantage"],
   fred: ["fred", "economic", "federal reserve"],
   sentiment: ["sentiment", "fear", "greed", "cnn", "alternative"],
+  frankfurter: ["frankfurter", "forex", "exchange rate", "ecb", "currency"],
 };
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -239,6 +242,7 @@ function buildAllModules(): ModuleDefinition[] {
     createAlphaVantageModule("mock-key"),
     createFredModule("mock-key"),
     createSentimentModule(),
+    createFrankfurterModule(),
   ];
 }
 

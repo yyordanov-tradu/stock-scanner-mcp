@@ -1165,4 +1165,81 @@ describe("sidecar server", () => {
     expect(status).toBe(400);
     expect((data as Record<string, string>).error).toContain("Invalid limit");
   });
+
+  // --- Frankfurter ---
+
+  it("GET /frankfurter/latest returns exchange rates", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", { amount: 1, base: "USD", date: "2026-03-27", rates: { EUR: 0.868, GBP: 0.753 } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/latest?base=USD&symbols=EUR,GBP");
+    expect(status).toBe(200);
+    expect((data as any).rates.EUR).toBe(0.868);
+  });
+
+  it("GET /frankfurter/latest works without params (defaults)", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", { amount: 1, base: "USD", date: "2026-03-27", rates: { EUR: 0.868 } });
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/frankfurter/latest");
+    expect(status).toBe(200);
+  });
+
+  it("GET /frankfurter/historical returns rates for a date", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", { amount: 1, base: "USD", date: "2024-01-15", rates: { EUR: 0.912 } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/historical?date=2024-01-15&base=USD");
+    expect(status).toBe(200);
+    expect((data as any).date).toBe("2024-01-15");
+  });
+
+  it("returns 400 for /frankfurter/historical without date", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/frankfurter/historical?base=USD");
+    expect(status).toBe(400);
+  });
+
+  it("GET /frankfurter/timeseries returns rate history", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", {
+      amount: 1, base: "USD", start_date: "2024-01-01", end_date: "2024-01-05",
+      rates: { "2024-01-02": { EUR: 0.912 }, "2024-01-03": { EUR: 0.910 } },
+    });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/timeseries?start_date=2024-01-01&symbols=EUR&base=USD");
+    expect(status).toBe(200);
+    expect((data as any).rates).toBeDefined();
+  });
+
+  it("returns 400 for /frankfurter/timeseries without required params", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/frankfurter/timeseries?start_date=2024-01-01");
+    expect(status).toBe(400);
+  });
+
+  it("GET /frankfurter/convert converts currency", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", { amount: 100, base: "USD", date: "2026-03-27", rates: { EUR: 86.83 } });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/convert?amount=100&from=USD&to=EUR");
+    expect(status).toBe(200);
+    expect((data as any).rates.EUR).toBe(86.83);
+  });
+
+  it("returns 400 for /frankfurter/convert without required params", async () => {
+    server = createServer({ port: 0 });
+    const { status } = await get(server, "/frankfurter/convert?amount=100");
+    expect(status).toBe(400);
+  });
+
+  it("returns 400 for /frankfurter/convert with non-numeric amount", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/convert?amount=abc&from=USD&to=EUR");
+    expect(status).toBe(400);
+    expect((data as Record<string, string>).error).toContain("amount must be a number");
+  });
+
+  it("GET /frankfurter/currencies returns currency map", async () => {
+    mockUpstreamFetch("api.frankfurter.dev", { USD: "United States Dollar", EUR: "Euro", GBP: "British Pound" });
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/frankfurter/currencies");
+    expect(status).toBe(200);
+    expect((data as any).USD).toBe("United States Dollar");
+  });
 });

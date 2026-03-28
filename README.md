@@ -6,7 +6,7 @@
 
 A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings and economic events — all from your terminal.
 
-**49 tools** across **10 modules** — 7 modules work with zero API keys.
+**54 tools** across **11 modules** — 8 modules work with zero API keys.
 **16 trading skills** — ready-made workflows like `/morning-briefing`, `/earnings-play AAPL`, `/risk-check TSLA`.
 
 **[Wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki)** — Full tool reference, example prompts, advanced strategies, and troubleshooting guide.
@@ -39,7 +39,7 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 }
 ```
 
-### With API keys (optional, enables all 49 tools):
+### With API keys (optional, enables all 54 tools):
 
 ```json
 {
@@ -71,6 +71,7 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
 | fred | 4 | `FRED_API_KEY` | Economic calendar, indicators (CPI, GDP, rates), historical data |
 | sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
+| frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
 
 Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
 
@@ -299,10 +300,11 @@ src/
 │   ├── finnhub/          # 9 tools — quotes, news, earnings, analyst ratings, short interest
 │   ├── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
 │   ├── fred/             # 4 tools — economic calendar, indicators, historical data
-│   └── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
+│   ├── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
+│   └── frankfurter/      # 5 tools — forex exchange rates (ECB, 31 currencies)
 ├── sidecar/
 │   ├── index.ts          # HTTP sidecar entry point (port 3100)
-│   └── server.ts         # HTTP request handler (50 endpoints)
+│   └── server.ts         # HTTP request handler (55 endpoints)
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache

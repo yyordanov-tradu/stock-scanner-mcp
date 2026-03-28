@@ -1,6 +1,6 @@
 # stock-scanner-mcp Tool Reference
 
-Quick reference for all 49 MCP tools available to trading skills.
+Quick reference for all 54 MCP tools available to trading skills.
 
 ## TradingView (10 tools)
 
@@ -100,3 +100,13 @@ Quick reference for all 49 MCP tools available to trading skills.
 |------|---------|------------|
 | `sentiment_fear_greed` | CNN Fear & Greed Index (0-100) | (none) |
 | `sentiment_crypto_fear_greed` | Crypto Fear & Greed (0-100) | (none) |
+
+## Frankfurter (5 tools)
+
+| Tool | Purpose | Key Params |
+|------|---------|------------|
+| `frankfurter_latest` | Latest forex exchange rates (ECB, 31 currencies) | base, symbols |
+| `frankfurter_historical` | Rates for a specific past date | date, base, symbols |
+| `frankfurter_timeseries` | Daily rate history (max 90 days) | start_date, end_date, base, symbols |
+| `frankfurter_convert` | Convert amount between currencies | amount, from, to |
+| `frankfurter_currencies` | List all 31 supported currency codes | (none) |

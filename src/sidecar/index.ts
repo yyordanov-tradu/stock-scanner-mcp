@@ -28,7 +28,7 @@ function main(): void {
   if (alphaVantageApiKey) enabled.push("alpha-vantage"); else disabled.push("alpha-vantage (ALPHA_VANTAGE_API_KEY not set)");
 
   console.error(`[stock-scanner-sidecar] listening on port ${port}`);
-  console.error(`  Always-on: tradingview, tradingview-crypto, sec-edgar, options, options-cboe, sentiment, coingecko`);
+  console.error(`  Always-on: tradingview, tradingview-crypto, sec-edgar, options, options-cboe, sentiment, coingecko, frankfurter`);
   if (enabled.length) console.error(`  Enabled:   ${enabled.join(", ")}`);
   if (disabled.length) console.error(`  Disabled:  ${disabled.join(", ")}`);
 

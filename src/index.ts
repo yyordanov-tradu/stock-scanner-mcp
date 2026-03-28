@@ -24,6 +24,7 @@ import { createOptionsModule } from "./modules/options/index.js";
 import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 import { createFredModule } from "./modules/fred/index.js";
 import { createSentimentModule } from "./modules/sentiment/index.js";
+import { createFrankfurterModule } from "./modules/frankfurter/index.js";
 
 interface ModuleCatalogEntry {
   name: string;
@@ -43,6 +44,7 @@ const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "alpha-vantage", envVar: "ALPHA_VANTAGE_API_KEY", toolCount: 5, factory: (env) => env.ALPHA_VANTAGE_API_KEY ? createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY) : null },
   { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (env) => env.FRED_API_KEY ? createFredModule(env.FRED_API_KEY) : null },
   { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
+  { name: "frankfurter", envVar: null, toolCount: 5, factory: () => createFrankfurterModule() },
 ];
 
 const TOTAL_TOOLS = MODULE_CATALOG.reduce((n, m) => n + m.toolCount, 0);
@@ -56,6 +58,7 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createOptionsModule(),
     createOptionsCboeModule(),
     createSentimentModule(),
+    createFrankfurterModule(),
   ];
 
   if (env.FINNHUB_API_KEY) {

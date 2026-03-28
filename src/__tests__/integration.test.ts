@@ -11,6 +11,7 @@ import { createOptionsModule } from "../modules/options/index.js";
 import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
 import { createFredModule } from "../modules/fred/index.js";
 import { createSentimentModule } from "../modules/sentiment/index.js";
+import { createFrankfurterModule } from "../modules/frankfurter/index.js";
 import type { ModuleDefinition } from "../shared/types.js";
 
 function buildAllModules(env: Record<string, string | undefined>): ModuleDefinition[] {
@@ -22,6 +23,7 @@ function buildAllModules(env: Record<string, string | undefined>): ModuleDefinit
     createOptionsModule(),
     createOptionsCboeModule(),
     createSentimentModule(),
+    createFrankfurterModule(),
   ];
   if (env.FINNHUB_API_KEY) modules.push(createFinnhubModule(env.FINNHUB_API_KEY));
   if (env.ALPHA_VANTAGE_API_KEY) modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
@@ -34,14 +36,14 @@ describe("full module wiring", () => {
     vi.unstubAllEnvs();
   });
 
-  it("enables 7 free modules with no API keys", () => {
+  it("enables 8 free modules with no API keys", () => {
     const modules = buildAllModules({});
     const enabled = resolveEnabledModules(modules, {});
     expect(enabled.map((m) => m.name)).toEqual([
-      "tradingview", "tradingview-crypto", "sec-edgar", "coingecko", "options", "options-cboe", "sentiment",
+      "tradingview", "tradingview-crypto", "sec-edgar", "coingecko", "options", "options-cboe", "sentiment", "frankfurter",
     ]);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(31); // 10 + 4 + 6 + 3 + 5 + 1 + 2 (free modules only)
+    expect(totalTools).toBe(36); // 10 + 4 + 6 + 3 + 5 + 1 + 2 + 5(frankfurter)
   });
 
   it("enables all 10 modules with all API keys", () => {
@@ -52,12 +54,12 @@ describe("full module wiring", () => {
     };
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
-    expect(enabled).toHaveLength(10);
+    expect(enabled).toHaveLength(11);
     const totalTools = enabled.reduce((n, m) => n + m.tools.length, 0);
-    expect(totalTools).toBe(49); // 10 + 4 + 6 + 3 + 5 + 1 + 2 + 9 + 5 + 4
+    expect(totalTools).toBe(54); // 10 + 4 + 6 + 3 + 5 + 1 + 2 + 9 + 5 + 4 + 5(frankfurter)
   });
 
-  it("all 49 tool names are unique", () => {
+  it("all 54 tool names are unique", () => {
     const env = {
       FINNHUB_API_KEY: "key",
       ALPHA_VANTAGE_API_KEY: "key",
@@ -66,7 +68,7 @@ describe("full module wiring", () => {
     const modules = buildAllModules(env);
     const enabled = resolveEnabledModules(modules, env);
     const allNames = enabled.flatMap((m) => m.tools.map((t) => t.name));
-    expect(new Set(allNames).size).toBe(49);
+    expect(new Set(allNames).size).toBe(54);
   });
 
   it("respects --modules filter", () => {
