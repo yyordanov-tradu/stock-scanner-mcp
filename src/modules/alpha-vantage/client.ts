@@ -137,6 +137,7 @@ export interface CompanyOverview {
   week52High: number;
   week52Low: number;
   analystTargetPrice: number;
+  beta: number;
 }
 
 export async function getOverview(apiKey: string, symbol: string): Promise<CompanyOverview> {
@@ -175,6 +176,7 @@ export async function getOverview(apiKey: string, symbol: string): Promise<Compa
     week52High: parseFloat(data["52WeekHigh"]) || 0,
     week52Low: parseFloat(data["52WeekLow"]) || 0,
     analystTargetPrice: parseFloat(data.AnalystTargetPrice) || 0,
+    beta: parseFloat(data.Beta) || 0,
   };
 
   cache.set(cacheKey, overview);
