@@ -8,7 +8,7 @@ function parsePort(args: string[]): number {
     const port = Number(args[idx + 1]);
     if (!Number.isNaN(port) && port > 0 && port < 65536) return port;
   }
-  return 3100;
+  return 3200;
 }
 
 function main(): void {
