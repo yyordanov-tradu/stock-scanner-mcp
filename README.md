@@ -4,29 +4,38 @@
 [![npm version](https://img.shields.io/npm/v/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 [![npm downloads](https://img.shields.io/npm/dw/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 
-A modular MCP (Model Context Protocol) server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings and economic events — all from your terminal.
+A modular MCP server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and more — all from your terminal.
 
 **54 tools** across **11 modules** — 8 modules work with zero API keys.
-**16 trading skills** — ready-made workflows like `/morning-briefing`, `/earnings-play AAPL`, `/risk-check TSLA`.
 
-**[Wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki)** — Full tool reference, example prompts, advanced strategies, and troubleshooting guide.
+## What You Can Do
+
+```
+"What are the top gaining stocks today?"
+"Show me technicals for AAPL on the hourly timeframe"
+"Any insider trades for TSLA in the last 30 days?"
+"What's the options chain for AAPL expiring next Friday?"
+"What's the current fed funds rate and CPI trend?"
+"Convert $10,000 USD to EUR"
+```
+
+### Highlights
+
+- **Stock scanning** — screen by price, RSI, volume, market cap with custom filters
+- **Technical analysis** — RSI, MACD, Bollinger Bands, moving averages, pivots across multiple timeframes
+- **Options flow** — chains with Greeks, unusual activity detection, max pain, implied move
+- **Insider trades** — parsed Form 4 transactions with buy/sell/grant details
+- **Earnings & news** — calendar, analyst ratings, company news, short interest
+- **Crypto** — real-time quotes, technicals, trending coins, market stats
+- **Macro** — CPI, GDP, fed funds rate, economic calendar, yield curve data
+- **Forex** — 31 currency pairs from ECB, conversion, historical rates
+- **Sentiment** — CNN Fear & Greed Index, Crypto Fear & Greed
 
 ## Quick Start
 
-```bash
-npx stock-scanner-mcp
-```
+### 1. Add MCP server to Claude Code
 
-Or install globally:
-
-```bash
-npm install -g stock-scanner-mcp
-stock-scanner-mcp
-```
-
-## Setup with Claude Code
-
-Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
+Add to `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 ```json
 {
@@ -39,7 +48,17 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 }
 ```
 
-### With API keys (optional, enables all 54 tools):
+This gives you **36 tools** immediately — no API keys needed.
+
+### 2. Install trading skills (optional, recommended)
+
+```bash
+npx -p stock-scanner-mcp stock-scanner-install-skills
+```
+
+This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA` that orchestrate multiple tools into professional analysis workflows.
+
+### 3. Add API keys for full access (optional)
 
 ```json
 {
@@ -57,6 +76,36 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 }
 ```
 
+All keys are free: [Finnhub](https://finnhub.io/) | [Alpha Vantage](https://www.alphavantage.co/support/#api-key) | [FRED](https://fred.stlouisfed.org/docs/api/api_key.html)
+
+## Trading Skills
+
+17 ready-made workflows that chain multiple tools into structured analysis. Each skill orchestrates 5-14 tools in parallel and outputs a verdict with direction, confidence, and key levels.
+
+| Category | Skills | What They Do |
+|----------|--------|-------------|
+| **Daily Routines** | `/morning-briefing`, `/market-close-recap`, `/crypto-briefing` | Pre-market scan, EOD recap, crypto overview |
+| **Analysis** | `/analyze-stock TICKER`, `/compare TICKER1 TICKER2`, `/analyze-crypto COIN` | Deep dives and side-by-side comparisons |
+| **Strategies** | `/swing-setup`, `/earnings-play TICKER`, `/options-flow TICKER`, `/dividend-screen` | Swing trades, earnings options, smart money, income screen |
+| **Macro** | `/macro-dashboard`, `/fed-watch`, `/sector-rotation` | Economic indicators, Fed outlook, sector rotation |
+| **Risk** | `/insider-tracker TICKER`, `/smart-money TICKER`, `/risk-check TICKER` | Insider trades, institutional flow, pre-trade risk scorecard |
+
+Skills degrade gracefully when optional API keys are missing. See [skills/README.md](skills/README.md) for the full catalog.
+
+<details>
+<summary>Install options</summary>
+
+```bash
+npx -p stock-scanner-mcp stock-scanner-install-skills                    # all skills
+npx -p stock-scanner-mcp stock-scanner-install-skills --scope project    # project only
+npx -p stock-scanner-mcp stock-scanner-install-skills --category macro   # one category
+npx -p stock-scanner-mcp stock-scanner-install-skills --list             # list without installing
+npx -p stock-scanner-mcp stock-scanner-install-skills --force            # overwrite existing
+```
+
+Manual: `git clone` this repo and `cp -r skills/*/ ~/.claude/skills/`
+</details>
+
 ## Modules
 
 | Module | Tools | API Key | Description |
@@ -67,15 +116,16 @@ Add to your Claude Code MCP config (`~/.claude.json` or project `.mcp.json`):
 | coingecko | 3 | None | Crypto market data, trending coins, global stats |
 | options | 5 | None | Options chains, Greeks, unusual activity, max pain, implied move |
 | options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
+| sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
+| frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
 | finnhub | 9 | `FINNHUB_API_KEY` | Quotes, news, earnings, analyst ratings, short interest |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
 | fred | 4 | `FRED_API_KEY` | Economic calendar, indicators (CPI, GDP, rates), historical data |
-| sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
-| frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
 
-Modules auto-enable when their required environment variables are set. Modules with no required key are always enabled.
+Modules auto-enable when their API key is set. No-key modules are always enabled.
 
-## Available Tools (49 total)
+<details>
+<summary>Full tool reference (54 tools)</summary>
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -136,6 +186,23 @@ Modules auto-enable when their required environment variables are set. Modules w
 |------|-------------|
 | `options_put_call_ratio` | CBOE equity/index/total put/call ratio for market sentiment |
 
+### Sentiment — Fear & Greed (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `sentiment_fear_greed` | CNN Fear & Greed Index — composite score (0-100) with 7 sub-indicators |
+| `sentiment_crypto_fear_greed` | Crypto Fear & Greed Index — daily score (0-100) with historical values |
+
+### Frankfurter — Forex Rates (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `frankfurter_latest` | Latest ECB exchange rates for 31 currencies |
+| `frankfurter_historical` | Exchange rates for a specific past date |
+| `frankfurter_timeseries` | Daily rate history for a date range (max 90 days) |
+| `frankfurter_convert` | Convert an amount between two currencies |
+| `frankfurter_currencies` | List all supported currency codes |
+
 ### Finnhub — News, Earnings & Macro (requires `FINNHUB_API_KEY`)
 
 | Tool | Description |
@@ -169,22 +236,9 @@ Modules auto-enable when their required environment variables are set. Modules w
 | `fred_indicator_history` | Historical values with unit transforms (YoY %, change, level) |
 | `fred_search` | Discover FRED series IDs by keyword |
 
-### Sentiment — Fear & Greed Indexes (no API key)
-
-| Tool | Description |
-|------|-------------|
-| `sentiment_fear_greed` | CNN Fear & Greed Index — composite score (0-100) with 7 sub-indicators and trend data |
-| `sentiment_crypto_fear_greed` | Crypto Fear & Greed Index — daily score (0-100) with historical values and classification |
+</details>
 
 ## Configuration
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FINNHUB_API_KEY` | No | Enables Finnhub module ([get free key](https://finnhub.io/)) |
-| `ALPHA_VANTAGE_API_KEY` | No | Enables Alpha Vantage module ([get free key](https://www.alphavantage.co/support/#api-key)) |
-| `FRED_API_KEY` | No | Enables FRED module ([get free key](https://fred.stlouisfed.org/docs/api/api_key.html)) |
 
 ### CLI Options
 
@@ -194,96 +248,43 @@ stock-scanner-mcp --default-exchange NYSE             # Set default exchange
 stock-scanner-mcp --help                              # Show all options
 ```
 
-## MCP Prompts
+## HTTP Sidecar
 
-The server includes built-in analysis workflows:
-
-| Prompt | Description |
-|--------|-------------|
-| `analyze_stock` | Full stock analysis — quote, technicals, news, and BTC correlation for crypto-related stocks |
-| `intraday_candidates` | Find intraday trading candidates with customizable price range and filters |
-
-## Example Usage in Claude Code
-
-Once configured, just ask Claude naturally:
-
-- "What are the top gaining stocks today?"
-- "Show me technicals for AAPL on the hourly timeframe"
-- "Any insider trades for TSLA in the last 30 days?"
-- "What's trending in crypto right now?"
-- "Find stocks with unusual volume today"
-- "What earnings are coming up this week?"
-- "What's the current fed funds rate and CPI inflation trend?"
-- "Show me upcoming high-impact economic events"
-- "What's the short interest on GME?"
-- "Get Apple's dividend history"
-- "What's the options chain for AAPL expiring next Friday?"
-- "Any unusual options activity on TSLA?"
-- "What's the max pain for SPY this week?"
-- "Show me the put/call ratio trend for the last 30 days"
-- "What's the current Fear & Greed Index?"
-- "How is crypto sentiment right now?"
-
-## Trading Skills for Claude Code
-
-16 ready-made trading workflows that chain multiple tools into professional analysis. Install them as Claude Code slash commands and run full analyses with a single command.
-
-### Install Skills
+An optional HTTP server exposing all tools as REST endpoints for non-MCP integrations (trading bots, chat UIs, LLM pipelines).
 
 ```bash
-# Install all skills (recommended)
-npx -p stock-scanner-mcp stock-scanner-install-skills
-
-# Install to project scope only
-npx -p stock-scanner-mcp stock-scanner-install-skills --scope project
-
-# Install one category
-npx -p stock-scanner-mcp stock-scanner-install-skills --category macro
-
-# List available skills
-npx -p stock-scanner-mcp stock-scanner-install-skills --list
+npx stock-scanner-sidecar              # Start on port 3100
+npx stock-scanner-sidecar --port 8080  # Custom port
 ```
 
-> **Note:** `npx stock-scanner-mcp install-skills` also works if the package is already cached.
-> The `-p stock-scanner-mcp` flag tells npx which package to download, while
-> `stock-scanner-install-skills` is the bin command within that package.
+55 endpoints including `/tradingview/quote`, `/options/chain`, `/frankfurter/convert`, and more. See [wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for the full route table.
 
-<details>
-<summary>Manual alternative</summary>
+## Rate Limits
 
-```bash
-git clone https://github.com/yyordanov-tradu/stock-scanner-mcp.git
-cp -r stock-scanner-mcp/skills/*/ ~/.claude/skills/
-```
-</details>
+| API | Free Tier Limit | Cache TTL |
+|-----|-----------------|-----------|
+| TradingView | No documented limit | — |
+| SEC EDGAR | 10 req/sec | 5 min |
+| CoinGecko | ~30 calls/min | 1 min |
+| Yahoo Finance (Options) | No documented limit | 5 min |
+| CBOE | No documented limit | 30 min |
+| Finnhub | 30 calls/sec | 5 min |
+| Alpha Vantage | 5 calls/min, 25/day | 1 min |
+| FRED | No hard limit | 30 min |
+| Frankfurter (ECB) | No limit | 1 hour |
 
-Then in Claude Code, type `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA`, etc.
-
-### Available Skills
-
-| Category | Skills | What They Do |
-|----------|--------|-------------|
-| **Daily Routines** | `/morning-briefing`, `/market-close-recap`, `/crypto-briefing` | Pre-market scan, EOD recap, crypto overview |
-| **Analysis** | `/analyze-stock TICKER`, `/compare TICKER1 TICKER2`, `/analyze-crypto COIN` | Deep dives and side-by-side comparisons |
-| **Strategies** | `/swing-setup`, `/earnings-play TICKER`, `/options-flow TICKER`, `/dividend-screen` | Swing trades, earnings options, smart money, income screen |
-| **Macro** | `/macro-dashboard`, `/fed-watch`, `/sector-rotation` | Economic indicators, Fed outlook, sector rotation |
-| **Risk** | `/insider-tracker TICKER`, `/smart-money TICKER`, `/risk-check TICKER` | Insider trades, institutional flow, pre-trade risk scorecard |
-
-Each skill orchestrates 5-14 tools in parallel, cross-references the data, and outputs a structured verdict with direction, confidence, and key levels. Skills degrade gracefully when optional API keys are missing.
-
-See [skills/README.md](skills/README.md) for the full catalog, API key requirements, and customization guide.
+All modules use in-memory TTL caching to minimize API calls.
 
 ## Development
 
 ```bash
-npm install
-npm run build
-npm test
+npm install && npm run build && npm test
 npm run lint          # TypeScript type checking
-node dist/index.js    # Run locally
+npm run validate-tools # Tool description quality check
 ```
 
-## Architecture
+<details>
+<summary>Architecture</summary>
 
 ```
 src/
@@ -313,31 +314,7 @@ src/
     └── utils.ts          # withMetadata error wrapper
 ```
 
-## HTTP Sidecar Mode
-
-An optional HTTP server that exposes module client functions over REST. Designed for integrations that need market data without MCP (e.g., trading bots, LLM pipelines).
-
-```bash
-stock-scanner-sidecar              # Start on default port 3100
-stock-scanner-sidecar --port 8080  # Custom port
-```
-
-Endpoints include `/tradingview/scan`, `/finnhub/company-news`, `/sentiment/fear-greed`, `/options/chain`, `/fred/indicator`, and more. Gated endpoints (Finnhub, FRED) require API keys via environment variables. CORS is restricted to localhost origins.
-
-## Rate Limits
-
-| API | Free Tier Limit | Cache TTL |
-|-----|-----------------|-----------|
-| TradingView | No documented limit (be reasonable) | — |
-| SEC EDGAR | 10 requests/second | 5 min |
-| CoinGecko | ~30 calls/minute | 1 min |
-| Yahoo Finance | No documented limit (be reasonable) | 5 min |
-| CBOE CDN | No documented limit | 30 min |
-| Finnhub | 30 calls/second | 5 min |
-| Alpha Vantage | 5 calls/minute, 25 calls/day | 1 min |
-| FRED | No hard limit | 30 min |
-
-All modules use in-memory TTL caching to minimize API calls. Error responses include retry hints for rate-limited requests.
+</details>
 
 ## License
 

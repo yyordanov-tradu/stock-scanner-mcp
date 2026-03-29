@@ -26,7 +26,7 @@ const latestTool = {
     "Updated once per business day at ~16:00 CET. " +
     "These are reference rates, not real-time trading rates.",
   inputSchema: z.object({
-    base: currencyCode.default("USD").describe("Base currency (default: USD)"),
+    base: currencyCode.default("USD").describe("Base currency"),
     symbols: z
       .string()
       .optional()
@@ -46,12 +46,13 @@ const latestTool = {
 const historicalTool = {
   name: "frankfurter_historical",
   description:
-    "Get forex exchange rates for a specific past date. " +
+    "Get ECB forex exchange rates for a specific past date. " +
+    "Daily reference rates, not real-time trading rates. " +
     "If the date is a weekend or holiday, returns the previous business day's rates. " +
     "Data available from 1999-01-04 (Euro inception).",
   inputSchema: z.object({
     date: z.string().describe("Date in YYYY-MM-DD format"),
-    base: currencyCode.default("USD").describe("Base currency (default: USD)"),
+    base: currencyCode.default("USD").describe("Base currency"),
     symbols: z
       .string()
       .optional()
@@ -70,9 +71,10 @@ const historicalTool = {
 const timeseriesTool = {
   name: "frankfurter_timeseries",
   description:
-    "Get daily forex rate history for a date range (max 90 days). " +
-    "Use for currency trend analysis. Only business days are included " +
-    "(weekends/holidays omitted). Requires symbols filter to control response size.",
+    "Get daily ECB forex rate history for a date range (max 90 days). " +
+    "Daily reference rates, not real-time. Use for currency trend analysis. " +
+    "Only business days included (weekends/holidays omitted). " +
+    "Requires symbols filter to control response size.",
   inputSchema: z.object({
     start_date: z.string().describe("Start date (YYYY-MM-DD)"),
     end_date: z
@@ -81,7 +83,7 @@ const timeseriesTool = {
       .describe(
         "End date (YYYY-MM-DD, defaults to today, max 90 days from start)",
       ),
-    base: currencyCode.default("USD").describe("Base currency (default: USD)"),
+    base: currencyCode.default("USD").describe("Base currency"),
     symbols: z
       .string()
       .describe(
@@ -102,7 +104,8 @@ const timeseriesTool = {
 const convertTool = {
   name: "frankfurter_convert",
   description:
-    "Convert an amount between two currencies at the latest ECB reference rate. " +
+    "Convert an amount between two currencies at the latest ECB daily reference rate. " +
+    "Updated once per business day — not suitable for intraday trading rates. " +
     "Useful for cross-border stock valuation and currency exposure calculations.",
   inputSchema: z.object({
     amount: z.number().describe("Amount to convert"),
