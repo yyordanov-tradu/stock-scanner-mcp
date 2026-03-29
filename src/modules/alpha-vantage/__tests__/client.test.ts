@@ -105,6 +105,7 @@ describe("getOverview", () => {
         "52WeekHigh": "199.62",
         "52WeekLow": "143.90",
         AnalystTargetPrice: "195.00",
+        Beta: "1.25",
       }),
     });
 
@@ -114,6 +115,7 @@ describe("getOverview", () => {
     expect(overview.marketCap).toBe(2500000000000);
     expect(overview.peRatio).toBe(28.5);
     expect(overview.sector).toBe("TECHNOLOGY");
+    expect(overview.beta).toBe(1.25);
   });
 });
 

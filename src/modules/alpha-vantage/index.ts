@@ -45,7 +45,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
 
   const overviewTool = {
     name: "alphavantage_overview",
-    description: "Get company fundamentals from Alpha Vantage. Includes PE ratio, market cap, sector, industry, earnings, and analyst target price. Supports batch requests (limit 5). Rate limit: 25 calls/day, 5 calls/min (free tier).",
+    description: "Get company fundamentals from Alpha Vantage. Includes PE ratio, market cap, beta, sector, industry, earnings, and analyst target price. Supports batch requests (limit 5). Rate limit: 25 calls/day, 5 calls/min (free tier).",
     inputSchema: z.object({
       symbols: z.union([z.string(), z.array(z.string())]).describe("One or more stock symbols (e.g. 'AAPL' or ['AAPL', 'MSFT'])"),
     }),
