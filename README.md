@@ -60,6 +60,16 @@ This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`,
 
 ### 3. Add API keys for full access (optional)
 
+All three keys are **free** — no credit card required:
+
+| Key | Get it from | What it unlocks |
+|-----|-------------|-----------------|
+| `FINNHUB_API_KEY` | [finnhub.io/register](https://finnhub.io/register) | Real-time quotes, company news, earnings calendar, analyst ratings, short interest (9 tools) |
+| `ALPHA_VANTAGE_API_KEY` | [alphavantage.co/support](https://www.alphavantage.co/support/#api-key) | Daily price history, company fundamentals, earnings & dividend history (5 tools) |
+| `FRED_API_KEY` | [fred.stlouisfed.org/api](https://fred.stlouisfed.org/docs/api/api_key.html) | Economic calendar, CPI/GDP/fed funds indicators, historical data (4 tools) |
+
+Add them to your MCP config:
+
 ```json
 {
   "mcpServers": {
@@ -74,9 +84,6 @@ This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`,
     }
   }
 }
-```
-
-All keys are free: [Finnhub](https://finnhub.io/) | [Alpha Vantage](https://www.alphavantage.co/support/#api-key) | [FRED](https://fred.stlouisfed.org/docs/api/api_key.html)
 
 ## Trading Skills
 
