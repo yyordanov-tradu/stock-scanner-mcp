@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 [![npm downloads](https://img.shields.io/npm/dw/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 
-A modular MCP server that gives Claude Code real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and more — all from your terminal.
+A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compatible clients real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and more from one server.
 
 **54 tools** across **11 modules** — 8 modules work with zero API keys.
 
@@ -33,7 +33,26 @@ A modular MCP server that gives Claude Code real-time access to stock and crypto
 
 ## Quick Start
 
-### 1. Add MCP server to Claude Code
+### 1. Connect from Claude Desktop
+
+Add the server to your Claude Desktop MCP config:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving the config. This gives you **36 tools** immediately with no API keys.
+
+### 2. Connect from Claude Code
 
 Add to `~/.claude.json` (global) or `.mcp.json` (per-project):
 
@@ -50,14 +69,6 @@ Add to `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 This gives you **36 tools** immediately — no API keys needed.
 
-### 2. Install trading skills (optional, recommended)
-
-```bash
-npx -p stock-scanner-mcp stock-scanner-install-skills
-```
-
-This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA` that orchestrate multiple tools into professional analysis workflows.
-
 ### 3. Add API keys for full access (optional)
 
 All three keys are **free** — no credit card required:
@@ -68,7 +79,7 @@ All three keys are **free** — no credit card required:
 | `ALPHA_VANTAGE_API_KEY` | [alphavantage.co/support](https://www.alphavantage.co/support/#api-key) | Daily price history, company fundamentals, earnings & dividend history (5 tools) |
 | `FRED_API_KEY` | [fred.stlouisfed.org/api](https://fred.stlouisfed.org/docs/api/api_key.html) | Economic calendar, CPI/GDP/fed funds indicators, historical data (4 tools) |
 
-Add them to your MCP config:
+The same `env` block works in Claude Desktop, Claude Code, and most other MCP clients:
 
 ```json
 {
@@ -85,6 +96,31 @@ Add them to your MCP config:
   }
 }
 ```
+
+### 4. Install trading skills for Claude Code (optional, recommended)
+
+```bash
+npx -p stock-scanner-mcp stock-scanner-install-skills
+```
+
+This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA` that orchestrate multiple tools into professional analysis workflows.
+
+### 5. Use with other MCP clients
+
+Any MCP client that supports stdio servers can run this package with:
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"]
+    }
+  }
+}
+```
+
+If your client does not expose `npx`, install the package first and point the client at the installed binary instead.
 
 ## Trading Skills
 
@@ -261,7 +297,7 @@ stock-scanner-mcp --help                              # Show all options
 An optional HTTP server exposing all tools as REST endpoints for non-MCP integrations (trading bots, chat UIs, LLM pipelines).
 
 ```bash
-npx stock-scanner-sidecar              # Start on port 3100
+npx stock-scanner-sidecar              # Start on port 3200
 npx stock-scanner-sidecar --port 8080  # Custom port
 ```
 
@@ -318,7 +354,7 @@ src/
 │   ├── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
 │   └── frankfurter/      # 5 tools — forex exchange rates (ECB, 31 currencies)
 ├── sidecar/
-│   ├── index.ts          # HTTP sidecar entry point (port 3100)
+│   ├── index.ts          # HTTP sidecar entry point (port 3200)
 │   └── server.ts         # HTTP request handler (55 endpoints)
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
