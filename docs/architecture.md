@@ -1,6 +1,6 @@
 # Architecture Diagram
 
-This diagram illustrates how Claude Code, the LLM, the MCP Server, and the 19 tools connect to external data sources in this project.
+This diagram illustrates how Claude Code, the LLM, the MCP Server, and the **54 tools across 11 modules** connect to external data sources in this project.
 
 ```text
        USER
@@ -8,21 +8,21 @@ This diagram illustrates how Claude Code, the LLM, the MCP Server, and the 19 to
          ▼
 ┌───────────────────┐        ┌───────────────────┐
 │    CLAUDE CODE    │ <────> │        LLM        │ (The Brain)
-│   (The Client)    │        │ (Claude 3.5/Opus) │ Decides WHICH tool to use
+│   (The Client)    │        │   (Claude model)  │ Decides WHICH tool to use
 └─────────┬─────────┘        └───────────────────┘
           │
           │ (Model Context Protocol - MCP)
           │ The "Universal Wire" connecting the Brain to Data
           │
 ┌─────────▼──────────────────────────────────────┐
-│             STOCK SCANNER PLUGIN               │ (The "Package")
+│             STOCK SCANNER MCP SERVER           │ (The "Package")
 │  ┌──────────────────────────────────────────┐  │
 │  │               MCP SERVER                 │  │ (The "Engine")
-│  │      (Host for your 19 Tools)            │  │
+│  │   (Host for 54 tools in 11 modules)      │  │
 │  └────┬───────────────┬───────────────┬─────┘  │
 │       │               │               │        │
 │  ┌────▼────┐    ┌─────▼────┐    ┌─────▼────┐   │
-│  │ TOOL 01 │    │ TOOL 02  │    │ TOOL 19  │   │ (The "Skills")
+│  │ TOOL 01 │    │ TOOL 02  │    │ TOOL 54  │   │ (The "Skills")
 │  │ (Scan)   │    │ (Quote)  │    │ (News)   │   │
 │  └────┬────┘    └─────┬────┘    └─────┬────┘   │
 └───────┼───────────────┼───────────────┼────────┘

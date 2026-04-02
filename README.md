@@ -84,6 +84,7 @@ Add them to your MCP config:
     }
   }
 }
+```
 
 ## Trading Skills
 
