@@ -84,6 +84,7 @@ Add them to your MCP config:
     }
   }
 }
+```
 
 ## Trading Skills
 
@@ -289,6 +290,12 @@ npm install && npm run build && npm test
 npm run lint          # TypeScript type checking
 npm run validate-tools # Tool description quality check
 ```
+
+## Credibility Artifacts
+
+- [Benchmark examples](docs/credibility/benchmark-examples.md)
+- [Sample transcripts](docs/credibility/sample-transcripts.md)
+- [Latency & reliability snapshot](docs/credibility/latency-reliability.md)
 
 <details>
 <summary>Architecture</summary>
