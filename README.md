@@ -33,9 +33,26 @@ A modular MCP server that gives Claude Code real-time access to stock and crypto
 
 ## Quick Start
 
-### 1. Add MCP server to Claude Code
+### 1. Connect to Claude Desktop (GUI)
 
-Add to `~/.claude.json` (global) or `.mcp.json` (per-project):
+Add the server to your configuration file:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"]
+    }
+  }
+}
+```
+
+### 2. Connect to Claude Code (CLI)
+
+Add to your global config `~/.claude.json` or project-local `.mcp.json`:
 
 ```json
 {
@@ -50,7 +67,7 @@ Add to `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 This gives you **36 tools** immediately — no API keys needed.
 
-### 2. Install trading skills (optional, recommended)
+### 3. Install trading skills (optional, recommended)
 
 ```bash
 npx -p stock-scanner-mcp stock-scanner-install-skills
@@ -58,7 +75,7 @@ npx -p stock-scanner-mcp stock-scanner-install-skills
 
 This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA` that orchestrate multiple tools into professional analysis workflows.
 
-### 3. Add API keys for full access (optional)
+### 4. Add API keys for full access (optional)
 
 All three keys are **free** — no credit card required:
 
