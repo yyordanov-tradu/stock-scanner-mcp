@@ -48,6 +48,12 @@ If you want to use it, start from one of the complete copy-paste examples below.
 
 ## Quick Start
 
+The fastest way to start the server with all free tools and the Market Workspace enabled:
+
+```bash
+npx -y stock-scanner-mcp --enable-workspace
+```
+
 ### 1. Connect to Claude Desktop (GUI)
 
 Add the server to your configuration file:
@@ -83,6 +89,12 @@ Add to your global config `~/.claude.json` or project-local `.mcp.json`:
 ```
 
 This gives you **36 tools** immediately — no API keys needed.
+
+Or enable the **Market Workspace** right away:
+
+```bash
+npx -y stock-scanner-mcp --enable-workspace
+```
 
 ### 3. Enable Market Workspace with a complete config
 
