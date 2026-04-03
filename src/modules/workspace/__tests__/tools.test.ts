@@ -60,6 +60,24 @@ describe("Workspace Tools", () => {
     expect(parsed.core.instruments[1].isCrypto).toBe(true);
   });
 
+  it("deduplicates instruments by canonical full id", async () => {
+    const createTool = getTool("workspace_create_watchlist");
+    await createTool.handler({ name: "dedup" });
+    
+    const updateTool = getTool("workspace_update_watchlist");
+    await updateTool.handler({
+      name: "dedup",
+      symbols: ["AAPL", "NASDAQ:AAPL", "BTC", "btc"],
+    });
+    
+    const listTool = getTool("workspace_list_watchlists");
+    const listResult: ToolResult = await listTool.handler({});
+    const parsed = JSON.parse(listResult.content[0].text);
+    
+    expect(parsed.dedup.instruments).toHaveLength(2);
+    expect(parsed.dedup.instruments.map((i: any) => i.full)).toEqual(["NASDAQ:AAPL", "BTC"]);
+  });
+
   it("saves and gets thesis", async () => {
     const saveTool = getTool("workspace_save_thesis");
     await saveTool.handler({

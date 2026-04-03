@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { lock, unlock } from "proper-lockfile";
 import { Workspace, WorkspaceSchema } from "./types.js";
 
 export interface LoadResult {
@@ -57,27 +58,50 @@ export class StorageManager {
     const dir = path.dirname(this.filePath);
     await fs.mkdir(dir, { recursive: true });
 
-    if (expectedLastModified > 0 && (await this.exists())) {
+    let release: (() => Promise<void>) | undefined;
+    
+    try {
+      // If file doesn't exist, create an empty one so we can lock it
+      if (!(await this.exists())) {
+        await fs.writeFile(this.filePath, "{}", "utf-8");
+      }
+
+      // Acquire lock with retries
+      release = await lock(this.filePath, { 
+        retries: {
+          retries: 5,
+          minTimeout: 100,
+          maxTimeout: 1000,
+        }
+      });
+
+      // Verify mtime inside the lock
       const stat = await fs.stat(this.filePath);
-      if (stat.mtimeMs > expectedLastModified) {
+      if (expectedLastModified > 0 && stat.mtimeMs > expectedLastModified) {
         throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
       }
-    }
 
-    const tmpPath = `${this.filePath}.tmp`;
-    const bakPath = `${this.filePath}.bak`;
-    const content = JSON.stringify(data, null, 2);
+      const tmpPath = `${this.filePath}.tmp`;
+      const bakPath = `${this.filePath}.bak`;
+      const content = JSON.stringify(data, null, 2);
 
-    // Atomic write
-    await fs.writeFile(tmpPath, content, "utf-8");
-    
-    if (await this.exists()) {
-      await fs.copyFile(this.filePath, bakPath);
+      // Atomic write
+      await fs.writeFile(tmpPath, content, "utf-8");
+      
+      // Keep backup
+      const fileExists = await fs.access(this.filePath).then(() => true).catch(() => false);
+      if (fileExists) {
+        await fs.copyFile(this.filePath, bakPath);
+      }
+      
+      await fs.rename(tmpPath, this.filePath);
+      
+      const newStat = await fs.stat(this.filePath);
+      return newStat.mtimeMs;
+    } finally {
+      if (release) {
+        await release();
+      }
     }
-    
-    await fs.rename(tmpPath, this.filePath);
-    
-    const newStat = await fs.stat(this.filePath);
-    return newStat.mtimeMs;
   }
 }
