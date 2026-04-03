@@ -25,12 +25,16 @@ import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 import { createFredModule } from "./modules/fred/index.js";
 import { createSentimentModule } from "./modules/sentiment/index.js";
 import { createFrankfurterModule } from "./modules/frankfurter/index.js";
+import { createWorkspaceModule } from "./modules/workspace/index.js";
+import type { Config } from "./config.js";
+import * as path from "node:path";
+import * as os from "node:os";
 
 interface ModuleCatalogEntry {
   name: string;
   envVar: string | null;
   toolCount: number;
-  factory: (env: Record<string, string | undefined>) => ModuleDefinition | null;
+  factory: (config: Config) => ModuleDefinition | null;
 }
 
 const MODULE_CATALOG: ModuleCatalogEntry[] = [
@@ -40,16 +44,17 @@ const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "coingecko", envVar: null, toolCount: 3, factory: () => createCoingeckoModule() },
   { name: "options", envVar: null, toolCount: 5, factory: () => createOptionsModule() },
   { name: "options-cboe", envVar: null, toolCount: 1, factory: () => createOptionsCboeModule() },
-  { name: "finnhub", envVar: "FINNHUB_API_KEY", toolCount: 9, factory: (env) => env.FINNHUB_API_KEY ? createFinnhubModule(env.FINNHUB_API_KEY) : null },
-  { name: "alpha-vantage", envVar: "ALPHA_VANTAGE_API_KEY", toolCount: 5, factory: (env) => env.ALPHA_VANTAGE_API_KEY ? createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY) : null },
-  { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (env) => env.FRED_API_KEY ? createFredModule(env.FRED_API_KEY) : null },
+  { name: "finnhub", envVar: "FINNHUB_API_KEY", toolCount: 9, factory: (config) => config.env.FINNHUB_API_KEY ? createFinnhubModule(config.env.FINNHUB_API_KEY) : null },
+  { name: "alpha-vantage", envVar: "ALPHA_VANTAGE_API_KEY", toolCount: 5, factory: (config) => config.env.ALPHA_VANTAGE_API_KEY ? createAlphaVantageModule(config.env.ALPHA_VANTAGE_API_KEY) : null },
+  { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (config) => config.env.FRED_API_KEY ? createFredModule(config.env.FRED_API_KEY) : null },
   { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
   { name: "frankfurter", envVar: null, toolCount: 5, factory: () => createFrankfurterModule() },
+  { name: "workspace", envVar: null, toolCount: 7, factory: (config) => config.enableWorkspace ? createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp")) : null },
 ];
 
 const TOTAL_TOOLS = MODULE_CATALOG.reduce((n, m) => n + m.toolCount, 0);
 
-function buildModules(env: Record<string, string | undefined>): ModuleDefinition[] {
+function buildModules(config: Config): ModuleDefinition[] {
   const modules: ModuleDefinition[] = [
     createTradingviewModule(),
     createTradingviewCryptoModule(),
@@ -61,16 +66,20 @@ function buildModules(env: Record<string, string | undefined>): ModuleDefinition
     createFrankfurterModule(),
   ];
 
-  if (env.FINNHUB_API_KEY) {
-    modules.push(createFinnhubModule(env.FINNHUB_API_KEY));
+  if (config.env.FINNHUB_API_KEY) {
+    modules.push(createFinnhubModule(config.env.FINNHUB_API_KEY));
   }
 
-  if (env.ALPHA_VANTAGE_API_KEY) {
-    modules.push(createAlphaVantageModule(env.ALPHA_VANTAGE_API_KEY));
+  if (config.env.ALPHA_VANTAGE_API_KEY) {
+    modules.push(createAlphaVantageModule(config.env.ALPHA_VANTAGE_API_KEY));
   }
 
-  if (env.FRED_API_KEY) {
-    modules.push(createFredModule(env.FRED_API_KEY));
+  if (config.env.FRED_API_KEY) {
+    modules.push(createFredModule(config.env.FRED_API_KEY));
+  }
+
+  if (config.enableWorkspace) {
+    modules.push(createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp")));
   }
 
   return modules;
@@ -151,7 +160,7 @@ async function main() {
   }
 
   const config = parseConfig(args);
-  const allModules = buildModules(config.env);
+  const allModules = buildModules(config);
   const enabled = resolveEnabledModules(allModules, config.env, config.enabledModules);
 
   const server = new McpServer({
@@ -167,7 +176,7 @@ async function main() {
         description: tool.description,
         inputSchema: tool.inputSchema,
         annotations: {
-          readOnlyHint: true,
+          readOnlyHint: tool.readOnly ?? true,
           destructiveHint: false,
           openWorldHint: true,
         },
