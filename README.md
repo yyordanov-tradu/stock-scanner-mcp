@@ -4,9 +4,9 @@
 [![npm version](https://img.shields.io/npm/v/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 [![npm downloads](https://img.shields.io/npm/dw/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 
-A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compatible clients real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and more from one server.
+A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compatible clients real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and optionally save your own watchlists and thesis notes from one server.
 
-**61 tools** across **12 modules** — 9 modules work with zero API keys.
+**61 tools** across **12 modules** — 9 modules work with zero API keys, including an optional stateful Market Workspace.
 
 ## What You Can Do
 
@@ -17,6 +17,8 @@ A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compa
 "What's the options chain for AAPL expiring next Friday?"
 "What's the current fed funds rate and CPI trend?"
 "Convert $10,000 USD to EUR"
+"Set up a core watchlist with MARA, HOOD, and BTC"
+"Give me a personalized morning brief for my saved watchlist"
 ```
 
 ### Highlights
@@ -30,6 +32,17 @@ A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compa
 - **Macro** — CPI, GDP, fed funds rate, economic calendar, yield curve data
 - **Forex** — 31 currency pairs from ECB, conversion, historical rates
 - **Sentiment** — CNN Fear & Greed Index, Crypto Fear & Greed
+- **Market Workspace** — optionally save a trading profile, named watchlists, and thesis notes for personalized workflows across sessions
+
+## Market Workspace
+
+The new Market Workspace is an optional stateful layer on top of the existing market-data tools.
+
+- **What it saves** — your trading profile, named watchlists, and one thesis record per symbol
+- **What it enables** — personalized workflows like `/setup-market-workspace` and `/workspace-morning-brief`
+- **How it is enabled** — pass `--enable-workspace` when starting the MCP server
+- **Where data is stored** — `~/.stock-scanner-mcp/workspace.json` by default, or a custom path with `--data-dir`
+- **Privacy model** — local file storage only; if you do not pass `--enable-workspace`, the server stays stateless and does not write local workspace data
 
 ## Quick Start
 
@@ -69,15 +82,51 @@ Add to your global config `~/.claude.json` or project-local `.mcp.json`:
 
 This gives you **36 tools** immediately — no API keys needed.
 
-### 3. Install trading skills (optional, recommended)
+### 3. Enable Market Workspace (optional, new)
+
+Add `--enable-workspace` if you want persistent profile, watchlist, and thesis tools:
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"]
+    }
+  }
+}
+```
+
+This adds **7 stateful workspace tools** and gives you **43 tools** with no API keys. Workspace data is stored locally in `~/.stock-scanner-mcp/workspace.json` by default.
+
+To store workspace data somewhere else, add `--data-dir`:
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "stock-scanner-mcp",
+        "--enable-workspace",
+        "--data-dir",
+        "/absolute/path/to/market-workspace"
+      ]
+    }
+  }
+}
+```
+
+### 4. Install trading skills (optional, recommended)
 
 ```bash
 npx -p stock-scanner-mcp stock-scanner-install-skills
 ```
 
-This installs 17 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA` that orchestrate multiple tools into professional analysis workflows.
+This installs 19 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA`, `/setup-market-workspace`, and `/workspace-morning-brief` that orchestrate multiple tools into professional analysis workflows.
 
-### 4. Add API keys for full access (optional)
+### 5. Add API keys for full access (optional)
 
 All three keys are **free** — no credit card required:
 
@@ -105,7 +154,7 @@ The same `env` block works in Claude Desktop, Claude Code, and most other MCP cl
 }
 ```
 
-### 5. Use with other MCP clients
+### 6. Use with other MCP clients
 
 Any MCP client that supports stdio servers can run this package with:
 
@@ -124,7 +173,7 @@ If your client does not expose `npx`, install the package first and point the cl
 
 ## Trading Skills
 
-17 ready-made workflows that chain multiple tools into structured analysis. Each skill orchestrates 5-14 tools in parallel and outputs a verdict with direction, confidence, and key levels.
+19 ready-made workflows that chain multiple tools into structured analysis. Each skill orchestrates 5-14 tools in parallel and outputs a verdict with direction, confidence, and key levels.
 
 | Category | Skills | What They Do |
 |----------|--------|-------------|
@@ -133,8 +182,9 @@ If your client does not expose `npx`, install the package first and point the cl
 | **Strategies** | `/swing-setup`, `/earnings-play TICKER`, `/options-flow TICKER`, `/dividend-screen` | Swing trades, earnings options, smart money, income screen |
 | **Macro** | `/macro-dashboard`, `/fed-watch`, `/sector-rotation` | Economic indicators, Fed outlook, sector rotation |
 | **Risk** | `/insider-tracker TICKER`, `/smart-money TICKER`, `/risk-check TICKER` | Insider trades, institutional flow, pre-trade risk scorecard |
+| **Workspace** | `/setup-market-workspace`, `/workspace-morning-brief` | Guided setup for saved profile/watchlist context and a personalized brief driven by your stored names |
 
-Skills degrade gracefully when optional API keys are missing. See [skills/README.md](skills/README.md) for the full catalog.
+Skills degrade gracefully when optional API keys are missing. Workspace skills additionally require the server to be started with `--enable-workspace`. See [skills/README.md](skills/README.md) for the full catalog.
 
 <details>
 <summary>Install options</summary>
@@ -143,6 +193,7 @@ Skills degrade gracefully when optional API keys are missing. See [skills/README
 npx -p stock-scanner-mcp stock-scanner-install-skills                    # all skills
 npx -p stock-scanner-mcp stock-scanner-install-skills --scope project    # project only
 npx -p stock-scanner-mcp stock-scanner-install-skills --category macro   # one category
+npx -p stock-scanner-mcp stock-scanner-install-skills --category workspace # workspace skills only
 npx -p stock-scanner-mcp stock-scanner-install-skills --list             # list without installing
 npx -p stock-scanner-mcp stock-scanner-install-skills --force            # overwrite existing
 ```
@@ -162,11 +213,12 @@ Manual: `git clone` this repo and `cp -r skills/*/ ~/.claude/skills/`
 | options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
 | sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
 | frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
+| workspace | 7 | None | Optional stateful profile, watchlists, and thesis tracking for personalized workflows (`--enable-workspace`) |
 | finnhub | 9 | `FINNHUB_API_KEY` | Quotes, news, earnings, analyst ratings, short interest |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
 | fred | 4 | `FRED_API_KEY` | Economic calendar, indicators (CPI, GDP, rates), historical data |
 
-Modules auto-enable when their API key is set. No-key modules are always enabled.
+Modules auto-enable when their API key is set. No-key modules are always enabled, except `workspace`, which is registered only when you pass `--enable-workspace`.
 
 <details>
 <summary>Full tool reference (61 tools)</summary>
@@ -247,6 +299,20 @@ Modules auto-enable when their API key is set. No-key modules are always enabled
 | `frankfurter_convert` | Convert an amount between two currencies |
 | `frankfurter_currencies` | List all supported currency codes |
 
+### Workspace — Personalized Context (optional, no API key)
+
+Enabled only when you start the server with `--enable-workspace`.
+
+| Tool | Description |
+|------|-------------|
+| `workspace_get_profile` | Read the saved trading profile and workspace defaults |
+| `workspace_update_profile` | Save or update trading style, asset focus, and review cadence |
+| `workspace_list_watchlists` | List all saved watchlists and their resolved instruments |
+| `workspace_create_watchlist` | Create a named empty watchlist such as `core` or `swing` |
+| `workspace_update_watchlist` | Replace a watchlist's saved symbols with resolved, deduplicated instruments |
+| `workspace_get_thesis` | Read a thesis for a symbol using a stable hit/miss JSON shape |
+| `workspace_save_thesis` | Save or update a thesis note for a symbol |
+
 ### Finnhub — News, Earnings & Macro (requires `FINNHUB_API_KEY`)
 
 | Tool | Description |
@@ -289,6 +355,8 @@ Modules auto-enable when their API key is set. No-key modules are always enabled
 ```bash
 stock-scanner-mcp --modules tradingview,sec-edgar    # Enable specific modules only
 stock-scanner-mcp --default-exchange NYSE             # Set default exchange
+stock-scanner-mcp --enable-workspace                  # Turn on local workspace tools
+stock-scanner-mcp --enable-workspace --data-dir /tmp/market-workspace
 stock-scanner-mcp --help                              # Show all options
 ```
 
@@ -348,6 +416,7 @@ src/
 │   ├── coingecko/        # 3 tools — crypto market data
 │   ├── options/          # 5 tools — options chains, Greeks, unusual activity, implied move
 │   ├── options-cboe/     # 1 tool  — CBOE put/call ratio sentiment
+│   ├── workspace/        # 7 tools — stateful profile, watchlists, thesis notes
 │   ├── finnhub/          # 9 tools — quotes, news, earnings, analyst ratings, short interest
 │   ├── alpha-vantage/    # 5 tools — quotes, fundamentals, dividends
 │   ├── fred/             # 4 tools — economic calendar, indicators, historical data

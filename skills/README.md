@@ -1,6 +1,6 @@
 # Trading Skills for Claude Code
 
-Ready-made trading workflows that orchestrate [stock-scanner-mcp](https://www.npmjs.com/package/stock-scanner-mcp) tools into professional analysis.
+Ready-made trading workflows that orchestrate [stock-scanner-mcp](https://www.npmjs.com/package/stock-scanner-mcp) tools into professional analysis, including optional workspace-aware routines for persistent watchlists and thesis notes.
 
 ## Quick Start
 
@@ -15,6 +15,8 @@ npx -p stock-scanner-mcp stock-scanner-install-skills
 ```
 
 ## Skill Catalog
+
+19 skills total: 17 market-analysis workflows plus 2 optional workspace workflows.
 
 ### Daily Routines
 
@@ -57,6 +59,13 @@ npx -p stock-scanner-mcp stock-scanner-install-skills
 | Smart Money | `/smart-money AAPL` | Institutional flow: 13F holdings, short interest, analyst consensus, unusual options activity |
 | Risk Check | `/risk-check AAPL` | Pre-trade risk scorecard: 8-flag system covering VIX, RSI, short interest, earnings, IV, trend |
 
+### Workspace & Personalization
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| Setup Market Workspace | `/setup-market-workspace` | Guided setup for a saved trading profile, core watchlist, and review cadence |
+| Workspace Morning Brief | `/workspace-morning-brief` | Personalized morning brief driven by your saved profile, watchlist, and thesis context |
+
 ## API Key Requirements
 
 Skills gracefully degrade when optional API keys are missing. Core analysis uses free tools (TradingView, SEC EDGAR, CoinGecko, Options, Sentiment). Optional keys unlock richer data:
@@ -68,6 +77,8 @@ Skills gracefully degrade when optional API keys are missing. Core analysis uses
 | `FRED_API_KEY` | macro-dashboard, fed-watch, sector-rotation, dividend-screen | Economic indicators, calendar, rate data |
 
 **Note:** macro-dashboard and fed-watch require `FRED_API_KEY` — they are economics-focused skills.
+
+**Workspace note:** `/setup-market-workspace` and `/workspace-morning-brief` require the MCP server to be started with `--enable-workspace`, because they read and write local workspace data.
 
 ## Data Limitations
 
@@ -104,6 +115,9 @@ npx -p stock-scanner-mcp stock-scanner-install-skills --scope project
 # Install specific category
 npx -p stock-scanner-mcp stock-scanner-install-skills --category macro
 
+# Install workspace skills only
+npx -p stock-scanner-mcp stock-scanner-install-skills --category workspace
+
 # List available skills
 npx -p stock-scanner-mcp stock-scanner-install-skills --list
 
@@ -122,4 +136,4 @@ Skills are plain markdown files. Fork and modify to fit your trading style:
 
 ## Tool Reference
 
-See [TOOLS.md](TOOLS.md) for a complete reference of all 49 MCP tools with parameters.
+See [TOOLS.md](TOOLS.md) and the root [README](../README.md) for tool references and setup details.
