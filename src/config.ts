@@ -1,5 +1,7 @@
 export interface Config {
   defaultExchange: string;
+  enableWorkspace: boolean;
+  dataDir?: string;
   enabledModules?: string[];
   env: Record<string, string | undefined>;
 }
@@ -7,6 +9,8 @@ export interface Config {
 export function parseConfig(args: string[]): Config {
   let defaultExchange = "NASDAQ";
   let enabledModules: string[] | undefined;
+  let enableWorkspace = false;
+  let dataDir: string | undefined = process.env.STOCK_SCANNER_DATA_DIR;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--default-exchange" && args[i + 1]) {
@@ -15,11 +19,18 @@ export function parseConfig(args: string[]): Config {
     } else if (args[i] === "--modules" && args[i + 1]) {
       enabledModules = args[i + 1].split(",").map((m) => m.trim());
       i++;
+    } else if (args[i] === "--enable-workspace") {
+      enableWorkspace = true;
+    } else if (args[i] === "--data-dir" && args[i + 1]) {
+      dataDir = args[i + 1];
+      i++;
     }
   }
 
   return {
     defaultExchange,
+    enableWorkspace,
+    dataDir,
     enabledModules,
     env: {
       FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,

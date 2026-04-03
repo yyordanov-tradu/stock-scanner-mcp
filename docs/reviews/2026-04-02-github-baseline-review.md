@@ -15,7 +15,7 @@ Compared repositories:
 
 ## Quick project profile (this repo)
 
-- 54 tools across 11 modules with both stock and crypto coverage.
+- 61 tools across 12 modules with both stock and crypto coverage.
 - Claims 36 zero-key tools and 17 optional bundled skills.
 - Includes tests and strong local quality checks; current suite reports 343 passing tests across 28 files.
 - Current public traction is still early (0 stars, 0 forks), despite materially higher scope than peers.

@@ -3,7 +3,7 @@
 ## Status
 
 **Version:** 1.14.0 — Published on npm as `stock-scanner-mcp`
-**Modules:** 11 implemented (54 tools total)
+**Modules:** 12 implemented (61 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 

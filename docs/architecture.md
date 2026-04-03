@@ -1,6 +1,6 @@
 # Architecture Diagram
 
-This diagram illustrates how Claude Code, the LLM, the MCP Server, and the **54 tools across 11 modules** connect to external data sources in this project.
+This diagram illustrates how Claude Code, the LLM, the MCP Server, and the **61 tools across 12 modules** connect to external data sources in this project.
 
 ```text
        USER
@@ -18,11 +18,11 @@ This diagram illustrates how Claude Code, the LLM, the MCP Server, and the **54 
 │             STOCK SCANNER MCP SERVER           │ (The "Package")
 │  ┌──────────────────────────────────────────┐  │
 │  │               MCP SERVER                 │  │ (The "Engine")
-│  │   (Host for 54 tools in 11 modules)      │  │
+│  │   (Host for 61 tools in 12 modules)      │  │
 │  └────┬───────────────┬───────────────┬─────┘  │
 │       │               │               │        │
 │  ┌────▼────┐    ┌─────▼────┐    ┌─────▼────┐   │
-│  │ TOOL 01 │    │ TOOL 02  │    │ TOOL 54  │   │ (The "Skills")
+│  │ TOOL 01 │    │ TOOL 02  │    │ TOOL 61  │   │ (The "Skills")
 │  │ (Scan)   │    │ (Quote)  │    │ (News)   │   │
 │  └────┬────┘    └─────┬────┘    └─────┬────┘   │
 └───────┼───────────────┼───────────────┼────────┘
