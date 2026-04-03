@@ -44,6 +44,8 @@ The new Market Workspace is an optional stateful layer on top of the existing ma
 - **Where data is stored** — `~/.stock-scanner-mcp/workspace.json` by default, or a custom path with `--data-dir`
 - **Privacy model** — local file storage only; if you do not pass `--enable-workspace`, the server stays stateless and does not write local workspace data
 
+If you want to use it, start from one of the complete copy-paste examples below. They are full working configs, not partial flag snippets.
+
 ## Quick Start
 
 ### 1. Connect to Claude Desktop (GUI)
@@ -82,9 +84,13 @@ Add to your global config `~/.claude.json` or project-local `.mcp.json`:
 
 This gives you **36 tools** immediately — no API keys needed.
 
-### 3. Enable Market Workspace (optional, new)
+### 3. Enable Market Workspace with a complete config
 
-Add `--enable-workspace` if you want persistent profile, watchlist, and thesis tools:
+This adds **7 stateful workspace tools** and gives you **43 tools** with no API keys. Workspace data is stored locally in `~/.stock-scanner-mcp/workspace.json` by default.
+
+#### Claude Desktop: complete config with Market Workspace
+
+Paste this into `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows:
 
 ```json
 {
@@ -97,9 +103,30 @@ Add `--enable-workspace` if you want persistent profile, watchlist, and thesis t
 }
 ```
 
-This adds **7 stateful workspace tools** and gives you **43 tools** with no API keys. Workspace data is stored locally in `~/.stock-scanner-mcp/workspace.json` by default.
+#### Claude Code: complete config with Market Workspace
 
-To store workspace data somewhere else, add `--data-dir`:
+Paste this into `~/.claude.json` or project-local `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"]
+    }
+  }
+}
+```
+
+#### Codex: complete command with Market Workspace
+
+```bash
+codex mcp add stock-scanner -- npx -y stock-scanner-mcp --enable-workspace
+```
+
+#### Claude Desktop or Claude Code with a custom workspace location
+
+Use this full config if you want the workspace file stored somewhere other than `~/.stock-scanner-mcp/workspace.json`:
 
 ```json
 {
@@ -116,6 +143,12 @@ To store workspace data somewhere else, add `--data-dir`:
     }
   }
 }
+```
+
+#### Codex with a custom workspace location
+
+```bash
+codex mcp add stock-scanner -- npx -y stock-scanner-mcp --enable-workspace --data-dir /absolute/path/to/market-workspace
 ```
 
 ### 4. Install trading skills (optional, recommended)
@@ -144,6 +177,24 @@ The same `env` block works in Claude Desktop, Claude Code, and most other MCP cl
     "stock-scanner": {
       "command": "npx",
       "args": ["-y", "stock-scanner-mcp"],
+      "env": {
+        "FINNHUB_API_KEY": "your-key-here",
+        "ALPHA_VANTAGE_API_KEY": "your-key-here",
+        "FRED_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+If you want the full setup in one copy-paste block, including Market Workspace and all optional API keys, use this:
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"],
       "env": {
         "FINNHUB_API_KEY": "your-key-here",
         "ALPHA_VANTAGE_API_KEY": "your-key-here",
