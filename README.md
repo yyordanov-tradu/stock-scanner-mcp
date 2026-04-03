@@ -6,7 +6,7 @@
 
 A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compatible clients real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and more from one server.
 
-**54 tools** across **11 modules** — 8 modules work with zero API keys.
+**61 tools** across **12 modules** — 9 modules work with zero API keys.
 
 ## What You Can Do
 
@@ -169,7 +169,7 @@ Manual: `git clone` this repo and `cp -r skills/*/ ~/.claude/skills/`
 Modules auto-enable when their API key is set. No-key modules are always enabled.
 
 <details>
-<summary>Full tool reference (54 tools)</summary>
+<summary>Full tool reference (61 tools)</summary>
 
 ### TradingView — Stock Scanning (no API key)
 

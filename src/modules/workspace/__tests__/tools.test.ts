@@ -21,6 +21,22 @@ describe("Workspace Tools", () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
+  it("P2 Fix: tool results include _meta and return parseable JSON", async () => {
+    const tool = getTool("workspace_update_profile");
+    const result: ToolResult = await tool.handler({
+      tradingStyle: "options",
+    });
+    
+    expect(result.isError).toBeFalsy();
+    expect(result._meta).toBeDefined();
+    expect(result._meta?.source).toBe("workspace");
+
+    // Must be parseable JSON
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.success).toBe(true);
+    expect(parsed.profile.tradingStyle).toBe("options");
+  });
+
   it("updates profile", async () => {
     const tool = getTool("workspace_update_profile");
     const result: ToolResult = await tool.handler({

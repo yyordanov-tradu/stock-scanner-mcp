@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { lock, unlock } from "proper-lockfile";
+import { lock } from "proper-lockfile";
 import { Workspace, WorkspaceSchema } from "./types.js";
 
 export interface LoadResult {
@@ -10,9 +10,11 @@ export interface LoadResult {
 
 export class StorageManager {
   private filePath: string;
+  private lockPath: string;
   
   constructor(dataDir: string) {
     this.filePath = path.join(dataDir, "workspace.json");
+    this.lockPath = path.join(dataDir, ".workspace.lock");
   }
 
   async exists(): Promise<boolean> {
@@ -32,7 +34,7 @@ export class StorageManager {
           defaultExchange: "NASDAQ",
           assetFocus: [],
           workflowCadence: "daily",
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(0).toISOString(),
         },
         watchlists: {},
         theses: {},
@@ -58,16 +60,14 @@ export class StorageManager {
     const dir = path.dirname(this.filePath);
     await fs.mkdir(dir, { recursive: true });
 
+    // Ensure lock file exists
+    await fs.writeFile(this.lockPath, "", "utf-8");
+
     let release: (() => Promise<void>) | undefined;
     
     try {
-      // If file doesn't exist, create an empty one so we can lock it
-      if (!(await this.exists())) {
-        await fs.writeFile(this.filePath, "{}", "utf-8");
-      }
-
-      // Acquire lock with retries
-      release = await lock(this.filePath, { 
+      // Acquire lock on the dedicated lock file
+      release = await lock(this.lockPath, { 
         retries: {
           retries: 5,
           minTimeout: 100,
@@ -75,10 +75,22 @@ export class StorageManager {
         }
       });
 
-      // Verify mtime inside the lock
-      const stat = await fs.stat(this.filePath);
-      if (expectedLastModified > 0 && stat.mtimeMs > expectedLastModified) {
-        throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
+      const fileExists = await this.exists();
+
+      // P1 Fix: Bootstrap race check
+      if (expectedLastModified === 0 && fileExists) {
+        throw new Error("Conflict: The workspace was already initialized by another process. Please reload.");
+      }
+
+      // P1 Fix: Normal stale writer check
+      if (expectedLastModified > 0) {
+        if (!fileExists) {
+          throw new Error("Conflict: The workspace file has been deleted. Please reload.");
+        }
+        const stat = await fs.stat(this.filePath);
+        if (stat.mtimeMs > expectedLastModified) {
+          throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
+        }
       }
 
       const tmpPath = `${this.filePath}.tmp`;
@@ -88,8 +100,6 @@ export class StorageManager {
       // Atomic write
       await fs.writeFile(tmpPath, content, "utf-8");
       
-      // Keep backup
-      const fileExists = await fs.access(this.filePath).then(() => true).catch(() => false);
       if (fileExists) {
         await fs.copyFile(this.filePath, bakPath);
       }

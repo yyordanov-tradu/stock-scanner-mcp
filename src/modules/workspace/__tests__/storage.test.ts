@@ -36,7 +36,7 @@ describe("StorageManager", () => {
     expect(reloaded.lastModified).toBe(newLastModified);
   });
 
-  it("detects concurrent modifications", async () => {
+  it("detects concurrent modifications (sequential stale writer)", async () => {
     const initialLoad = await manager.load();
     await manager.save(initialLoad.data, initialLoad.lastModified);
     
@@ -50,5 +50,21 @@ describe("StorageManager", () => {
     // Client B tries to save but its lastModified is stale
     clientB.data.profile.tradingStyle = "day";
     await expect(manager.save(clientB.data, clientB.lastModified)).rejects.toThrow("Conflict");
+  });
+
+  it("P1 Fix: detects bootstrap race (two first writers)", async () => {
+    const clientA = await manager.load();
+    const clientB = await manager.load();
+
+    expect(clientA.lastModified).toBe(0);
+    expect(clientB.lastModified).toBe(0);
+
+    // Client A saves first initialization
+    clientA.data.profile.tradingStyle = "client-a";
+    await manager.save(clientA.data, clientA.lastModified);
+
+    // Client B tries to save its initialization but file now exists
+    clientB.data.profile.tradingStyle = "client-b";
+    await expect(manager.save(clientB.data, clientB.lastModified)).rejects.toThrow("already initialized");
   });
 });
