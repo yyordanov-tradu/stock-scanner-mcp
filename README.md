@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 [![npm downloads](https://img.shields.io/npm/dw/stock-scanner-mcp)](https://www.npmjs.com/package/stock-scanner-mcp)
 
-A modular MCP server that gives Claude Desktop, Claude Code, and other MCP-compatible clients real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and optionally save your own watchlists and thesis notes from one server.
+A modular MCP server for Claude Code and Claude Desktop that provides real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and optionally save your own watchlists and thesis notes from one server.
 
 **61 tools** across **12 modules** — 9 modules work with zero API keys, including an optional stateful Market Workspace.
 
@@ -118,12 +118,6 @@ Paste this into `~/.claude.json` or project-local `.mcp.json`:
 }
 ```
 
-#### Codex: complete command with Market Workspace
-
-```bash
-codex mcp add stock-scanner -- npx -y stock-scanner-mcp --enable-workspace
-```
-
 #### Claude Desktop or Claude Code with a custom workspace location
 
 Use this full config if you want the workspace file stored somewhere other than `~/.stock-scanner-mcp/workspace.json`:
@@ -145,12 +139,6 @@ Use this full config if you want the workspace file stored somewhere other than 
 }
 ```
 
-#### Codex with a custom workspace location
-
-```bash
-codex mcp add stock-scanner -- npx -y stock-scanner-mcp --enable-workspace --data-dir /absolute/path/to/market-workspace
-```
-
 ### 4. Install trading skills (optional, recommended)
 
 ```bash
@@ -169,7 +157,7 @@ All three keys are **free** — no credit card required:
 | `ALPHA_VANTAGE_API_KEY` | [alphavantage.co/support](https://www.alphavantage.co/support/#api-key) | Daily price history, company fundamentals, earnings & dividend history (5 tools) |
 | `FRED_API_KEY` | [fred.stlouisfed.org/api](https://fred.stlouisfed.org/docs/api/api_key.html) | Economic calendar, CPI/GDP/fed funds indicators, historical data (4 tools) |
 
-The same `env` block works in Claude Desktop, Claude Code, and most other MCP clients:
+The same `env` block works in Claude Desktop and Claude Code:
 
 ```json
 {
