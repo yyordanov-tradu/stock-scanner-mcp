@@ -11,10 +11,12 @@ export interface LoadResult {
 export class StorageManager {
   private filePath: string;
   private lockPath: string;
+  private defaultExchange: string;
   
-  constructor(dataDir: string) {
+  constructor(dataDir: string, defaultExchange = "NASDAQ") {
     this.filePath = path.join(dataDir, "workspace.json");
     this.lockPath = path.join(dataDir, ".workspace.lock");
+    this.defaultExchange = defaultExchange;
   }
 
   async exists(): Promise<boolean> {
@@ -31,7 +33,7 @@ export class StorageManager {
       const defaultData = WorkspaceSchema.parse({
         schemaVersion: 1,
         profile: {
-          defaultExchange: "NASDAQ",
+          defaultExchange: this.defaultExchange,
           assetFocus: [],
           workflowCadence: "daily",
           updatedAt: new Date(0).toISOString(),

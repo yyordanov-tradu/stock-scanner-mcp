@@ -1,11 +1,19 @@
 import { z } from "zod";
-import { ModuleDefinition, successResult, errorResult } from "../../shared/types.js";
+import { ModuleDefinition, successResult, errorResult, ToolResult } from "../../shared/types.js";
 import { StorageManager } from "./storage.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
 
-export function createWorkspaceModule(dataDir: string): ModuleDefinition {
-  const storage = new StorageManager(dataDir);
+export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ"): ModuleDefinition {
+  const storage = new StorageManager(dataDir, defaultExchange);
+
+  const wrapHandler = (handler: (args: any) => Promise<ToolResult>) => async (args: any) => {
+    try {
+      return await handler(args);
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   return {
     name: "workspace",
@@ -133,7 +141,7 @@ export function createWorkspaceModule(dataDir: string): ModuleDefinition {
       },
       {
         name: "workspace_get_thesis",
-        description: "Get the saved global investment thesis for a specific symbol.",
+        description: "Get the saved global investment thesis for a specific symbol. Returns a stable JSON shape with a 'found' flag.",
         inputSchema: z.object({
           symbol: z.string().describe("The raw symbol (e.g., 'AAPL')"),
         }),
@@ -143,11 +151,12 @@ export function createWorkspaceModule(dataDir: string): ModuleDefinition {
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
           
           const thesis = data.theses[resolved.full];
-          if (!thesis) {
-            return errorResult(`No thesis found for ${resolved.full}`);
-          }
           
-          return successResult(JSON.stringify(thesis, null, 2));
+          return successResult(JSON.stringify({
+            found: !!thesis,
+            symbol: resolved.full,
+            thesis: thesis || null
+          }, null, 2));
         }, { source: "workspace" }),
       },
       {

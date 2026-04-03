@@ -94,20 +94,29 @@ describe("Workspace Tools", () => {
     expect(parsed.dedup.instruments.map((i: any) => i.full)).toEqual(["NASDAQ:AAPL", "BTC"]);
   });
 
-  it("saves and gets thesis", async () => {
+  it("workspace_get_thesis returns stable JSON shape on hit and miss", async () => {
+    const getToolObj = getTool("workspace_get_thesis");
+    
+    // MISS case
+    const missResult: ToolResult = await getToolObj.handler({ symbol: "IBM" });
+    expect(missResult.isError).toBeFalsy();
+    const missParsed = JSON.parse(missResult.content[0].text);
+    expect(missParsed.found).toBe(false);
+    expect(missParsed.symbol).toBe("NASDAQ:IBM");
+    expect(missParsed.thesis).toBeNull();
+
+    // HIT case
     const saveTool = getTool("workspace_save_thesis");
     await saveTool.handler({
       symbol: "MARA",
       summary: "Bitcoin proxy play",
-      bullCase: "BTC breaks 80k",
     });
     
-    const getToolObj = getTool("workspace_get_thesis");
-    const result: ToolResult = await getToolObj.handler({ symbol: "MARA" });
-    
-    expect(result.isError).toBeFalsy();
-    const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.summary).toBe("Bitcoin proxy play");
-    expect(parsed.bullCase).toBe("BTC breaks 80k");
+    const hitResult: ToolResult = await getToolObj.handler({ symbol: "MARA" });
+    expect(hitResult.isError).toBeFalsy();
+    const hitParsed = JSON.parse(hitResult.content[0].text);
+    expect(hitParsed.found).toBe(true);
+    expect(hitParsed.symbol).toBe("NASDAQ:MARA");
+    expect(hitParsed.thesis.summary).toBe("Bitcoin proxy play");
   });
 });

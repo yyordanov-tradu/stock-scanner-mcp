@@ -21,7 +21,31 @@ describe("StorageManager", () => {
     const { data, lastModified } = await manager.load();
     expect(data.schemaVersion).toBe(1);
     expect(data.profile.workflowCadence).toBe("daily");
+    expect(data.profile.defaultExchange).toBe("NASDAQ");
     expect(lastModified).toBe(0);
+  });
+
+  it("propagates defaultExchange from constructor on bootstrap", async () => {
+    const nyseDir = path.join(tmpDir, "nyse");
+    const nyseManager = new StorageManager(nyseDir, "NYSE");
+    const { data } = await nyseManager.load();
+    expect(data.profile.defaultExchange).toBe("NYSE");
+  });
+
+  it("does NOT overwrite existing defaultExchange on load", async () => {
+    const { data, lastModified } = await manager.load();
+    expect(data.profile.defaultExchange).toBe("NASDAQ");
+    
+    // Explicitly update to NYSE
+    data.profile.defaultExchange = "NYSE";
+    await manager.save(data, lastModified);
+
+    // Create a new manager with a different constructor default
+    const newManager = new StorageManager(tmpDir, "LSE");
+    const reloaded = await newManager.load();
+    
+    // Should still be NYSE from the file
+    expect(reloaded.data.profile.defaultExchange).toBe("NYSE");
   });
 
   it("saves and reloads data", async () => {
