@@ -8,7 +8,7 @@ export const ProfileSchema = z.object({
   assetFocus: z.array(z.string().max(50)).max(20).default([]),
   preferredTimeframe: z.string().max(50).optional(),
   workflowCadence: z.enum(["daily", "weekly"]).default("daily"),
-  updatedAt: z.string(),
+  updatedAt: z.string().default(() => new Date(0).toISOString()),
 });
 
 export const InstrumentSchema = z.object({
@@ -49,12 +49,7 @@ export const ThesisSchema = z.object({
 
 export const WorkspaceSchema = z.object({
   schemaVersion: z.number().default(1),
-  profile: ProfileSchema.default({
-    defaultExchange: "NASDAQ",
-    assetFocus: [],
-    workflowCadence: "daily",
-    updatedAt: new Date(0).toISOString(),
-  }),
+  profile: ProfileSchema.default(() => ProfileSchema.parse({})),
   watchlists: z.record(z.string(), WatchlistSchema)
     .refine(
       (rec) => Object.keys(rec).every((k) => !RESERVED_KEYS.has(k)),

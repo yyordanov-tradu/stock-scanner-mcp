@@ -47,15 +47,7 @@ export class StorageManager {
 
     if (!(await this.exists())) {
       const defaultData = WorkspaceSchema.parse({
-        schemaVersion: 1,
-        profile: {
-          defaultExchange: this.defaultExchange,
-          assetFocus: [],
-          workflowCadence: "daily",
-          updatedAt: new Date(0).toISOString(),
-        },
-        watchlists: {},
-        theses: {},
+        profile: { defaultExchange: this.defaultExchange },
       });
       return { data: defaultData, lastModified: 0 };
     }
@@ -92,6 +84,7 @@ export class StorageManager {
     await fs.writeFile(this.lockPath, "", "utf-8");
 
     let release: (() => Promise<void>) | undefined;
+    let tmpPath: string | undefined;
 
     try {
       // Acquire lock on the dedicated lock file
@@ -123,7 +116,7 @@ export class StorageManager {
         }
       }
 
-      const tmpPath = `${this.filePath}.tmp`;
+      tmpPath = `${this.filePath}.tmp`;
       const bakPath = `${this.filePath}.bak`;
       const content = JSON.stringify(data, null, 2);
 
@@ -145,6 +138,14 @@ export class StorageManager {
     } finally {
       if (release) {
         await release();
+      }
+      // Clean up tmp file if it still exists (failed write)
+      if (tmpPath) {
+        try {
+          await fs.unlink(tmpPath);
+        } catch {
+          // tmp file already renamed or never created — ignore
+        }
       }
     }
   }

@@ -46,7 +46,14 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
 
           data.profile.updatedAt = new Date().toISOString();
 
-          await storage.save(data, lastModified);
+          try {
+            await storage.save(data, lastModified);
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("Conflict:")) {
+              return errorResult(e.message, "CONFLICT");
+            }
+            throw e;
+          }
           return successResult(JSON.stringify({
             success: true,
             message: "Profile updated successfully.",
@@ -67,7 +74,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
       },
       {
         name: "workspace_create_watchlist",
-        description: "Create a new empty watchlist.",
+        description: "Create a new empty watchlist (max 50 per workspace).",
         inputSchema: z.object({
           name: z.string().max(100).describe("The ID/name of the watchlist (e.g., 'core', 'swing')"),
         }),
@@ -79,6 +86,10 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           }
 
           const { data, lastModified } = await storage.load();
+
+          if (Object.keys(data.watchlists).length >= 50) {
+            return errorResult("Maximum of 50 watchlists reached.");
+          }
 
           if (data.watchlists[name]) {
             return errorResult(`Watchlist '${name}' already exists.`);
@@ -92,7 +103,14 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             updatedAt: new Date().toISOString(),
           };
 
-          await storage.save(data, lastModified);
+          try {
+            await storage.save(data, lastModified);
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("Conflict:")) {
+              return errorResult(e.message, "CONFLICT");
+            }
+            throw e;
+          }
           return successResult(JSON.stringify({
             success: true,
             message: `Watchlist '${name}' created successfully.`
@@ -140,7 +158,14 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           data.watchlists[name].instruments = instruments;
           data.watchlists[name].updatedAt = new Date().toISOString();
 
-          await storage.save(data, lastModified);
+          try {
+            await storage.save(data, lastModified);
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("Conflict:")) {
+              return errorResult(e.message, "CONFLICT");
+            }
+            throw e;
+          }
           return successResult(JSON.stringify({
             success: true,
             message: `Watchlist '${name}' updated with ${instruments.length} instruments (deduplicated).`,
@@ -171,7 +196,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
       },
       {
         name: "workspace_save_thesis",
-        description: "Save or update the global investment thesis for a specific symbol.",
+        description: "Save or update the global investment thesis for a specific symbol (max 200 per workspace).",
         inputSchema: z.object({
           symbol: z.string().max(50),
           summary: z.string().max(5000),
@@ -192,6 +217,10 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
 
           const existing = data.theses[resolved.full];
 
+          if (!existing && Object.keys(data.theses).length >= 200) {
+            return errorResult("Maximum of 200 theses reached.");
+          }
+
           data.theses[resolved.full] = {
             ...existing,
             full: resolved.full,
@@ -207,7 +236,14 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             updatedAt: new Date().toISOString(),
           };
 
-          await storage.save(data, lastModified);
+          try {
+            await storage.save(data, lastModified);
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("Conflict:")) {
+              return errorResult(e.message, "CONFLICT");
+            }
+            throw e;
+          }
           return successResult(JSON.stringify({
             success: true,
             message: `Thesis saved for ${resolved.full}.`,
