@@ -39,7 +39,7 @@ function validateModule(modulePath: string): CheckResult {
   // 2. Source file exists (client.ts or equivalent like scanner.ts, cboe.ts)
   const allFiles = readdirSync(modulePath);
   const sourceFiles = allFiles.filter(
-    (f) => f.endsWith(".ts") && f !== "index.ts",
+    (f: string) => f.endsWith(".ts") && f !== "index.ts",
   );
   const hasSource = sourceFiles.length > 0;
   checks.push({
@@ -52,7 +52,7 @@ function validateModule(modulePath: string): CheckResult {
   const testsDir = join(modulePath, "__tests__");
   const hasTestsDir = existsSync(testsDir) && statSync(testsDir).isDirectory();
   const testFiles = hasTestsDir
-    ? readdirSync(testsDir).filter((f) => f.endsWith(".test.ts"))
+    ? readdirSync(testsDir).filter((f: string) => f.endsWith(".test.ts"))
     : [];
   const hasTests = testFiles.length > 0;
   checks.push({
@@ -84,7 +84,7 @@ function validateModule(modulePath: string): CheckResult {
 }
 
 function main(): void {
-  const entries = readdirSync(MODULES_DIR).filter((name) =>
+  const entries = readdirSync(MODULES_DIR).filter((name: string) =>
     statSync(join(MODULES_DIR, name)).isDirectory(),
   );
 

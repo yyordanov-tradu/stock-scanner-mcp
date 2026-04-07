@@ -6,6 +6,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
+    "types": ["node"],
+    "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

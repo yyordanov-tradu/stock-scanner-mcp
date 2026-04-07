@@ -48,7 +48,7 @@ export function discoverSkills(skillsDir: string, category?: string): SkillInfo[
   if (!fs.existsSync(skillsDir)) return skills;
 
   const topEntries = fs.readdirSync(skillsDir, { withFileTypes: true })
-    .filter(d => d.isDirectory());
+    .filter((d: fs.Dirent) => d.isDirectory());
 
   for (const topEntry of topEntries) {
     if (category && topEntry.name !== category) continue;
@@ -57,7 +57,7 @@ export function discoverSkills(skillsDir: string, category?: string): SkillInfo[
 
     // Check depth-3: subdirectories containing SKILL.md
     const subEntries = fs.readdirSync(topDir, { withFileTypes: true })
-      .filter(d => d.isDirectory());
+      .filter((d: fs.Dirent) => d.isDirectory());
 
     for (const subEntry of subEntries) {
       const skillPath = path.join(topDir, subEntry.name, "SKILL.md");
@@ -161,7 +161,7 @@ async function confirm(question: string): Promise<boolean> {
   }
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
   return new Promise(resolve => {
-    rl.question(question, answer => {
+    rl.question(question, (answer: string) => {
       rl.close();
       resolve(answer.toLowerCase().startsWith("y"));
     });

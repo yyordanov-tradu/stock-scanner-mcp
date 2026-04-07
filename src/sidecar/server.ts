@@ -113,7 +113,7 @@ function parseFloatParam(params: URLSearchParams, name: string, fallback: number
 export function createServer(config: SidecarConfig): http.Server {
   const { finnhubApiKey, fredApiKey, alphaVantageApiKey } = config;
 
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
