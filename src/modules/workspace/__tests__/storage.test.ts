@@ -76,6 +76,51 @@ describe("StorageManager", () => {
     await expect(manager.save(clientB.data, clientB.lastModified)).rejects.toThrow("Conflict");
   });
 
+  it("load() rejects when workspace.json is a symlink", async () => {
+    const targetFile = path.join(tmpDir, "target.json");
+    await fs.writeFile(targetFile, JSON.stringify({ schemaVersion: 1 }), "utf-8");
+
+    const workspacePath = path.join(tmpDir, "workspace.json");
+    await fs.symlink(targetFile, workspacePath);
+
+    await expect(manager.load()).rejects.toThrow("symlink");
+  });
+
+  it("save() rejects when lock file is a symlink", async () => {
+    const targetFile = path.join(tmpDir, "target.lock");
+    await fs.writeFile(targetFile, "", "utf-8");
+
+    const lockPath = path.join(tmpDir, ".workspace.lock");
+    await fs.symlink(targetFile, lockPath);
+
+    const { data, lastModified } = await manager.load();
+    await expect(manager.save(data, lastModified)).rejects.toThrow("symlink");
+  });
+
+  it("assertNotSymlink passes when file does not exist (ENOENT)", async () => {
+    const freshDir = path.join(tmpDir, "fresh");
+    const freshManager = new StorageManager(freshDir);
+    const { data } = await freshManager.load();
+    expect(data.schemaVersion).toBe(1);
+  });
+
+  it("load() throws descriptive error for corrupted JSON", async () => {
+    const workspacePath = path.join(tmpDir, "workspace.json");
+    await fs.writeFile(workspacePath, "{ not valid json !!!", "utf-8");
+
+    await expect(manager.load()).rejects.toThrow("corrupted");
+  });
+
+  it("load() returns consistent data and lastModified from same file state", async () => {
+    const { data, lastModified } = await manager.load();
+    data.profile.tradingStyle = "swing";
+    const newMtime = await manager.save(data, lastModified);
+
+    const reloaded = await manager.load();
+    expect(reloaded.data.profile.tradingStyle).toBe("swing");
+    expect(reloaded.lastModified).toBe(newMtime);
+  });
+
   it("P1 Fix: detects bootstrap race (two first writers)", async () => {
     const clientA = await manager.load();
     const clientB = await manager.load();
