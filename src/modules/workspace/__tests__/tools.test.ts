@@ -3,18 +3,22 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createWorkspaceModule } from "../index.js";
-import { ToolResult } from "../../../shared/types.js";
+import type { ToolResult, ToolDefinition } from "../../../shared/types.js";
 
 describe("Workspace Tools", () => {
   let tmpDir: string;
-  let workspaceTools: any[];
-  let getTool: (name: string) => any;
+  let workspaceTools: ToolDefinition[];
+  let getTool: (name: string) => ToolDefinition;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-tools-test-"));
     const mod = createWorkspaceModule(tmpDir);
     workspaceTools = mod.tools;
-    getTool = (name: string) => workspaceTools.find((t) => t.name === name);
+    getTool = (name: string) => {
+      const tool = workspaceTools.find((t) => t.name === name);
+      if (!tool) throw new Error(`Tool ${name} not found`);
+      return tool;
+    };
   });
 
   afterEach(async () => {
@@ -97,7 +101,7 @@ describe("Workspace Tools", () => {
     const parsed = JSON.parse(listResult.content[0].text);
 
     expect(parsed.dedup.instruments).toHaveLength(2);
-    expect(parsed.dedup.instruments.map((i: any) => i.full)).toEqual(["NASDAQ:AAPL", "BTC"]);
+    expect(parsed.dedup.instruments.map((i: { full: string }) => i.full)).toEqual(["NASDAQ:AAPL", "BTC"]);
   });
 
   it("workspace_create_watchlist rejects reserved key __proto__", async () => {
@@ -223,6 +227,25 @@ describe("Workspace Tools", () => {
         expect(tool.readOnly, `${tool.name} should be readOnly: false`).toBe(false);
       }
     }
+  });
+
+  it("update operations set updatedAt to a valid ISO timestamp", async () => {
+    const before = new Date().toISOString();
+    const tool = getTool("workspace_update_profile");
+    await tool.handler({ tradingStyle: "swing" });
+    const after = new Date().toISOString();
+
+    const getResult = await getTool("workspace_get_profile").handler({});
+    const profile = JSON.parse(getResult.content[0].text);
+    expect(profile.updatedAt >= before).toBe(true);
+    expect(profile.updatedAt <= after).toBe(true);
+  });
+
+  it("module metadata is correct", () => {
+    const mod = createWorkspaceModule(tmpDir);
+    expect(mod.name).toBe("workspace");
+    expect(mod.requiredEnvVars).toEqual([]);
+    expect(mod.tools.length).toBe(7);
   });
 
   it("workspace_create_watchlist schema rejects name exceeding max length", () => {
