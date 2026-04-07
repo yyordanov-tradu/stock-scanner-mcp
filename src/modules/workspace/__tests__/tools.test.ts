@@ -146,6 +146,85 @@ describe("Workspace Tools", () => {
     expect(hitParsed.thesis.summary).toBe("Bitcoin proxy play");
   });
 
+  it("workspace_get_profile returns default profile on fresh workspace", async () => {
+    const tool = getTool("workspace_get_profile");
+    const result: ToolResult = await tool.handler({});
+
+    expect(result.isError).toBeFalsy();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.defaultExchange).toBe("NASDAQ");
+    expect(parsed.workflowCadence).toBe("daily");
+    expect(parsed.assetFocus).toEqual([]);
+  });
+
+  it("workspace_list_watchlists returns empty object on fresh workspace", async () => {
+    const tool = getTool("workspace_list_watchlists");
+    const result: ToolResult = await tool.handler({});
+
+    expect(result.isError).toBeFalsy();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed).toEqual({});
+  });
+
+  it("thesis merge preserves fields not provided in update", async () => {
+    const saveTool = getTool("workspace_save_thesis");
+
+    // Save with summary + bullCase
+    await saveTool.handler({
+      symbol: "NVDA",
+      summary: "AI chip leader",
+      bullCase: "Data center demand",
+    });
+
+    // Update only summary
+    await saveTool.handler({
+      symbol: "NVDA",
+      summary: "AI chip leader v2",
+    });
+
+    const getTool2 = getTool("workspace_get_thesis");
+    const result: ToolResult = await getTool2.handler({ symbol: "NVDA" });
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(parsed.thesis.summary).toBe("AI chip leader v2");
+    expect(parsed.thesis.bullCase).toBe("Data center demand"); // preserved
+  });
+
+  it("workspace_create_watchlist rejects duplicate name", async () => {
+    const tool = getTool("workspace_create_watchlist");
+    await tool.handler({ name: "core" });
+
+    const result: ToolResult = await tool.handler({ name: "core" });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.message).toContain("already exists");
+  });
+
+  it("workspace_update_watchlist rejects non-existent watchlist", async () => {
+    const tool = getTool("workspace_update_watchlist");
+    const result: ToolResult = await tool.handler({ name: "ghost", symbols: ["AAPL"] });
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.message).toContain("does not exist");
+  });
+
+  it("all workspace tools have readOnly correctly set", () => {
+    const readTools = new Set([
+      "workspace_get_profile",
+      "workspace_list_watchlists",
+      "workspace_get_thesis",
+    ]);
+
+    for (const tool of workspaceTools) {
+      if (readTools.has(tool.name)) {
+        expect(tool.readOnly, `${tool.name} should be readOnly: true`).toBe(true);
+      } else {
+        expect(tool.readOnly, `${tool.name} should be readOnly: false`).toBe(false);
+      }
+    }
+  });
+
   it("workspace_create_watchlist schema rejects name exceeding max length", () => {
     const tool = getTool("workspace_create_watchlist");
     const result = tool.inputSchema.safeParse({ name: "a".repeat(101) });
