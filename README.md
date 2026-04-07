@@ -35,7 +35,7 @@ Copy this complete config block into your config file:
 }
 ```
 
-This gives you **43 tools** immediately with no API keys. API keys are optional and free — they unlock 18 additional tools for real-time quotes, news, earnings, and economic data. See [API Keys](#api-keys-optional) below for where to get them.
+This gives you **49 tools** immediately with no API keys. API keys are optional and free — they unlock 18 additional tools for real-time quotes, news, earnings, and economic data. See [API Keys](#api-keys-optional) below for where to get them.
 
 > **Minimal config** — if you don't want workspace or API keys, use this instead:
 > ```json
@@ -48,7 +48,7 @@ This gives you **43 tools** immediately with no API keys. API keys are optional 
 >   }
 > }
 > ```
-> This gives you **36 stateless tools** with no local data storage.
+> This gives you **42 stateless tools** with no local data storage.
 
 Restart Claude Desktop after saving. Claude Code picks up the config automatically.
 
