@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ModuleDefinition } from "../../shared/types.js";
 import { successResult } from "../../shared/types.js";
-import { getTrendingTickers, getTickerMentions, getTickerSentiment } from "./client.js";
+import { getTrendingTickers, getTickerMentions, getTickerSentiment, DEFAULT_SUBREDDITS } from "./client.js";
 import { withMetadata } from "../../shared/utils.js";
 
 const trendingTool = {
@@ -13,14 +13,14 @@ const trendingTool = {
     "Limitation: uses keyword extraction (cashtags + uppercase words), not NLP — " +
     "some false positives possible. Best for gauging retail buzz, not precise sentiment.",
   inputSchema: z.object({
-    subreddits: z.array(z.string()).optional()
+    subreddits: z.array(z.string()).max(10).optional()
       .describe("Subreddits to scan (default: wallstreetbets, stocks, investing, options)"),
-    limit: z.number().default(20)
+    limit: z.number().min(1).max(50).default(20)
       .describe("Maximum number of trending tickers to return (default: 20)"),
   }),
   readOnly: true,
   handler: withMetadata(async (args: { subreddits?: string[]; limit?: number }) => {
-    const result = await getTrendingTickers(args.subreddits, args.limit ?? 20);
+    const result = await getTrendingTickers(args.subreddits ?? [...DEFAULT_SUBREDDITS], args.limit ?? 20);
     return successResult(JSON.stringify(result, null, 2));
   }, { source: "reddit", dataDelay: "real-time" }),
 };
@@ -33,13 +33,13 @@ const mentionsTool = {
     "Returns total mentions, per-subreddit breakdown, and top 10 posts by score. " +
     "Use this to check how much retail attention a ticker is getting.",
   inputSchema: z.object({
-    symbol: z.string().describe("Stock ticker symbol (e.g. AAPL, TSLA, GME)"),
+    symbol: z.string().max(10).describe("Stock ticker symbol (e.g. AAPL, TSLA, GME)"),
     period: z.enum(["hour", "day", "week"]).default("day")
       .describe("Time period to search (default: day)"),
   }),
   readOnly: true,
   handler: withMetadata(async (args: { symbol: string; period?: string }) => {
-    const result = await getTickerMentions(args.symbol, args.period ?? "day");
+    const result = await getTickerMentions(args.symbol.toUpperCase(), args.period ?? "day");
     return successResult(JSON.stringify(result, null, 2));
   }, { source: "reddit", dataDelay: "real-time" }),
 };
@@ -54,13 +54,13 @@ const sentimentTool = {
     "Returns bullish/bearish/neutral counts, average sentiment score, and sample posts. " +
     "Limitation: keyword-based scoring, not NLP — sarcasm and context may be missed.",
   inputSchema: z.object({
-    symbol: z.string().describe("Stock ticker symbol (e.g. AAPL, TSLA, GME)"),
-    limit: z.number().default(50)
+    symbol: z.string().max(10).describe("Stock ticker symbol (e.g. AAPL, TSLA, GME)"),
+    limit: z.number().min(1).max(100).default(50)
       .describe("Maximum posts to analyze per subreddit (default: 50)"),
   }),
   readOnly: true,
   handler: withMetadata(async (args: { symbol: string; limit?: number }) => {
-    const result = await getTickerSentiment(args.symbol, args.limit ?? 50);
+    const result = await getTickerSentiment(args.symbol.toUpperCase(), args.limit ?? 50);
     return successResult(JSON.stringify(result, null, 2));
   }, { source: "reddit", dataDelay: "real-time" }),
 };
