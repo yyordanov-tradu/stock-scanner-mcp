@@ -85,23 +85,25 @@ export class StorageManager {
     const dir = path.dirname(this.filePath);
     await fs.mkdir(dir, { recursive: true });
 
-    // Ensure lock file exists
+    // Check lock file BEFORE writing to it
+    await this.assertNotSymlink(this.lockPath);
+
+    // Ensure lock file exists (safe now — verified not a symlink)
     await fs.writeFile(this.lockPath, "", "utf-8");
 
     let release: (() => Promise<void>) | undefined;
-    
+
     try {
       // Acquire lock on the dedicated lock file
-      release = await lock(this.lockPath, { 
+      release = await lock(this.lockPath, {
         retries: {
           retries: 5,
           minTimeout: 100,
           maxTimeout: 1000,
-        }
+        },
       });
 
       await this.assertNotSymlink(this.filePath);
-      await this.assertNotSymlink(this.lockPath);
 
       const fileExists = await this.exists();
 
@@ -125,9 +127,13 @@ export class StorageManager {
       const bakPath = `${this.filePath}.bak`;
       const content = JSON.stringify(data, null, 2);
 
+      // Check tmp/bak paths before writing
+      await this.assertNotSymlink(tmpPath);
+      await this.assertNotSymlink(bakPath);
+
       // Atomic write
       await fs.writeFile(tmpPath, content, "utf-8");
-      
+
       if (fileExists) {
         await fs.copyFile(this.filePath, bakPath);
       }
