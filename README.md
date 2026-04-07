@@ -165,8 +165,36 @@ The Market Workspace is an optional stateful layer that remembers your trading c
 
 - **`/workspace-morning-brief`** — personalized pre-market scan that reads your profile and watchlist, checks earnings, news, and price action for your names, and highlights what matters today
 - **Add more watchlists** — ask Claude: *"Create a watchlist called 'earnings' with AAPL, MSFT, GOOG"*
-- **Save thesis notes** — ask Claude: *"Save a bull thesis for MARA: leveraged BTC play with improving hash rate, catalyst is halving cycle"*
+- **Track investment theses** — save your reasoning per ticker so the system monitors it for you (see below)
 - **Update anytime** — *"Add NVDA to my core watchlist"* or *"Change my review cadence to weekly"*
+
+### Thesis Tracking
+
+Save your investment reasoning per ticker — direction, key levels, catalysts, and timeframe — so the system can monitor it across sessions.
+
+**Save a thesis:**
+
+```
+"My thesis on NIO: bullish above $6.35, that confirms the uptrend. Below it the setup is invalid."
+```
+
+Claude saves the structured thesis:
+
+| Field | Value |
+|-------|-------|
+| Direction | Bullish above $6.35 |
+| Bear case | Below $6.35 uptrend is invalidated |
+| Catalyst | Technical breakout at $6.35 |
+| Timeframe | Swing |
+
+**How it works in practice:** When you run `/workspace-morning-brief`, the brief cross-references your saved theses against live price action:
+
+- NIO drops to $6.10 → *"NIO broke below your $6.35 thesis floor — re-evaluate."*
+- NIO rallies to $7.20 → *"NIO holding above your $6.35 level — uptrend thesis intact."*
+
+Without a thesis, the brief just reports a price change. With a thesis, it tells you **whether the move matters to your plan.**
+
+Each thesis supports five fields: `summary`, `bullCase`, `bearCase`, `catalyst`, and `timeframe`. You can save up to 200 theses per workspace.
 
 ### Configuration reference
 
@@ -199,8 +227,9 @@ For the full list of workspace tools, see the [tool reference](#workspace--perso
 
 Modules auto-enable when their API key is set. No-key modules are always enabled, except `workspace`, which requires `--enable-workspace`.
 
-<details>
-<summary>Full tool reference (61 tools)</summary>
+For a complete list of every tool with descriptions, see the [Full Tool Reference](#full-tool-reference-61-tools) below.
+
+## Full Tool Reference (61 tools)
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -324,8 +353,6 @@ Enabled only when you start the server with `--enable-workspace`.
 | `fred_indicator` | Latest value for any indicator (CPI, fed funds, unemployment, etc.) |
 | `fred_indicator_history` | Historical values with unit transforms (YoY %, change, level) |
 | `fred_search` | Discover FRED series IDs by keyword |
-
-</details>
 
 ## Configuration
 
