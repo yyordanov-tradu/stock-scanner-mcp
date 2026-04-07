@@ -11,6 +11,9 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
     name: "workspace",
     description: "Stateful market workspace for watchlists, profiles, and theses.",
     requiredEnvVars: [],
+    // Response shape convention: all tools use successResult(JSON.stringify(data, null, 2)).
+    // Read tools return domain data directly (profile object, watchlists record, thesis lookup).
+    // Write tools return { success, message, ...context } envelopes so the LLM confirms the operation.
     tools: [
       {
         name: "workspace_get_profile",
