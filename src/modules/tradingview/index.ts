@@ -27,6 +27,7 @@ export function createTradingviewModule(): ModuleDefinition {
           timeframe: z.string().optional().describe("Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"),
           limit: z.number().optional().describe("Max rows (default 50)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const rows = await scanStocks(input);
           return successResult(JSON.stringify(rows, null, 2));
@@ -38,6 +39,7 @@ export function createTradingviewModule(): ModuleDefinition {
         inputSchema: z.object({
           tickers: z.array(z.string()).min(2).max(5).describe("2-5 stock tickers to compare (e.g. AAPL, MSFT)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
           const columns = [
@@ -59,6 +61,7 @@ export function createTradingviewModule(): ModuleDefinition {
         inputSchema: z.object({
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'MSFT']"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const resolvedTickers = input.tickers.map((t: string) => resolveTicker(t).full);
           const rows = await scanStocks({
@@ -79,6 +82,7 @@ export function createTradingviewModule(): ModuleDefinition {
           tickers: z.array(z.string()).describe("Stock tickers, e.g. ['AAPL', 'IBM']"),
           timeframe: z.string().optional().describe("Timeframe (default: 1d)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const technicalCols = [
             "Recommend.All", "Recommend.MA", "Recommend.Other",
@@ -104,6 +108,7 @@ export function createTradingviewModule(): ModuleDefinition {
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const filters = [];
           if (!input.include_otc) {
@@ -127,6 +132,7 @@ export function createTradingviewModule(): ModuleDefinition {
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const filters = [];
           if (!input.include_otc) {
@@ -151,6 +157,7 @@ export function createTradingviewModule(): ModuleDefinition {
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const filters = [];
           if (!input.include_otc) {
@@ -169,6 +176,7 @@ export function createTradingviewModule(): ModuleDefinition {
         name: "tradingview_market_indices",
         description: "Get real-time values for major market indices: VIX (volatility), S&P 500, NASDAQ Composite, and Dow Jones. Essential for gauging broad market conditions, risk sentiment, and options pricing context.",
         inputSchema: z.object({}),
+        readOnly: true,
         handler: withMetadata(async () => {
           const tickers = ["CBOE:VIX", "SP:SPX", "NASDAQ:NDX", "TVC:DJI"];
           const columns = [
@@ -183,6 +191,7 @@ export function createTradingviewModule(): ModuleDefinition {
         name: "tradingview_sector_performance",
         description: "Get performance of S&P 500 sector ETFs (XLK, XLF, XLE, XLV, XLI, XLP, XLU, XLY, XLC, XLRE, XLB). Shows which sectors are leading or lagging today. Essential for sector rotation analysis.",
         inputSchema: z.object({}),
+        readOnly: true,
         handler: withMetadata(async () => {
           const sectorEtfs = [
             "AMEX:XLK", "AMEX:XLF", "AMEX:XLE", "AMEX:XLV", "AMEX:XLI",
@@ -205,6 +214,7 @@ export function createTradingviewModule(): ModuleDefinition {
           exchange: z.string().optional().describe("Exchange filter"),
           limit: z.number().optional().describe("Max results (default 20)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (input) => {
           const rows = await scanStocks({
             exchange: input.exchange,

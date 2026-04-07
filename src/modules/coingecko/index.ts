@@ -10,6 +10,7 @@ const coinTool = {
   inputSchema: z.object({
     coinId: z.string().describe("CoinGecko coin ID / slug (e.g. 'bitcoin', 'ethereum', 'cardano')"),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const coin = await getCoinDetail(params.coinId as string);
     return successResult(JSON.stringify(coin, null, 2));
@@ -20,6 +21,7 @@ const trendingTool = {
   name: "coingecko_trending",
   description: "Get trending cryptocurrencies on CoinGecko (top 7 by search popularity in last 24h).",
   inputSchema: z.object({}),
+  readOnly: true,
   handler: withMetadata(async () => {
     const trending = await getTrending();
     return successResult(JSON.stringify(trending, null, 2));
@@ -30,6 +32,7 @@ const globalTool = {
   name: "coingecko_global",
   description: "Get global cryptocurrency market statistics: total market cap, 24h volume, BTC/ETH dominance.",
   inputSchema: z.object({}),
+  readOnly: true,
   handler: withMetadata(async () => {
     const global = await getGlobal();
     return successResult(JSON.stringify(global, null, 2));

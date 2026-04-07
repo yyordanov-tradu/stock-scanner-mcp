@@ -44,6 +44,7 @@ export function createTradingviewCryptoModule(): ModuleDefinition {
             .describe("Timeframe: '1m','5m','15m','1h','4h','1d','1W','1M'. Default: '1d'"),
           limit: z.number().optional().describe("Max results (default: 50, max: 200)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const majorOnly = (params.major_only as boolean) ?? true;
           let filters = (params.filters as any[]) || [];
@@ -69,6 +70,7 @@ export function createTradingviewCryptoModule(): ModuleDefinition {
             .array(z.string())
             .describe("Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT'])"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const resolvedTickers = (params.symbols as string[]).map(s => {
             const res = resolveTicker(s, "BINANCE");
@@ -96,6 +98,7 @@ export function createTradingviewCryptoModule(): ModuleDefinition {
           symbols: z.array(z.string()).describe("Crypto symbols (e.g. ['BTCUSDT'])"),
           timeframe: z.string().optional().describe("Timeframe. Default: '1d'"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const resolvedTickers = (params.symbols as string[]).map(s => {
             const res = resolveTicker(s, "BINANCE");
@@ -134,6 +137,7 @@ export function createTradingviewCryptoModule(): ModuleDefinition {
           exchange: z.string().optional().describe("Specific exchange (e.g. BINANCE)"),
           limit: z.number().optional().describe("Number of results (default: 20, max: 50)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const filters: any[] = [{ left: "change", operation: "greater", right: 0 }];
           if (params.exchange) {

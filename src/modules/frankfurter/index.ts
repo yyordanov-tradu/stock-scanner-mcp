@@ -34,6 +34,7 @@ const latestTool = {
         "Comma-separated target currencies (e.g. 'EUR,GBP,JPY'). Omit for all 31.",
       ),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const result = await getLatestRates(
       params.base as string,
@@ -58,6 +59,7 @@ const historicalTool = {
       .optional()
       .describe("Comma-separated target currencies. Omit for all."),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const result = await getHistoricalRates(
       params.base as string,
@@ -90,6 +92,7 @@ const timeseriesTool = {
         "Required: comma-separated target currencies (e.g. 'EUR,GBP')",
       ),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const result = await getTimeSeries(
       params.base as string,
@@ -112,6 +115,7 @@ const convertTool = {
     from: currencyCode.describe("Source currency (e.g. 'USD')"),
     to: currencyCode.describe("Target currency (e.g. 'EUR')"),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const result = await convertCurrency(
       params.amount as number,
@@ -128,6 +132,7 @@ const currenciesTool = {
     "List all 31 currencies supported by the Frankfurter API with their full names. " +
     "Use to look up valid currency codes before calling other frankfurter tools.",
   inputSchema: z.object({}),
+  readOnly: true,
   handler: withMetadata(async () => {
     const result = await getCurrencies();
     return successResult(JSON.stringify(result, null, 2));

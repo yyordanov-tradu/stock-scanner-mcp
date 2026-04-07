@@ -48,6 +48,7 @@ export function createSecEdgarModule(): ModuleDefinition {
             .optional()
             .describe("Max results (default: 20, max: 50)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const resolvedTickers = (params.tickers as string[] | undefined)?.map(t => resolveTicker(t).ticker);
           const filings = await searchFilings({
@@ -75,6 +76,7 @@ export function createSecEdgarModule(): ModuleDefinition {
             .optional()
             .describe("Max results (default: 10, max: 50)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const ticker = resolveTicker(params.ticker as string).ticker;
           const filings = await getCompanyFilings({
@@ -94,6 +96,7 @@ export function createSecEdgarModule(): ModuleDefinition {
         inputSchema: z.object({
           ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const ticker = resolveTicker(params.ticker as string).ticker;
           const facts = await getCompanyFacts(ticker);
@@ -107,6 +110,7 @@ export function createSecEdgarModule(): ModuleDefinition {
           ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
           limit: z.number().optional().describe("Max results (default: 10)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const ticker = resolveTicker(params.ticker as string).ticker;
           const trades = await getInsiderTrades(
@@ -128,6 +132,7 @@ export function createSecEdgarModule(): ModuleDefinition {
             .describe("Stock ticker (e.g. 'AAPL') or institutional manager name (e.g. 'Berkshire Hathaway')"),
           limit: z.number().optional().describe("Max results (default: 10)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const res = resolveTicker(params.query as string);
           const query = res.ticker;
@@ -146,6 +151,7 @@ export function createSecEdgarModule(): ModuleDefinition {
           ticker: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
           limit: z.number().optional().describe("Max results (default: 10)"),
         }),
+        readOnly: true,
         handler: withMetadata(async (params) => {
           const ticker = resolveTicker(params.ticker as string).ticker;
           const filings = await getOwnershipFilings(

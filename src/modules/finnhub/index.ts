@@ -25,6 +25,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
       category: z.string().optional().describe("Category: general, forex, crypto, merger"),
       limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const news = await getMarketNews(
         apiKey,
@@ -44,6 +45,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
       to: z.string().describe("To date (YYYY-MM-DD)"),
       limit: z.number().optional().describe("Max results (default: 20, max: 50)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const news = await getCompanyNews(
@@ -66,6 +68,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
       symbol: z.string().optional().describe("Filter by specific symbol"),
       limit: z.number().optional().describe("Max results to return (default: 20, max: 100)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = params.symbol
         ? resolveTicker(params.symbol as string).ticker
@@ -91,6 +94,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const recs = await getAnalystRecommendations(apiKey, symbol);
@@ -109,6 +113,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const profile = await getCompanyProfile(apiKey, symbol);
@@ -122,6 +127,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const peers = await getPeers(apiKey, symbol);
@@ -135,6 +141,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       exchange: z.string().default("US").describe("Exchange code. Examples: US, L (London), T (Tokyo), HK"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const exchange = params.exchange as string;
       const status = await getMarketStatus(apiKey, exchange);
@@ -148,6 +155,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const q = await getQuote(apiKey, symbol);
@@ -170,6 +178,7 @@ export function createFinnhubModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const metrics = await getShortInterest(apiKey, symbol);

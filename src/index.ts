@@ -179,7 +179,7 @@ async function main() {
         description: tool.description,
         inputSchema: tool.inputSchema,
         annotations: {
-          readOnlyHint: tool.readOnly ?? true,
+          readOnlyHint: tool.readOnly,
           destructiveHint: false,
           openWorldHint: true,
         },

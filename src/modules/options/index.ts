@@ -25,6 +25,7 @@ const expirationsTool: ToolDefinition = {
   inputSchema: z.object({
     symbol: symbolSchema,
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const chain = await fetchOptionChain(params.symbol as string);
     const dates = chain.expirationDates.map(
@@ -60,6 +61,7 @@ const chainTool: ToolDefinition = {
     all_strikes: z.boolean().optional()
       .describe("Return all strikes instead of centering around ATM (default: false)"),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const expUnix = parseExpiration(params.expiration as string | undefined);
     const chain = await fetchOptionChain(params.symbol as string, expUnix);
@@ -120,6 +122,7 @@ const unusualActivityTool: ToolDefinition = {
     side: z.enum(["call", "put", "both"]).optional()
       .describe("Filter by option type (default: both)"),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const chain = await fetchOptionChain(params.symbol as string);
     const minRatio = (params.volume_oi_ratio as number) ?? 3.0;
@@ -164,6 +167,7 @@ const maxPainTool: ToolDefinition = {
     expiration: z.string().optional()
       .describe("Expiration date as YYYY-MM-DD. If omitted, uses nearest."),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const expUnix = parseExpiration(params.expiration as string | undefined);
     const chain = await fetchOptionChain(params.symbol as string, expUnix);
@@ -191,6 +195,7 @@ const impliedMoveTool: ToolDefinition = {
     expiration: z.string().optional()
       .describe("Expiration date as YYYY-MM-DD. If omitted, uses nearest."),
   }),
+  readOnly: true,
   handler: withMetadata(async (params) => {
     const expUnix = parseExpiration(params.expiration as string | undefined);
     const chain = await fetchOptionChain(params.symbol as string, expUnix);

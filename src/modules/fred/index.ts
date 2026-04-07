@@ -27,6 +27,7 @@ export function createFredModule(apiKey: string): ModuleDefinition {
         .default(60)
         .describe("Max raw results to fetch before filtering (default: 60)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const releases = await getEconomicCalendar(apiKey, params.limit as number);
       return successResult(JSON.stringify(releases, null, 2));
@@ -47,6 +48,7 @@ export function createFredModule(apiKey: string): ModuleDefinition {
         .string()
         .describe("FRED series ID or alias (e.g. 'cpi', 'UNRATE', 'treasury_10y')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const result = await getIndicator(apiKey, params.series_id as string);
       return successResult(JSON.stringify(result, null, 2));
@@ -73,6 +75,7 @@ export function createFredModule(apiKey: string): ModuleDefinition {
         .default("lin")
         .describe("Units: lin=level, pch=% change, pc1=YoY % change (default: lin)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const result = await getIndicatorHistory(
         apiKey,
@@ -96,6 +99,7 @@ export function createFredModule(apiKey: string): ModuleDefinition {
       query: z.string().describe("Search keywords (e.g. 'consumer price index', 'housing starts')"),
       limit: z.number().optional().default(10).describe("Max results (default: 10, max: 50)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const results = await searchSeries(apiKey, params.query as string, params.limit as number);
       return successResult(JSON.stringify(results, null, 2));
