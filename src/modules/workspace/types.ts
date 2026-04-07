@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype", "toString", "valueOf", "hasOwnProperty"]);
+
 export const ProfileSchema = z.object({
   defaultExchange: z.string().max(20).default("NASDAQ"),
   tradingStyle: z.string().max(100).optional(),
@@ -10,8 +12,8 @@ export const ProfileSchema = z.object({
 });
 
 export const InstrumentSchema = z.object({
-  full: z.string().max(50),
-  ticker: z.string().max(20),
+  full: z.string().max(80),
+  ticker: z.string().max(50),
   exchange: z.string().optional(),
   isCrypto: z.boolean(),
   input: z.string().max(50),
@@ -28,8 +30,8 @@ export const WatchlistSchema = z.object({
 });
 
 export const ThesisSchema = z.object({
-  full: z.string().max(50),
-  ticker: z.string().max(20),
+  full: z.string().max(80),
+  ticker: z.string().max(50),
   exchange: z.string().optional(),
   isCrypto: z.boolean(),
   input: z.string().max(50),
@@ -53,8 +55,18 @@ export const WorkspaceSchema = z.object({
     workflowCadence: "daily",
     updatedAt: new Date(0).toISOString(),
   }),
-  watchlists: z.record(z.string(), WatchlistSchema).default({}),
-  theses: z.record(z.string(), ThesisSchema).default({}),
+  watchlists: z.record(z.string(), WatchlistSchema)
+    .refine(
+      (rec) => Object.keys(rec).every((k) => !RESERVED_KEYS.has(k)),
+      { message: "Workspace contains a reserved key in watchlists" }
+    )
+    .default({}),
+  theses: z.record(z.string(), ThesisSchema)
+    .refine(
+      (rec) => Object.keys(rec).every((k) => !RESERVED_KEYS.has(k)),
+      { message: "Workspace contains a reserved key in theses" }
+    )
+    .default({}),
 });
 
 export type Profile = z.infer<typeof ProfileSchema>;

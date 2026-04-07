@@ -3,8 +3,7 @@ import { ModuleDefinition, successResult, errorResult } from "../../shared/types
 import { StorageManager } from "./storage.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
-
-const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype", "toString", "valueOf", "hasOwnProperty"]);
+import { RESERVED_KEYS } from "./types.js";
 
 export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ"): ModuleDefinition {
   const storage = new StorageManager(dataDir, defaultExchange);
@@ -38,18 +37,18 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         readOnly: false,
         handler: withMetadata(async ({ tradingStyle, assetFocus, workflowCadence }) => {
           const { data, lastModified } = await storage.load();
-          
+
           if (tradingStyle !== undefined) data.profile.tradingStyle = tradingStyle;
           if (assetFocus !== undefined) data.profile.assetFocus = assetFocus;
           if (workflowCadence !== undefined) data.profile.workflowCadence = workflowCadence;
-          
+
           data.profile.updatedAt = new Date().toISOString();
-          
+
           await storage.save(data, lastModified);
-          return successResult(JSON.stringify({ 
-            success: true, 
+          return successResult(JSON.stringify({
+            success: true,
             message: "Profile updated successfully.",
-            profile: data.profile 
+            profile: data.profile
           }, null, 2));
         }, { source: "workspace" }),
       },
@@ -80,7 +79,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           if (data.watchlists[name]) {
             return errorResult(`Watchlist '${name}' already exists.`);
           }
-          
+
           data.watchlists[name] = {
             id: name,
             name: name,
@@ -88,10 +87,10 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          
+
           await storage.save(data, lastModified);
-          return successResult(JSON.stringify({ 
-            success: true, 
+          return successResult(JSON.stringify({
+            success: true,
             message: `Watchlist '${name}' created successfully.`
           }, null, 2));
         }, { source: "workspace" }),
@@ -105,19 +104,23 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         }),
         readOnly: false,
         handler: withMetadata(async ({ name, symbols }) => {
+          if (RESERVED_KEYS.has(name)) {
+            return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
+          }
+
           const { data, lastModified } = await storage.load();
-          
+
           if (!data.watchlists[name]) {
             return errorResult(`Watchlist '${name}' does not exist.`);
           }
-          
+
           const seen = new Set<string>();
           const instruments = [];
-          
+
           for (const sym of symbols) {
             const resolved = resolveTicker(sym, data.profile.defaultExchange);
             if (seen.has(resolved.full)) continue;
-            
+
             seen.add(resolved.full);
             instruments.push({
               full: resolved.full,
@@ -128,13 +131,13 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
               addedAt: new Date().toISOString(),
             });
           }
-          
+
           data.watchlists[name].instruments = instruments;
           data.watchlists[name].updatedAt = new Date().toISOString();
-          
+
           await storage.save(data, lastModified);
-          return successResult(JSON.stringify({ 
-            success: true, 
+          return successResult(JSON.stringify({
+            success: true,
             message: `Watchlist '${name}' updated with ${instruments.length} instruments (deduplicated).`,
             instrumentCount: instruments.length
           }, null, 2));
@@ -150,9 +153,9 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         handler: withMetadata(async ({ symbol }) => {
           const { data } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
-          
+
           const thesis = data.theses[resolved.full];
-          
+
           return successResult(JSON.stringify({
             found: !!thesis,
             symbol: resolved.full,
@@ -173,15 +176,15 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         }),
         readOnly: false,
         handler: withMetadata(async ({ symbol, summary, bullCase, bearCase, catalyst, timeframe }) => {
-          const { data, lastModified } = await storage.load();
-          const resolved = resolveTicker(symbol, data.profile.defaultExchange);
-
-          if (RESERVED_KEYS.has(resolved.full) || RESERVED_KEYS.has(resolved.ticker)) {
+          if (RESERVED_KEYS.has(symbol) || RESERVED_KEYS.has(symbol.toLowerCase())) {
             return errorResult(`Invalid symbol: '${symbol}' resolves to a reserved keyword.`);
           }
 
+          const { data, lastModified } = await storage.load();
+          const resolved = resolveTicker(symbol, data.profile.defaultExchange);
+
           const existing = data.theses[resolved.full];
-          
+
           data.theses[resolved.full] = {
             ...existing,
             full: resolved.full,
@@ -196,12 +199,12 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             timeframe: timeframe ?? existing?.timeframe,
             updatedAt: new Date().toISOString(),
           };
-          
+
           await storage.save(data, lastModified);
-          return successResult(JSON.stringify({ 
-            success: true, 
+          return successResult(JSON.stringify({
+            success: true,
             message: `Thesis saved for ${resolved.full}.`,
-            ticker: resolved.full 
+            ticker: resolved.full
           }, null, 2));
         }, { source: "workspace" }),
       },
