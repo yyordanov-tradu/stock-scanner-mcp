@@ -18,6 +18,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL', 'MSFT')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const quote = await getQuote(apiKey, symbol);
@@ -32,6 +33,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
       limit: z.number().optional().describe("Number of days to return (default: 30, max: 100)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const prices = await getDailyPrices(
@@ -49,6 +51,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbols: z.union([z.string(), z.array(z.string())]).describe("One or more stock symbols (e.g. 'AAPL' or ['AAPL', 'MSFT'])"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const inputSymbols = Array.isArray(params.symbols) ? params.symbols : [params.symbols as string];
       const tickers = inputSymbols.map((s: string) => resolveTicker(s).ticker);
@@ -71,6 +74,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
       limit: z.number().optional().describe("Number of quarters to return (default: 8, max: 20)"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const earnings = await getEarningsHistory(
@@ -88,6 +92,7 @@ export function createAlphaVantageModule(apiKey: string): ModuleDefinition {
     inputSchema: z.object({
       symbol: z.string().describe("Stock ticker symbol (e.g. 'AAPL')"),
     }),
+    readOnly: true,
     handler: withMetadata(async (params) => {
       const symbol = resolveTicker(params.symbol as string).ticker;
       const dividends = await getDividendHistory(apiKey, symbol);

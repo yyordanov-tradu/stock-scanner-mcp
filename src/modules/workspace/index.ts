@@ -21,6 +21,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         description: "Get the current user's trading profile and workspace settings.",
         inputSchema: z.object({}),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async () => {
           const { data } = await storage.load();
           return successResult(JSON.stringify(data.profile, null, 2));
@@ -35,6 +36,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           workflowCadence: z.enum(["daily", "weekly"]).optional(),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ tradingStyle, assetFocus, workflowCadence }) => {
           const { data, lastModified } = await storage.load();
 
@@ -57,6 +59,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         description: "List all watchlists and their instruments.",
         inputSchema: z.object({}),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async () => {
           const { data } = await storage.load();
           return successResult(JSON.stringify(data.watchlists, null, 2));
@@ -69,6 +72,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           name: z.string().max(100).describe("The ID/name of the watchlist (e.g., 'core', 'swing')"),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ name }) => {
           if (RESERVED_KEYS.has(name)) {
             return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
@@ -103,6 +107,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           symbols: z.array(z.string().max(50)).max(200).describe("Raw symbols to track (e.g., ['AAPL', 'BTC'])"),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ name, symbols }) => {
           if (RESERVED_KEYS.has(name)) {
             return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
@@ -150,6 +155,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           symbol: z.string().max(50).describe("The raw symbol (e.g., 'AAPL')"),
         }),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async ({ symbol }) => {
           const { data } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
@@ -175,6 +181,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           timeframe: z.string().max(100).optional(),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ symbol, summary, bullCase, bearCase, catalyst, timeframe }) => {
           if (RESERVED_KEYS.has(symbol) || RESERVED_KEYS.has(symbol.toLowerCase())) {
             return errorResult(`Invalid symbol: '${symbol}' resolves to a reserved keyword.`);

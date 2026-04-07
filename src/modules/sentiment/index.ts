@@ -14,6 +14,7 @@ const fearGreedTool = {
     "Also includes previous close, 1-week, 1-month, and 1-year scores for trend context. " +
     "Use this to gauge overall market sentiment before analyzing individual stocks.",
   inputSchema: z.object({}),
+  readOnly: true,
   handler: withMetadata(async () => {
     const result = await getFearAndGreed();
     return successResult(JSON.stringify(result, null, 2));
@@ -28,6 +29,7 @@ const cryptoFearGreedTool = {
     "Based on Bitcoin volatility, market volume, social media, surveys, dominance, and trends. " +
     "Use this alongside coingecko tools for crypto market context.",
   inputSchema: z.object({}),
+  readOnly: true,
   handler: withMetadata(async () => {
     const result = await getCryptoFearAndGreed();
     return successResult(JSON.stringify(result, null, 2));

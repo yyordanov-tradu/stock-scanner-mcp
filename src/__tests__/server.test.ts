@@ -11,6 +11,7 @@ describe("server module wiring", () => {
     name: "test_tool",
     description: "A test tool",
     inputSchema: z.object({ symbol: z.string() }),
+    readOnly: true,
     handler: async () => successResult("ok"),
   };
 

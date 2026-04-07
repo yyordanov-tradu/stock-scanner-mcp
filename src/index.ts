@@ -54,36 +54,6 @@ const MODULE_CATALOG: ModuleCatalogEntry[] = [
 
 const TOTAL_TOOLS = MODULE_CATALOG.reduce((n, m) => n + m.toolCount, 0);
 
-function buildModules(config: Config): ModuleDefinition[] {
-  const modules: ModuleDefinition[] = [
-    createTradingviewModule(),
-    createTradingviewCryptoModule(),
-    createSecEdgarModule(),
-    createCoingeckoModule(),
-    createOptionsModule(),
-    createOptionsCboeModule(),
-    createSentimentModule(),
-    createFrankfurterModule(),
-  ];
-
-  if (config.env.FINNHUB_API_KEY) {
-    modules.push(createFinnhubModule(config.env.FINNHUB_API_KEY));
-  }
-
-  if (config.env.ALPHA_VANTAGE_API_KEY) {
-    modules.push(createAlphaVantageModule(config.env.ALPHA_VANTAGE_API_KEY));
-  }
-
-  if (config.env.FRED_API_KEY) {
-    modules.push(createFredModule(config.env.FRED_API_KEY));
-  }
-
-  if (config.enableWorkspace) {
-    modules.push(createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp"), config.defaultExchange));
-  }
-
-  return modules;
-}
 
 function printHelp(): void {
   const help = `
@@ -163,7 +133,9 @@ async function main() {
   }
 
   const config = parseConfig(args);
-  const allModules = buildModules(config);
+  const allModules = MODULE_CATALOG
+    .map(entry => entry.factory(config))
+    .filter((m): m is ModuleDefinition => m !== null);
   const enabled = resolveEnabledModules(allModules, config.env, config.enabledModules);
 
   const server = new McpServer({
@@ -179,9 +151,9 @@ async function main() {
         description: tool.description,
         inputSchema: tool.inputSchema,
         annotations: {
-          readOnlyHint: tool.readOnly ?? true,
+          readOnlyHint: tool.readOnly,
           destructiveHint: false,
-          openWorldHint: true,
+          openWorldHint: tool.openWorld ?? true,
         },
       }, async (params) => {
         try {

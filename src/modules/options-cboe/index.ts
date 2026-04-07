@@ -17,6 +17,7 @@ export function createOptionsCboeModule(): ModuleDefinition {
         type: z.enum(["total", "equity", "index"]).optional().describe("Ratio type (default: total)"),
         days: z.number().optional().describe("Number of recent trading days to return (default: 30, max: 252)"),
       }),
+      readOnly: true,
       handler: withMetadata(async (params) => {
         const days = Math.min(Math.max((params.days as number) ?? 30, 1), 252);
         const data = await getPutCallRatio((params.type as string) ?? "total", days);
