@@ -18,6 +18,7 @@ export interface ToolDefinition {
   description: string;
   inputSchema: z.ZodType<any>;
   readOnly: boolean;
+  openWorld?: boolean;
   handler: (args: any) => Promise<ToolResult>;
 }
 

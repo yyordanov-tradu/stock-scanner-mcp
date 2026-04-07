@@ -17,6 +17,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         description: "Get the current user's trading profile and workspace settings.",
         inputSchema: z.object({}),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async () => {
           const { data } = await storage.load();
           return successResult(JSON.stringify(data.profile, null, 2));
@@ -31,6 +32,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           workflowCadence: z.enum(["daily", "weekly"]).optional(),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ tradingStyle, assetFocus, workflowCadence }) => {
           const { data, lastModified } = await storage.load();
           
@@ -53,6 +55,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         description: "List all watchlists and their instruments.",
         inputSchema: z.object({}),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async () => {
           const { data } = await storage.load();
           return successResult(JSON.stringify(data.watchlists, null, 2));
@@ -65,6 +68,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           name: z.string().describe("The ID/name of the watchlist (e.g., 'core', 'swing')"),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ name }) => {
           const { data, lastModified } = await storage.load();
           
@@ -95,6 +99,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           symbols: z.array(z.string()).describe("Raw symbols to track (e.g., ['AAPL', 'BTC'])"),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ name, symbols }) => {
           const { data, lastModified } = await storage.load();
           
@@ -138,6 +143,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           symbol: z.string().describe("The raw symbol (e.g., 'AAPL')"),
         }),
         readOnly: true,
+        openWorld: false,
         handler: withMetadata(async ({ symbol }) => {
           const { data } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
@@ -163,6 +169,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           timeframe: z.string().optional(),
         }),
         readOnly: false,
+        openWorld: false,
         handler: withMetadata(async ({ symbol, summary, bullCase, bearCase, catalyst, timeframe }) => {
           const { data, lastModified } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);

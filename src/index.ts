@@ -181,7 +181,7 @@ async function main() {
         annotations: {
           readOnlyHint: tool.readOnly,
           destructiveHint: false,
-          openWorldHint: true,
+          openWorldHint: tool.openWorld ?? true,
         },
       }, async (params) => {
         try {
