@@ -176,10 +176,10 @@ async function main() {
     if (enabledNames.has(entry.name)) {
       const reason = entry.envVar ? `${entry.envVar} set` : "no key required";
       console.error(`  \u2713 ${entry.name.padEnd(18)} enabled (${reason})`);
-    } else if (entry.name === "workspace" && !config.enableWorkspace) {
-      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (--enable-workspace not set)`);
     } else if (config.enabledModules && !config.enabledModules.includes(entry.name)) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (excluded by --modules)`);
+    } else if (entry.name === "workspace" && !config.enableWorkspace) {
+      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (--enable-workspace not set)`);
     } else if (entry.envVar) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (${entry.envVar} not set)`);
     }

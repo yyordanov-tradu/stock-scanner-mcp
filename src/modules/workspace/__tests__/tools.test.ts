@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -246,6 +246,76 @@ describe("Workspace Tools", () => {
     expect(mod.name).toBe("workspace");
     expect(mod.requiredEnvVars).toEqual([]);
     expect(mod.tools.length).toBe(7);
+  });
+
+  it("workspace_create_watchlist rejects at 50-watchlist limit", async () => {
+    const tool = getTool("workspace_create_watchlist");
+    for (let i = 0; i < 50; i++) {
+      const r = await tool.handler({ name: `wl-${i}` });
+      expect(r.isError, `watchlist wl-${i} should succeed`).toBeFalsy();
+    }
+    const result: ToolResult = await tool.handler({ name: "wl-overflow" });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.message).toContain("Maximum");
+  });
+
+  it("workspace_save_thesis rejects new thesis at 200 limit but allows updating existing", async () => {
+    // Pre-populate workspace.json with 200 theses to avoid slow handler loop
+    const now = new Date().toISOString();
+    const theses: Record<string, unknown> = {};
+    for (let i = 0; i < 200; i++) {
+      const key = `NASDAQ:SYM${i}`;
+      theses[key] = {
+        full: key,
+        ticker: `SYM${i}`,
+        exchange: "NASDAQ",
+        isCrypto: false,
+        input: `SYM${i}`,
+        summary: `Thesis for SYM${i}`,
+        updatedAt: now,
+      };
+    }
+    const workspace = {
+      schemaVersion: 1,
+      profile: { defaultExchange: "NASDAQ", assetFocus: [], workflowCadence: "daily", updatedAt: now },
+      watchlists: {},
+      theses,
+    };
+    await fs.writeFile(path.join(tmpDir, "workspace.json"), JSON.stringify(workspace, null, 2), "utf-8");
+
+    const saveTool = getTool("workspace_save_thesis");
+
+    // New thesis should be rejected
+    const newResult: ToolResult = await saveTool.handler({ symbol: "NEWSTOCK", summary: "new" });
+    expect(newResult.isError).toBe(true);
+    const parsed = JSON.parse(newResult.content[0].text);
+    expect(parsed.message).toContain("Maximum");
+
+    // Updating an existing thesis should succeed
+    const updateResult: ToolResult = await saveTool.handler({ symbol: "SYM0", summary: "updated thesis" });
+    expect(updateResult.isError).toBeFalsy();
+    const updateParsed = JSON.parse(updateResult.content[0].text);
+    expect(updateParsed.success).toBe(true);
+  });
+
+  it("write handler returns CONFLICT error code on concurrent modification", async () => {
+    const { StorageManager } = await import("../storage.js");
+
+    // Spy on save to throw a Conflict error (simulates concurrent writer)
+    const saveSpy = vi.spyOn(StorageManager.prototype, "save").mockRejectedValueOnce(
+      new Error("Conflict: The workspace has been modified by another process. Please reload and try again.")
+    );
+
+    const tool = getTool("workspace_update_profile");
+    const result: ToolResult = await tool.handler({ tradingStyle: "day" });
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.code).toBe("CONFLICT");
+    expect(parsed.message).toContain("Conflict:");
+
+    saveSpy.mockRestore();
   });
 
   it("workspace_create_watchlist schema rejects name exceeding max length", () => {
