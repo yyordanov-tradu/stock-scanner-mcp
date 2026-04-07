@@ -36,15 +36,95 @@ A modular MCP server for Claude Code and Claude Desktop that provides real-time 
 
 ## Market Workspace
 
-The new Market Workspace is an optional stateful layer on top of the existing market-data tools.
+The Market Workspace is an optional stateful layer that remembers your trading context across sessions — your trading style, named watchlists, and investment thesis notes per symbol. Once set up, skills like `/workspace-morning-brief` use this context to deliver personalized market scans instead of generic ones.
 
-- **What it saves** — your trading profile, named watchlists, and one thesis record per symbol
-- **What it enables** — personalized workflows like `/setup-market-workspace` and `/workspace-morning-brief`
-- **How it is enabled** — pass `--enable-workspace` when starting the MCP server
-- **Where data is stored** — `~/.stock-scanner-mcp/workspace.json` by default, or a custom path with `--data-dir`
-- **Privacy model** — local file storage only; if you do not pass `--enable-workspace`, the server stays stateless and does not write local workspace data
+### Enable it
 
-If you want to use it, start from one of the complete copy-paste examples below. They are full working configs, not partial flag snippets.
+Add `--enable-workspace` to your MCP server config. This adds 7 workspace tools (profile, watchlists, thesis) on top of the existing market-data tools.
+
+**Claude Code** (`~/.claude.json` or project-local `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stock-scanner": {
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"],
+      "env": {
+        "FINNHUB_API_KEY": "your-key-here",
+        "ALPHA_VANTAGE_API_KEY": "your-key-here",
+        "FRED_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS, `%APPDATA%\Claude\claude_desktop_config.json` on Windows) — same JSON block.
+
+API keys are optional — workspace works without them, but morning briefs are richer with Finnhub news and earnings data.
+
+### Install the trading skills
+
+Skills are slash commands that orchestrate multiple tools into workflows. The two workspace skills are part of the full 19-skill pack:
+
+```bash
+npx -p stock-scanner-mcp stock-scanner-install-skills
+```
+
+This installs `/setup-market-workspace` (guided setup) and `/workspace-morning-brief` (personalized daily scan) along with 17 other analysis workflows.
+
+### Set up your workspace
+
+Run `/setup-market-workspace`. It asks three questions:
+
+```
+> /setup-market-workspace
+
+Setting up your market workspace — I'll ask a few quick questions to get started...
+
+1. What kind of trader or investor are you?
+   (e.g., options trader, swing trader, long-term investor, crypto-focused)
+
+   → "I'm mostly a swing trader, also watch crypto"
+
+2. Which names or assets should I save to your core watchlist?
+   (e.g., AAPL, MARA, BTC, Gold)
+
+   → "MARA, HOOD, SOFI, BTC, ETH"
+
+3. Do you want a daily or weekly market review?
+
+   → "Daily"
+```
+
+Once answered, it saves your profile and creates a `core` watchlist:
+
+```
+✓ Workspace saved
+
+  Profile     swing trader | daily review
+  Watchlist   core — MARA, HOOD, SOFI, BTC, ETH
+```
+
+### Use it
+
+- **`/workspace-morning-brief`** — personalized pre-market scan that reads your profile and watchlist, checks earnings, news, and price action for your names, and highlights what matters today
+- **Add more watchlists** — ask Claude: *"Create a watchlist called 'earnings' with AAPL, MSFT, GOOG"*
+- **Save thesis notes** — ask Claude: *"Save a bull thesis for MARA: leveraged BTC play with improving hash rate, catalyst is halving cycle"*
+- **Update anytime** — *"Add NVDA to my core watchlist"* or *"Change my review cadence to weekly"*
+
+### Configuration reference
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--enable-workspace` | off | Activate the 7 workspace tools |
+| `--data-dir <path>` | `~/.stock-scanner-mcp` | Directory for `workspace.json` storage |
+| `--default-exchange` | `NASDAQ` | Default exchange for ticker resolution |
+
+Data is stored locally in `workspace.json` — no cloud sync, no external calls. If you omit `--enable-workspace`, the server stays fully stateless.
+
+For the full list of workspace tools, see the [tool reference](#workspace--personalized-context-optional-no-api-key) below.
 
 ## Quick Start
 
@@ -94,69 +174,9 @@ Add to your global config `~/.claude.json` or project-local `.mcp.json`:
 
 This gives you **36 tools** immediately — no API keys needed.
 
-Or enable the **Market Workspace** and install **Trading Skills** right away:
+To also enable the **Market Workspace** and install **Trading Skills**, see [Market Workspace](#market-workspace) above.
 
-```bash
-npx -y stock-scanner-mcp --enable-workspace
-npx -y stock-scanner-mcp install-skills
-```
-
-### 3. Enable Market Workspace with a complete config
-
-This adds **7 stateful workspace tools** and gives you **43 tools** with no API keys. Workspace data is stored locally in `~/.stock-scanner-mcp/workspace.json` by default.
-
-#### Claude Desktop: complete config with Market Workspace
-
-Paste this into `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows:
-
-```json
-{
-  "mcpServers": {
-    "stock-scanner": {
-      "command": "npx",
-      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"]
-    }
-  }
-}
-```
-
-#### Claude Code: complete config with Market Workspace
-
-Paste this into `~/.claude.json` or project-local `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "stock-scanner": {
-      "command": "npx",
-      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"]
-    }
-  }
-}
-```
-
-#### Claude Desktop or Claude Code with a custom workspace location
-
-Use this full config if you want the workspace file stored somewhere other than `~/.stock-scanner-mcp/workspace.json`:
-
-```json
-{
-  "mcpServers": {
-    "stock-scanner": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "stock-scanner-mcp",
-        "--enable-workspace",
-        "--data-dir",
-        "/absolute/path/to/market-workspace"
-      ]
-    }
-  }
-}
-```
-
-### 4. Install trading skills (optional, recommended)
+### 3. Install trading skills (optional, recommended)
 
 ```bash
 npx -p stock-scanner-mcp stock-scanner-install-skills
@@ -164,7 +184,7 @@ npx -p stock-scanner-mcp stock-scanner-install-skills
 
 This installs 19 slash commands like `/morning-briefing`, `/analyze-stock AAPL`, `/risk-check TSLA`, `/setup-market-workspace`, and `/workspace-morning-brief` that orchestrate multiple tools into professional analysis workflows.
 
-### 5. Add API keys for full access (optional)
+### 4. Add API keys for full access (optional)
 
 All three keys are **free** — no credit card required:
 
@@ -192,25 +212,9 @@ The same `env` block works in Claude Desktop and Claude Code:
 }
 ```
 
-If you want the full setup in one copy-paste block, including Market Workspace and all optional API keys, use this:
+For the full setup with Market Workspace and all API keys in one copy-paste block, see the config in [Market Workspace > Enable it](#enable-it) above.
 
-```json
-{
-  "mcpServers": {
-    "stock-scanner": {
-      "command": "npx",
-      "args": ["-y", "stock-scanner-mcp", "--enable-workspace"],
-      "env": {
-        "FINNHUB_API_KEY": "your-key-here",
-        "ALPHA_VANTAGE_API_KEY": "your-key-here",
-        "FRED_API_KEY": "your-key-here"
-      }
-    }
-  }
-}
-```
-
-### 6. Use with other MCP clients
+### 5. Use with other MCP clients
 
 Any MCP client that supports stdio servers can run this package with:
 
