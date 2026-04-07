@@ -19,6 +19,20 @@ export class StorageManager {
     this.defaultExchange = defaultExchange;
   }
 
+  private async assertNotSymlink(filePath: string): Promise<void> {
+    try {
+      const stat = await fs.lstat(filePath);
+      if (stat.isSymbolicLink()) {
+        throw new Error(`Refusing to operate on symlink: ${filePath}`);
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") {
+        return; // file doesn't exist yet, OK
+      }
+      throw e;
+    }
+  }
+
   async exists(): Promise<boolean> {
     try {
       await fs.access(this.filePath);
@@ -29,6 +43,8 @@ export class StorageManager {
   }
 
   async load(): Promise<LoadResult> {
+    await this.assertNotSymlink(this.filePath);
+
     if (!(await this.exists())) {
       const defaultData = WorkspaceSchema.parse({
         schemaVersion: 1,
@@ -83,6 +99,9 @@ export class StorageManager {
           maxTimeout: 1000,
         }
       });
+
+      await this.assertNotSymlink(this.filePath);
+      await this.assertNotSymlink(this.lockPath);
 
       const fileExists = await this.exists();
 
