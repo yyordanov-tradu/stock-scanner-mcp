@@ -25,6 +25,7 @@ import { createOptionsCboeModule } from "./modules/options-cboe/index.js";
 import { createFredModule } from "./modules/fred/index.js";
 import { createSentimentModule } from "./modules/sentiment/index.js";
 import { createFrankfurterModule } from "./modules/frankfurter/index.js";
+import { createRedditModule } from "./modules/reddit/index.js";
 import { createWorkspaceModule } from "./modules/workspace/index.js";
 import type { Config } from "./config.js";
 import * as path from "node:path";
@@ -49,6 +50,7 @@ const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (config) => config.env.FRED_API_KEY ? createFredModule(config.env.FRED_API_KEY) : null },
   { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
   { name: "frankfurter", envVar: null, toolCount: 5, factory: () => createFrankfurterModule() },
+  { name: "reddit", envVar: null, toolCount: 3, factory: () => createRedditModule() },
   { name: "workspace", envVar: null, toolCount: 7, factory: (config) => config.enableWorkspace ? createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp"), config.defaultExchange) : null },
 ];
 
@@ -71,7 +73,7 @@ OPTIONS
   --enable-workspace      Enable stateful workspace (watchlists, theses, profile)
   --data-dir <path>       Directory for workspace storage (default: ~/.stock-scanner-mcp)
 
-MODULES (61 tools total)
+MODULES (64 tools total)
   tradingview        10 tools Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
@@ -80,6 +82,7 @@ MODULES (61 tools total)
   options-cboe       1 tool   CBOE put/call ratio sentiment            (no key)
   sentiment          2 tools  Market & crypto Fear & Greed sentiment   (no key)
   frankfurter        5 tools  Forex exchange rates and conversion       (no key)
+  reddit             3 tools  Reddit trending tickers and sentiment     (no key)
   workspace          7 tools  Stateful watchlists, theses, and profile  (no key)
   finnhub            9 tools  Quotes, profiles, peers, news, earnings  (FINNHUB_API_KEY)
   alpha-vantage      5 tools  Stock quotes, fundamentals, dividends    (ALPHA_VANTAGE_API_KEY)

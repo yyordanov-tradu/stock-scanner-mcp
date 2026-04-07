@@ -24,6 +24,7 @@ import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
 import { createFredModule } from "../modules/fred/index.js";
 import { createSentimentModule } from "../modules/sentiment/index.js";
 import { createFrankfurterModule } from "../modules/frankfurter/index.js";
+import { createRedditModule } from "../modules/reddit/index.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ const MODULE_PREFIX_MAP: Record<string, string[]> = {
   fred: ["fred_"],
   sentiment: ["sentiment_"],
   frankfurter: ["frankfurter_"],
+  reddit: ["reddit_"],
 };
 
 const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
@@ -56,6 +58,7 @@ const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   fred: ["fred", "economic", "federal reserve"],
   sentiment: ["sentiment", "fear", "greed", "cnn", "alternative"],
   frankfurter: ["frankfurter", "forex", "exchange rate", "ecb", "currency"],
+  reddit: ["reddit", "subreddit", "r/wallstreetbets", "r/stocks"],
 };
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -243,6 +246,7 @@ function buildAllModules(): ModuleDefinition[] {
     createFredModule("mock-key"),
     createSentimentModule(),
     createFrankfurterModule(),
+    createRedditModule(),
   ];
 }
 
