@@ -268,3 +268,26 @@ describe("getTickerSentiment", () => {
     expect(result.samplePosts[0]).toHaveProperty("sentimentScore");
   });
 });
+
+// ── createRedditModule ───────────────────────────────────────────────────────
+
+describe("createRedditModule", () => {
+  it("returns module with 3 tools and no required env vars", async () => {
+    vi.resetModules();
+    const { createRedditModule } = await import("../index.js");
+    const mod = createRedditModule();
+    expect(mod.name).toBe("reddit");
+    expect(mod.requiredEnvVars).toEqual([]);
+    expect(mod.tools).toHaveLength(3);
+    expect(mod.tools.map((t) => t.name)).toEqual(["reddit_trending", "reddit_mentions", "reddit_sentiment"]);
+  });
+
+  it("all tools have readOnly: true", async () => {
+    vi.resetModules();
+    const { createRedditModule } = await import("../index.js");
+    const mod = createRedditModule();
+    for (const tool of mod.tools) {
+      expect(tool.readOnly).toBe(true);
+    }
+  });
+});
