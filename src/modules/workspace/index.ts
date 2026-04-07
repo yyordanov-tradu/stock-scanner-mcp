@@ -1,19 +1,11 @@
 import { z } from "zod";
-import { ModuleDefinition, successResult, errorResult, ToolResult } from "../../shared/types.js";
+import { ModuleDefinition, successResult, errorResult } from "../../shared/types.js";
 import { StorageManager } from "./storage.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
 
 export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ"): ModuleDefinition {
   const storage = new StorageManager(dataDir, defaultExchange);
-
-  const wrapHandler = (handler: (args: any) => Promise<ToolResult>) => async (args: any) => {
-    try {
-      return await handler(args);
-    } catch (e) {
-      return errorResult(e instanceof Error ? e.message : String(e));
-    }
-  };
 
   return {
     name: "workspace",
