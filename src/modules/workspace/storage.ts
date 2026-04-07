@@ -44,18 +44,25 @@ export class StorageManager {
       return { data: defaultData, lastModified: 0 };
     }
 
-    const raw = await fs.readFile(this.filePath, "utf-8");
-    const stat = await fs.stat(this.filePath);
-    
-    let parsed: unknown;
+    const fh = await fs.open(this.filePath, "r");
     try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
-    }
+      const [raw, stat] = await Promise.all([
+        fh.readFile("utf-8"),
+        fh.stat(),
+      ]);
 
-    const data = WorkspaceSchema.parse(parsed);
-    return { data, lastModified: stat.mtimeMs };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      const data = WorkspaceSchema.parse(parsed);
+      return { data, lastModified: stat.mtimeMs };
+    } finally {
+      await fh.close();
+    }
   }
 
   async save(data: Workspace, expectedLastModified: number): Promise<number> {
