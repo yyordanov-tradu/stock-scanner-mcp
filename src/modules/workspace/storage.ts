@@ -19,6 +19,20 @@ export class StorageManager {
     this.defaultExchange = defaultExchange;
   }
 
+  private async assertNotSymlink(filePath: string): Promise<void> {
+    try {
+      const stat = await fs.lstat(filePath);
+      if (stat.isSymbolicLink()) {
+        throw new Error(`Refusing to operate on symlink: ${filePath}`);
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") {
+        return; // file doesn't exist yet, OK
+      }
+      throw e;
+    }
+  }
+
   async exists(): Promise<boolean> {
     try {
       await fs.access(this.filePath);
@@ -29,6 +43,8 @@ export class StorageManager {
   }
 
   async load(): Promise<LoadResult> {
+    await this.assertNotSymlink(this.filePath);
+
     if (!(await this.exists())) {
       const defaultData = WorkspaceSchema.parse({
         schemaVersion: 1,
@@ -44,18 +60,25 @@ export class StorageManager {
       return { data: defaultData, lastModified: 0 };
     }
 
-    const raw = await fs.readFile(this.filePath, "utf-8");
-    const stat = await fs.stat(this.filePath);
-    
-    let parsed: unknown;
+    const fh = await fs.open(this.filePath, "r");
     try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
-    }
+      const [raw, stat] = await Promise.all([
+        fh.readFile("utf-8"),
+        fh.stat(),
+      ]);
 
-    const data = WorkspaceSchema.parse(parsed);
-    return { data, lastModified: stat.mtimeMs };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      const data = WorkspaceSchema.parse(parsed);
+      return { data, lastModified: stat.mtimeMs };
+    } finally {
+      await fh.close();
+    }
   }
 
   async save(data: Workspace, expectedLastModified: number): Promise<number> {
@@ -76,6 +99,9 @@ export class StorageManager {
           maxTimeout: 1000,
         }
       });
+
+      await this.assertNotSymlink(this.filePath);
+      await this.assertNotSymlink(this.lockPath);
 
       const fileExists = await this.exists();
 
