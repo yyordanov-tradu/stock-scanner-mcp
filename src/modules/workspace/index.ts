@@ -29,8 +29,8 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         name: "workspace_update_profile",
         description: "Update the user's trading profile (style, asset focus, review cadence).",
         inputSchema: z.object({
-          tradingStyle: z.string().optional().describe("E.g., 'options', 'swing', 'day'"),
-          assetFocus: z.array(z.string()).optional().describe("Asset classes like 'equities', 'crypto'"),
+          tradingStyle: z.string().max(100).optional().describe("E.g., 'options', 'swing', 'day'"),
+          assetFocus: z.array(z.string().max(50)).max(20).optional().describe("Asset classes like 'equities', 'crypto'"),
           workflowCadence: z.enum(["daily", "weekly"]).optional(),
         }),
         readOnly: false,
@@ -65,7 +65,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         name: "workspace_create_watchlist",
         description: "Create a new empty watchlist.",
         inputSchema: z.object({
-          name: z.string().describe("The ID/name of the watchlist (e.g., 'core', 'swing')"),
+          name: z.string().max(100).describe("The ID/name of the watchlist (e.g., 'core', 'swing')"),
         }),
         readOnly: false,
         handler: withMetadata(async ({ name }) => {
@@ -94,8 +94,8 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         name: "workspace_update_watchlist",
         description: "Replace the instruments in a specific watchlist.",
         inputSchema: z.object({
-          name: z.string().describe("The ID of the watchlist to update"),
-          symbols: z.array(z.string()).describe("Raw symbols to track (e.g., ['AAPL', 'BTC'])"),
+          name: z.string().max(100).describe("The ID of the watchlist to update"),
+          symbols: z.array(z.string().max(50)).max(200).describe("Raw symbols to track (e.g., ['AAPL', 'BTC'])"),
         }),
         readOnly: false,
         handler: withMetadata(async ({ name, symbols }) => {
@@ -138,7 +138,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         name: "workspace_get_thesis",
         description: "Get the saved global investment thesis for a specific symbol. Returns a stable JSON shape with a 'found' flag.",
         inputSchema: z.object({
-          symbol: z.string().describe("The raw symbol (e.g., 'AAPL')"),
+          symbol: z.string().max(50).describe("The raw symbol (e.g., 'AAPL')"),
         }),
         readOnly: true,
         handler: withMetadata(async ({ symbol }) => {
@@ -158,12 +158,12 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         name: "workspace_save_thesis",
         description: "Save or update the global investment thesis for a specific symbol.",
         inputSchema: z.object({
-          symbol: z.string(),
-          summary: z.string(),
-          bullCase: z.string().optional(),
-          bearCase: z.string().optional(),
-          catalyst: z.string().optional(),
-          timeframe: z.string().optional(),
+          symbol: z.string().max(50),
+          summary: z.string().max(5000),
+          bullCase: z.string().max(2000).optional(),
+          bearCase: z.string().max(2000).optional(),
+          catalyst: z.string().max(2000).optional(),
+          timeframe: z.string().max(100).optional(),
         }),
         readOnly: false,
         handler: withMetadata(async ({ symbol, summary, bullCase, bearCase, catalyst, timeframe }) => {

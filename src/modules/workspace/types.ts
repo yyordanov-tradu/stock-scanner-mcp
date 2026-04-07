@@ -1,44 +1,44 @@
 import { z } from "zod";
 
 export const ProfileSchema = z.object({
-  defaultExchange: z.string().default("NASDAQ"),
-  tradingStyle: z.string().optional(),
-  assetFocus: z.array(z.string()).default([]),
-  preferredTimeframe: z.string().optional(),
+  defaultExchange: z.string().max(20).default("NASDAQ"),
+  tradingStyle: z.string().max(100).optional(),
+  assetFocus: z.array(z.string().max(50)).max(20).default([]),
+  preferredTimeframe: z.string().max(50).optional(),
   workflowCadence: z.enum(["daily", "weekly"]).default("daily"),
   updatedAt: z.string(),
 });
 
 export const InstrumentSchema = z.object({
-  full: z.string(),
-  ticker: z.string(),
+  full: z.string().max(50),
+  ticker: z.string().max(20),
   exchange: z.string().optional(),
   isCrypto: z.boolean(),
-  input: z.string(),
-  note: z.string().optional(),
+  input: z.string().max(50),
+  note: z.string().max(500).optional(),
   addedAt: z.string(),
 });
 
 export const WatchlistSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  instruments: z.array(InstrumentSchema).default([]),
+  id: z.string().max(100),
+  name: z.string().max(100),
+  instruments: z.array(InstrumentSchema).max(200).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
 export const ThesisSchema = z.object({
-  full: z.string(),
-  ticker: z.string(),
+  full: z.string().max(50),
+  ticker: z.string().max(20),
   exchange: z.string().optional(),
   isCrypto: z.boolean(),
-  input: z.string(),
-  summary: z.string(),
-  bullCase: z.string().optional(),
-  bearCase: z.string().optional(),
-  catalyst: z.string().optional(),
-  invalidation: z.string().optional(),
-  timeframe: z.string().optional(),
+  input: z.string().max(50),
+  summary: z.string().max(5000),
+  bullCase: z.string().max(2000).optional(),
+  bearCase: z.string().max(2000).optional(),
+  catalyst: z.string().max(2000).optional(),
+  invalidation: z.string().max(2000).optional(),
+  timeframe: z.string().max(100).optional(),
   nextReviewDate: z.string().optional(),
   confidence: z.number().min(0).max(5).optional(),
   updatedAt: z.string(),
