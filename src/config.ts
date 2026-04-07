@@ -1,3 +1,6 @@
+import * as path from "node:path";
+import * as os from "node:os";
+
 export interface Config {
   defaultExchange: string;
   enableWorkspace: boolean;
@@ -24,6 +27,14 @@ export function parseConfig(args: string[]): Config {
     } else if (args[i] === "--data-dir" && args[i + 1]) {
       dataDir = args[i + 1];
       i++;
+    }
+  }
+
+  if (dataDir) {
+    const resolved = path.resolve(dataDir);
+    const home = os.homedir();
+    if (!resolved.startsWith(home + path.sep) && resolved !== home) {
+      throw new Error(`--data-dir must be under the user home directory (${home}). Got: ${resolved}`);
     }
   }
 
