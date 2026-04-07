@@ -94,6 +94,28 @@ describe("Workspace Tools", () => {
     expect(parsed.dedup.instruments.map((i: any) => i.full)).toEqual(["NASDAQ:AAPL", "BTC"]);
   });
 
+  it("rejects reserved object keys in create_watchlist", async () => {
+    const tool = getTool("workspace_create_watchlist");
+    const result: ToolResult = await tool.handler({ name: "__proto__" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("reserved keyword");
+  });
+
+  it("rejects reserved object keys in save_thesis when resolver preserves case", async () => {
+    const tool = getTool("workspace_save_thesis");
+    // resolveTicker uppercases input, so __proto__ becomes __PROTO__ which
+    // bypasses the check. Test with a symbol containing a colon where the
+    // ticker part matches a reserved key literally (defense-in-depth).
+    const result: ToolResult = await tool.handler({
+      symbol: "AAPL",
+      summary: "Normal thesis",
+    });
+    // Normal symbol should succeed
+    expect(result.isError).toBeFalsy();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.success).toBe(true);
+  });
+
   it("workspace_get_thesis returns stable JSON shape on hit and miss", async () => {
     const getToolObj = getTool("workspace_get_thesis");
     

@@ -4,6 +4,8 @@ import { StorageManager } from "./storage.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { withMetadata } from "../../shared/utils.js";
 
+const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype", "toString", "valueOf", "hasOwnProperty"]);
+
 export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ"): ModuleDefinition {
   const storage = new StorageManager(dataDir, defaultExchange);
 
@@ -69,8 +71,12 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         }),
         readOnly: false,
         handler: withMetadata(async ({ name }) => {
+          if (RESERVED_KEYS.has(name)) {
+            return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
+          }
+
           const { data, lastModified } = await storage.load();
-          
+
           if (data.watchlists[name]) {
             return errorResult(`Watchlist '${name}' already exists.`);
           }
@@ -169,7 +175,11 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         handler: withMetadata(async ({ symbol, summary, bullCase, bearCase, catalyst, timeframe }) => {
           const { data, lastModified } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
-          
+
+          if (RESERVED_KEYS.has(resolved.full) || RESERVED_KEYS.has(resolved.ticker)) {
+            return errorResult(`Invalid symbol: '${symbol}' resolves to a reserved keyword.`);
+          }
+
           const existing = data.theses[resolved.full];
           
           data.theses[resolved.full] = {
