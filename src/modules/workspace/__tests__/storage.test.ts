@@ -121,6 +121,36 @@ describe("StorageManager", () => {
     expect(reloaded.lastModified).toBe(newMtime);
   });
 
+  it("load() throws ZodError for schema-invalid JSON", async () => {
+    const workspacePath = path.join(tmpDir, "workspace.json");
+    await fs.writeFile(
+      workspacePath,
+      JSON.stringify({ schemaVersion: "not-a-number" }),
+      "utf-8"
+    );
+
+    await expect(manager.load()).rejects.toThrow();
+    try {
+      await manager.load();
+    } catch (e: any) {
+      expect(e.name).toBe("ZodError");
+    }
+  });
+
+  it("save() detects file deleted between load and save", async () => {
+    // Bootstrap the file
+    const { data, lastModified } = await manager.load();
+    data.profile.tradingStyle = "swing";
+    const mtime = await manager.save(data, lastModified);
+
+    // Load with valid mtime, then delete the file before saving
+    const loaded = await manager.load();
+    await fs.unlink(path.join(tmpDir, "workspace.json"));
+
+    loaded.data.profile.tradingStyle = "day";
+    await expect(manager.save(loaded.data, mtime)).rejects.toThrow("deleted");
+  });
+
   it("P1 Fix: detects bootstrap race (two first writers)", async () => {
     const clientA = await manager.load();
     const clientB = await manager.load();
