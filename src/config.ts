@@ -30,12 +30,13 @@ export function parseConfig(args: string[]): Config {
     }
   }
 
-  if (dataDir) {
+  if (enableWorkspace && dataDir) {
     const resolved = path.resolve(dataDir);
     const home = os.homedir();
     if (!resolved.startsWith(home + path.sep) && resolved !== home) {
       throw new Error(`--data-dir must be under the user home directory (${home}). Got: ${resolved}`);
     }
+    dataDir = resolved;
   }
 
   return {

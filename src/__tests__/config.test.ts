@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import * as os from "node:os";
+import * as path from "node:path";
 import { parseConfig } from "../config.js";
 
 describe("parseConfig", () => {
@@ -32,5 +34,35 @@ describe("parseConfig", () => {
     vi.stubEnv("FINNHUB_API_KEY", undefined as unknown as string);
     const config = parseConfig([]);
     expect(config.env.FINNHUB_API_KEY).toBeUndefined();
+  });
+
+  it("rejects --data-dir outside home when workspace enabled", () => {
+    expect(() =>
+      parseConfig(["--enable-workspace", "--data-dir", "/tmp/evil"]),
+    ).toThrow("must be under");
+  });
+
+  it("accepts --data-dir under home when workspace enabled", () => {
+    const validDir = path.join(os.homedir(), "test-scanner-data");
+    const config = parseConfig(["--enable-workspace", "--data-dir", validDir]);
+    expect(config.dataDir).toBe(validDir);
+  });
+
+  it("accepts home directory itself as data-dir", () => {
+    expect(() =>
+      parseConfig(["--enable-workspace", "--data-dir", os.homedir()]),
+    ).not.toThrow();
+  });
+
+  it("does NOT validate data-dir when workspace is disabled", () => {
+    const config = parseConfig(["--data-dir", "/tmp/evil"]);
+    expect(config.enableWorkspace).toBe(false);
+  });
+
+  it("stores resolved absolute path in dataDir", () => {
+    const relPath = path.join(os.homedir(), "relative", "..", "test-data");
+    const config = parseConfig(["--enable-workspace", "--data-dir", relPath]);
+    expect(path.isAbsolute(config.dataDir!)).toBe(true);
+    expect(config.dataDir).not.toContain("..");
   });
 });
