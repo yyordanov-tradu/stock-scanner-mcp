@@ -10,11 +10,12 @@
     "stock-scanner-sidecar": "./dist/sidecar/index.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/install-skills.ts src/sidecar/index.ts --format esm --dts --clean",
+    "build": "npm run generate-openapi && tsup src/index.ts src/install-skills.ts src/sidecar/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
+    "generate-openapi": "tsx src/scripts/generate-sidecar-openapi.ts",
     "validate-tools": "tsx src/scripts/validate-tools.ts",
     "validate-structure": "tsx src/scripts/validate-structure.ts",
     "prepublishOnly": "npm run build && npm test"
