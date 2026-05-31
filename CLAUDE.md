@@ -29,7 +29,7 @@ stock-scanner-mcp/
 ├── src/
 │   ├── index.ts              # MCP server entry point
 │   ├── config.ts             # Env var + arg parsing
-│   ├── registry.ts           # Module registry
+│   ├── registry.ts           # Module registry + shared MODULE_CATALOG
 │   ├── modules/
 │   │   ├── tradingview/      # TradingView stock scanner (no key)
 │   │   ├── tradingview-crypto/ # TradingView crypto scanner (no key)
@@ -44,8 +44,9 @@ stock-scanner-mcp/
 │   │   ├── frankfurter/      # Forex exchange rates — ECB daily rates (no key)
 │   │   └── reddit/           # Reddit trending tickers & sentiment (no key)
 │   ├── sidecar/
-│   │   ├── index.ts          # HTTP sidecar entry point (port 3100)
-│   │   └── server.ts         # HTTP request handler (55 endpoints)
+│   │   ├── index.ts          # HTTP sidecar entry point (port 3200)
+│   │   ├── routes.ts         # Declarative URL routing table
+│   │   └── server.ts         # Dynamic HTTP request handler
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache

@@ -22,7 +22,8 @@
   },
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "docs/sidecar-openapi.json"
   ],
   "keywords": [
     "mcp",
@@ -90,6 +91,7 @@
     "tsup": "^8.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

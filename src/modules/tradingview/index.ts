@@ -25,7 +25,7 @@ export function createTradingviewModule(): ModuleDefinition {
           })).optional().describe("Scanner filters"),
           columns: z.array(z.string()).optional().describe("Columns to return (default: all 66)"),
           timeframe: z.string().optional().describe("Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"),
-          limit: z.number().optional().describe("Max rows (default 50)"),
+          limit: z.number().int().optional().describe("Max rows (default 50)"),
         }),
         readOnly: true,
         handler: withMetadata(async (input) => {
@@ -106,7 +106,7 @@ export function createTradingviewModule(): ModuleDefinition {
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
-          limit: z.number().optional().describe("Max results (default 20)"),
+          limit: z.number().int().optional().describe("Max results (default 20)"),
         }),
         readOnly: true,
         handler: withMetadata(async (input) => {
@@ -130,7 +130,7 @@ export function createTradingviewModule(): ModuleDefinition {
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
-          limit: z.number().optional().describe("Max results (default 20)"),
+          limit: z.number().int().optional().describe("Max results (default 20)"),
         }),
         readOnly: true,
         handler: withMetadata(async (input) => {
@@ -155,7 +155,7 @@ export function createTradingviewModule(): ModuleDefinition {
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange (default: all US)"),
           include_otc: z.boolean().optional().describe("Whether to include OTC penny stocks (default: false)"),
-          limit: z.number().optional().describe("Max results (default 20)"),
+          limit: z.number().int().optional().describe("Max results (default 20)"),
         }),
         readOnly: true,
         handler: withMetadata(async (input) => {
@@ -212,7 +212,7 @@ export function createTradingviewModule(): ModuleDefinition {
         description: "Find stocks with unusual volume (current volume significantly above average). Defaults to major exchanges.",
         inputSchema: z.object({
           exchange: z.string().optional().describe("Exchange filter"),
-          limit: z.number().optional().describe("Max results (default 20)"),
+          limit: z.number().int().optional().describe("Max results (default 20)"),
         }),
         readOnly: true,
         handler: withMetadata(async (input) => {
