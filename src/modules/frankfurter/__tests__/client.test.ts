@@ -118,10 +118,13 @@ describe("getHistoricalRates", () => {
 describe("getTimeSeries", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-15"));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("fetches time series for a date range", async () => {
