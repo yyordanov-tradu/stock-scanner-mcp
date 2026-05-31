@@ -393,11 +393,17 @@ Any MCP client that supports stdio servers can run this package. Use the same JS
 
 ## HTTP Sidecar
 
-An optional HTTP server exposing all tools as REST endpoints for non-MCP integrations (trading bots, chat UIs, LLM pipelines).
+An optional HTTP server exposing all tools as REST endpoints for non-MCP integrations (GPT Actions, chat UIs, LLM pipelines). It includes an **OpenAPI 3.1** specification for automated tool discovery.
 
 ```bash
 npx stock-scanner-sidecar              # Start on port 3200
 npx stock-scanner-sidecar --port 8080  # Custom port
+
+# Access the OpenAPI spec
+curl http://localhost:3200/openapi.json
+```
+
+See [Sidecar HTTP API](wiki-repo/Sidecar-HTTP-API.md) for endpoint details.
 ```
 
 55 endpoints including `/tradingview/quote`, `/options/chain`, `/frankfurter/convert`, and more. See [wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for the full route table.

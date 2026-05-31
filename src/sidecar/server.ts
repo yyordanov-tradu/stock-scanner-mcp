@@ -30,6 +30,12 @@ import { getCoinDetail, getTrending, getGlobal } from "../modules/coingecko/clie
 import { getPutCallRatio } from "../modules/options-cboe/cboe.js";
 import { getLatestRates, getHistoricalRates, getTimeSeries, convertCurrency, getCurrencies } from "../modules/frankfurter/client.js";
 import { resolveTicker } from "../shared/resolver.js";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export interface SidecarConfig {
   port: number;
@@ -134,6 +140,18 @@ export function createServer(config: SidecarConfig): http.Server {
       // --- Health ---
       if (path === "/health" && req.method === "GET") {
         json(res, req, 200, { status: "ok" });
+        return;
+      }
+
+      // --- OpenAPI Spec ---
+      if (path === "/openapi.json" && req.method === "GET") {
+        try {
+          const specPath = join(__dirname, "../../docs/sidecar-openapi.json");
+          const spec = JSON.parse(readFileSync(specPath, "utf-8"));
+          json(res, req, 200, spec);
+        } catch (e) {
+          json(res, req, 404, { error: "OpenAPI specification not found" });
+        }
         return;
       }
 
