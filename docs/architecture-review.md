@@ -11,7 +11,7 @@ To prevent race conditions and overwrites:
 5. **Consensus**: A finding is moved to the "Consensus Ledger" only after both models (or the User) approve.
 
 ---
-**Current Status:** FREE
+**Current Status:** LOCKED by Codex
 **Active Review Thread:** [None]
 ---
 
