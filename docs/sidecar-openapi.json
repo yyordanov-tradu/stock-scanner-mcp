@@ -3,7 +3,7 @@
   "info": {
     "title": "Stock Scanner Sidecar API",
     "description": "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    "version": "1.16.2",
+    "version": "1.16.3",
     "contact": {
       "name": "Yordan Yordanov",
       "url": "https://github.com/yyordanov-tradu/stock-scanner-mcp"
@@ -52,8 +52,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -178,8 +189,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -220,7 +242,7 @@
             "name": "tickers",
             "in": "query",
             "required": true,
-            "description": "Stock tickers, e.g. ['AAPL', 'MSFT']",
+            "description": "Stock tickers, e.g. ['AAPL', 'MSFT'] (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Stock tickers, e.g. ['AAPL', 'MSFT'] (comma-separated list)"
@@ -239,8 +261,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -281,7 +314,7 @@
             "name": "tickers",
             "in": "query",
             "required": true,
-            "description": "Stock tickers, e.g. ['AAPL', 'IBM']",
+            "description": "Stock tickers, e.g. ['AAPL', 'IBM'] (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Stock tickers, e.g. ['AAPL', 'IBM'] (comma-separated list)"
@@ -310,8 +343,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -352,7 +396,7 @@
             "name": "tickers",
             "in": "query",
             "required": true,
-            "description": "2-5 stock tickers to compare (e.g. AAPL, MSFT)",
+            "description": "2-5 stock tickers to compare (e.g. AAPL, MSFT) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "2-5 stock tickers to compare (e.g. AAPL, MSFT) (comma-separated list)"
@@ -371,8 +415,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -452,8 +507,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -533,8 +599,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -614,8 +691,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -664,8 +752,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -714,8 +813,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -785,8 +895,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -919,8 +1040,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -961,7 +1093,7 @@
             "name": "symbols",
             "in": "query",
             "required": true,
-            "description": "Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT'])",
+            "description": "Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT']) (comma-separated list)"
@@ -980,8 +1112,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1022,7 +1165,7 @@
             "name": "symbols",
             "in": "query",
             "required": true,
-            "description": "Crypto symbols (e.g. ['BTCUSDT'])",
+            "description": "Crypto symbols (e.g. ['BTCUSDT']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Crypto symbols (e.g. ['BTCUSDT']) (comma-separated list)"
@@ -1051,8 +1194,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "symbol": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1123,7 +1277,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1214,7 +1368,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1305,7 +1459,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1366,7 +1520,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1427,7 +1581,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1498,7 +1652,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1559,7 +1713,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1620,7 +1774,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -1681,7 +1835,40 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "properties": {
+                    "c": {
+                      "type": "number",
+                      "description": "Current price"
+                    },
+                    "d": {
+                      "type": "number",
+                      "description": "Change"
+                    },
+                    "dp": {
+                      "type": "number",
+                      "description": "Percent change"
+                    },
+                    "h": {
+                      "type": "number",
+                      "description": "High price of the day"
+                    },
+                    "l": {
+                      "type": "number",
+                      "description": "Low price of the day"
+                    },
+                    "o": {
+                      "type": "number",
+                      "description": "Open price of the day"
+                    },
+                    "pc": {
+                      "type": "number",
+                      "description": "Previous close price"
+                    },
+                    "t": {
+                      "type": "integer",
+                      "description": "Timestamp"
+                    }
+                  }
                 }
               }
             }
@@ -1741,8 +1928,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -1803,7 +1993,7 @@
             "name": "forms",
             "in": "query",
             "required": false,
-            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K'])",
+            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)"
@@ -1813,7 +2003,7 @@
             "name": "tickers",
             "in": "query",
             "required": false,
-            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT'])",
+            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)"
@@ -1842,8 +2032,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -1904,7 +2097,7 @@
             "name": "forms",
             "in": "query",
             "required": false,
-            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K'])",
+            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)"
@@ -1914,7 +2107,7 @@
             "name": "tickers",
             "in": "query",
             "required": false,
-            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT'])",
+            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)"
@@ -1943,8 +2136,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -1995,7 +2191,7 @@
             "name": "forms",
             "in": "query",
             "required": false,
-            "description": "Form types (e.g. ['10-K', '10-Q']). Default: all.",
+            "description": "Form types (e.g. ['10-K', '10-Q']). Default: all. (comma-separated list)",
             "schema": {
               "type": "string",
               "description": "Form types (e.g. ['10-K', '10-Q']). Default: all. (comma-separated list)"
@@ -2024,8 +2220,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2085,8 +2284,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2156,8 +2358,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2227,8 +2432,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2299,7 +2507,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2420,7 +2628,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2481,7 +2689,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2572,7 +2780,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2643,7 +2851,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2714,7 +2922,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -2884,8 +3092,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -2955,8 +3166,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3016,8 +3230,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3137,8 +3354,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "description": "Varies by tool"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               }
             }
@@ -3770,7 +3990,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -3818,7 +4038,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -3896,7 +4116,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -3944,7 +4164,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -4013,7 +4233,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -4091,7 +4311,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }
@@ -4150,7 +4370,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "Varies by tool"
+                  "additionalProperties": true
                 }
               }
             }

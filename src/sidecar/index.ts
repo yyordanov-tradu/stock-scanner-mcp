@@ -11,14 +11,31 @@ function parsePort(args: string[]): number {
   return 3200;
 }
 
+function parseStringFlag(args: string[], flag: string): string | undefined {
+  const idx = args.indexOf(flag);
+  if (idx !== -1 && args[idx + 1]) return args[idx + 1];
+  return undefined;
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const port = parsePort(args);
+  const enableWorkspace = args.includes("--enable-workspace");
+  const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
+  const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;
   const fredApiKey = process.env.FRED_API_KEY;
   const alphaVantageApiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
-  const server = createServer({ port, finnhubApiKey, fredApiKey, alphaVantageApiKey });
+  const server = createServer({
+    port,
+    finnhubApiKey,
+    fredApiKey,
+    alphaVantageApiKey,
+    enableWorkspace,
+    dataDir,
+    defaultExchange,
+  });
 
   const enabled: string[] = [];
   const disabled: string[] = [];
@@ -26,9 +43,10 @@ function main(): void {
   if (finnhubApiKey) enabled.push("finnhub"); else disabled.push("finnhub (FINNHUB_API_KEY not set)");
   if (fredApiKey) enabled.push("fred"); else disabled.push("fred (FRED_API_KEY not set)");
   if (alphaVantageApiKey) enabled.push("alpha-vantage"); else disabled.push("alpha-vantage (ALPHA_VANTAGE_API_KEY not set)");
+  if (enableWorkspace) enabled.push("workspace"); else disabled.push("workspace (--enable-workspace not set)");
 
   console.error(`[stock-scanner-sidecar] listening on port ${port}`);
-  console.error(`  Always-on: tradingview, tradingview-crypto, sec-edgar, options, options-cboe, sentiment, coingecko, frankfurter`);
+  console.error(`  Always-on: tradingview, tradingview-crypto, sec-edgar, options, options-cboe, sentiment, coingecko, frankfurter, reddit`);
   if (enabled.length) console.error(`  Enabled:   ${enabled.join(", ")}`);
   if (disabled.length) console.error(`  Disabled:  ${disabled.join(", ")}`);
 

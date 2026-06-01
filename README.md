@@ -407,14 +407,16 @@ An optional HTTP server exposing all tools as REST endpoints for non-MCP integra
 npx stock-scanner-sidecar              # Start on port 3200
 npx stock-scanner-sidecar --port 8080  # Custom port
 
+# Optional: Enable the stateful Market Workspace via HTTP
+npx stock-scanner-sidecar --enable-workspace --data-dir ./my-data
+
 # Access the OpenAPI spec
 curl http://localhost:3200/openapi.json
 ```
 
-See [Sidecar HTTP API](wiki-repo/Sidecar-HTTP-API.md) for endpoint details.
-```
+See [Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for endpoint details.
 
-55 endpoints including `/tradingview/quote`, `/options/chain`, `/frankfurter/convert`, and more. See [wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for the full route table.
+**64 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
 
 ## Rate Limits
 
@@ -470,7 +472,8 @@ src/
 │   └── reddit/           # 3 tools — trending tickers, mentions, sentiment from Reddit
 ├── sidecar/
 │   ├── index.ts          # HTTP sidecar entry point (port 3200)
-│   └── server.ts         # HTTP request handler (55 endpoints)
+│   ├── routes.ts         # Declarative URL routing table
+│   └── server.ts         # Dynamic HTTP request handler
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
