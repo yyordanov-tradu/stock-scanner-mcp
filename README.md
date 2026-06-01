@@ -208,6 +208,14 @@ Data is stored locally in `workspace.json` — no cloud sync, no external calls.
 
 For the full list of workspace tools, see the [tool reference](#workspace--personalized-context-optional-no-api-key) below.
 
+## Documentation
+
+- **[Installation & Setup](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Installation-&-Setup)** — Getting the MCP server running in Claude Code or Cursor
+- **[Trading Skills](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Trading-Skills)** — Ready-made workflows for professional analysis
+- **[Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API)** — REST endpoints for non-MCP clients
+- **[Docker Deployment](docs/DOCKER.md)** — Running in containers with workspace persistence
+- **[FAQ & Troubleshooting](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/FAQ-&-Troubleshooting)** — Common issues and solutions
+
 ## Modules
 
 | Module | Tools | API Key | Description |
