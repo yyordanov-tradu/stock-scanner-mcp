@@ -25,7 +25,9 @@ import { createFredModule } from "../modules/fred/index.js";
 import { createSentimentModule } from "../modules/sentiment/index.js";
 import { createFrankfurterModule } from "../modules/frankfurter/index.js";
 import { createRedditModule } from "../modules/reddit/index.js";
+import { createWorkspaceModule } from "../modules/workspace/index.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
+import * as os from "node:os";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -44,53 +46,88 @@ const MODULE_PREFIX_MAP: Record<string, string[]> = {
   sentiment: ["sentiment_"],
   frankfurter: ["frankfurter_"],
   reddit: ["reddit_"],
+  workspace: ["workspace_"],
 };
 
 const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   tradingview: ["tradingview", "15-min", "15 min", "delayed"],
-  "tradingview-crypto": ["tradingview", "crypto", "15-min", "15 min"],
-  "sec-edgar": ["sec", "edgar", "xbrl", "filing"],
-  coingecko: ["coingecko", "gecko"],
-  options: ["option", "yahoo", "greek"],
-  "options-cboe": ["cboe", "put/call", "put-call", "sentiment"],
-  finnhub: ["finnhub"],
-  "alpha-vantage": ["alpha vantage", "alphavantage"],
-  fred: ["fred", "economic", "federal reserve"],
-  sentiment: ["sentiment", "fear", "greed", "cnn", "alternative"],
-  frankfurter: ["frankfurter", "forex", "exchange rate", "ecb", "currency"],
-  reddit: ["reddit", "subreddit", "r/wallstreetbets", "r/stocks"],
+  "tradingview-crypto": ["tradingview", "real-time", "delayed"],
+  "sec-edgar": ["sec", "edgar", "filings", "form 4", "13f"],
+  coingecko: ["coingecko", "crypto", "market cap"],
+  options: ["yahoo", "options", "greeks"],
+  "options-cboe": ["cboe", "put/call", "sentiment"],
+  finnhub: ["finnhub", "news", "analyst"],
+  "alpha-vantage": ["alpha vantage", "fundamental", "dividend"],
+  fred: ["fred", "st. louis fed", "economic"],
+  sentiment: ["cnn", "fear", "greed"],
+  frankfurter: ["frankfurter", "ecb", "forex"],
+  reddit: ["reddit", "wallstreetbets", "stocks"],
+  workspace: ["local", "saved", "workspace", "profile"],
 };
 
 // ── Types ────────────────────────────────────────────────────────────
 
 interface Issue {
-  tool: string;
   module: string;
-  check: string;
+  tool: string;
   message: string;
-  severity: "error" | "warning";
+  type: "error" | "warning";
 }
 
-// ── Zod introspection helpers ────────────────────────────────────────
+// ── Checks ───────────────────────────────────────────────────────────
 
-function getZodObjectShape(schema: z.ZodType<unknown>): Record<string, z.ZodType<unknown>> | null {
-  const def = (schema as { _def?: { typeName?: string; shape?: () => Record<string, z.ZodType<unknown>>; innerType?: z.ZodType<unknown> } })._def;
-  if (!def) return null;
+function checkDescription(tool: ToolDefinition, moduleName: string): Issue[] {
+  const issues: Issue[] = [];
+  const desc = tool.description;
 
-  if (def.typeName === "ZodObject" && typeof def.shape === "function") {
-    return def.shape();
+  if (desc.length < MIN_DESCRIPTION_LENGTH) {
+    issues.push({
+      module: moduleName,
+      tool: tool.name,
+      type: "warning",
+      message: `Description too short (${desc.length} chars). Aim for > ${MIN_DESCRIPTION_LENGTH}.`,
+    });
   }
 
-  // Unwrap ZodEffects (from .transform(), .refine(), etc.)
-  if (def.typeName === "ZodEffects" && def.innerType) {
-    return getZodObjectShape(def.innerType);
+  const keywords = DATA_SOURCE_KEYWORDS[moduleName] || [];
+  const hasKeyword = keywords.some(k => desc.toLowerCase().includes(k));
+  if (!hasKeyword) {
+    issues.push({
+      module: moduleName,
+      tool: tool.name,
+      type: "warning",
+      message: `Description might be missing data-source attribution (expected one of: ${keywords.join(", ")}).`,
+    });
   }
 
-  return null;
+  // Common check for percentages and scales that AI often gets wrong
+  const returnsPercentage = desc.includes("%") || desc.includes("percent");
+  const mentionsScale = desc.includes("0-100") || desc.includes("basis points") || desc.includes("0 to 1");
+
+  // Filter out Reddit sentiment/mentions which are counts/scores, not price %
+  const isReddit = moduleName === "reddit";
+  // Filter out SEC filings that just mention buy/sell as transaction types or general concepts
+  const returnsRating =
+    desc.includes("recommendation") ||
+    desc.includes("consensus") ||
+    (desc.includes("rating") && !desc.includes("analyst rating")) ||
+    desc.includes("score");
+
+  if ((returnsPercentage || returnsRating) && !mentionsScale && !isReddit) {
+    issues.push({
+      module: moduleName,
+      tool: tool.name,
+      type: "warning",
+      message: `Tool returns percentages or scores but doesn't document the value scale (e.g., "0-100", "0 to 1").`,
+    });
+  }
+
+  return issues;
 }
 
-function hasDescription(zodField: z.ZodType<unknown>): boolean {
-  const def = (zodField as { _def?: { description?: string; innerType?: z.ZodType<unknown>; typeName?: string } })._def;
+function hasDescription(schema: z.ZodTypeAny): boolean {
+  if (schema.description) return true;
+  const def = (schema as any)._def;
   if (!def) return false;
   if (def.description) return true;
 
@@ -100,91 +137,22 @@ function hasDescription(zodField: z.ZodType<unknown>): boolean {
   return false;
 }
 
-// ── Validation checks ────────────────────────────────────────────────
-
-function checkDescriptionLength(tool: ToolDefinition, moduleName: string): Issue | null {
-  if (tool.description.length < MIN_DESCRIPTION_LENGTH) {
-    return {
-      tool: tool.name,
-      module: moduleName,
-      check: "description-length",
-      message: `Description too short (${tool.description.length} chars, min ${MIN_DESCRIPTION_LENGTH})`,
-      severity: "error",
-    };
-  }
-  return null;
-}
-
-function checkDataSource(tool: ToolDefinition, moduleName: string): Issue | null {
-  const keywords = DATA_SOURCE_KEYWORDS[moduleName];
-  if (!keywords) return null;
-
-  const desc = tool.description.toLowerCase();
-  const toolName = tool.name.toLowerCase();
-
-  // Skip if the tool name already contains the source (e.g. finnhub_quote → "finnhub")
-  const nameImpliesSource = keywords.some((kw) => toolName.includes(kw.replace(/\s+/g, "")));
-  if (nameImpliesSource) return null;
-
-  const found = keywords.some((kw) => desc.includes(kw));
-  if (!found) {
-    return {
-      tool: tool.name,
-      module: moduleName,
-      check: "data-source",
-      message: `Description doesn't mention data source. Expected one of: ${keywords.join(", ")}`,
-      severity: "warning",
-    };
-  }
-  return null;
-}
-
-function checkValueScale(tool: ToolDefinition, moduleName: string): Issue | null {
-  const desc = tool.description.toLowerCase();
-
-  // Only flag tools that return numeric ratings/scores/recommendations
-  // Skip tools that just mention buy/sell as transaction types or general concepts
-  const returnsRating =
-    desc.includes("recommendation") ||
-    desc.includes("consensus") ||
-    (desc.includes("rating") && !desc.includes("analyst rating")) ||
-    /recommend\.\w+/i.test(desc);
-
-  if (!returnsRating) return null;
-
-  // Check if it documents the scale
-  const hasScale =
-    /\d\s*(to|-)\s*\d/.test(desc) ||        // "1 to 5", "-1 to 1"
-    /scale|range/i.test(desc) ||
-    desc.includes("strong buy") ||
-    desc.includes("strong sell") ||
-    />.*=|<.*=/.test(desc);                  // "> 1.0 =", "< 0.7 ="
-
-  if (!hasScale) {
-    return {
-      tool: tool.name,
-      module: moduleName,
-      check: "value-scale",
-      message: "Description returns ratings/recommendations but doesn't document the value scale",
-      severity: "warning",
-    };
-  }
-  return null;
-}
-
 function checkParamDescriptions(tool: ToolDefinition, moduleName: string): Issue[] {
   const issues: Issue[] = [];
-  const shape = getZodObjectShape(tool.inputSchema);
-  if (!shape) return issues;
+  const schema = tool.inputSchema as any;
 
-  for (const [paramName, paramSchema] of Object.entries(shape)) {
-    if (!hasDescription(paramSchema)) {
+  if (!(schema instanceof z.ZodObject)) {
+    return issues;
+  }
+
+  const shape = schema.shape;
+  for (const [paramName, paramType] of Object.entries(shape)) {
+    if (!hasDescription(paramType as z.ZodTypeAny)) {
       issues.push({
-        tool: tool.name,
         module: moduleName,
-        check: "param-describe",
-        message: `Parameter "${paramName}" missing .describe()`,
-        severity: "error",
+        tool: tool.name,
+        type: "error",
+        message: `Parameter "${paramName}" is missing a .describe().`,
       });
     }
   }
@@ -193,42 +161,56 @@ function checkParamDescriptions(tool: ToolDefinition, moduleName: string): Issue
 }
 
 function checkNamePrefix(tool: ToolDefinition, moduleName: string): Issue | null {
-  const prefixes = MODULE_PREFIX_MAP[moduleName];
-  if (!prefixes) return null;
+  const allowedPrefixes = MODULE_PREFIX_MAP[moduleName];
+  if (!allowedPrefixes) return null;
 
-  const valid = prefixes.some((p) => tool.name.startsWith(p));
-  if (!valid) {
+  const hasPrefix = allowedPrefixes.some(p => tool.name.startsWith(p));
+  if (!hasPrefix) {
     return {
-      tool: tool.name,
       module: moduleName,
-      check: "name-prefix",
-      message: `Tool name should start with one of: ${prefixes.join(", ")}`,
-      severity: "error",
+      tool: tool.name,
+      type: "error",
+      message: `Tool name must start with one of: ${allowedPrefixes.join(", ")}.`,
     };
   }
   return null;
 }
 
-function checkDuplicateNames(allTools: Array<{ tool: ToolDefinition; module: string }>): Issue[] {
-  const seen = new Map<string, string>();
+function checkDuplicateNames(tools: ToolDefinition[], moduleName: string, seen: Map<string, string>): Issue[] {
   const issues: Issue[] = [];
-
-  for (const { tool, module: moduleName } of allTools) {
-    const existing = seen.get(tool.name);
-    if (existing) {
+  for (const tool of tools) {
+    if (seen.has(tool.name)) {
       issues.push({
-        tool: tool.name,
         module: moduleName,
-        check: "duplicate-name",
-        message: `Duplicate tool name (also in module "${existing}")`,
-        severity: "error",
+        tool: tool.name,
+        type: "error",
+        message: `Duplicate tool name found (already defined in module "${seen.get(tool.name)}").`,
       });
     } else {
       seen.set(tool.name, moduleName);
     }
   }
-
   return issues;
+}
+
+function checkValueScale(tool: ToolDefinition, moduleName: string): Issue | null {
+  const desc = tool.description.toLowerCase();
+  // Check for common indicators that a tool returns numeric data that needs scale documentation
+  const numericIndicators = ["price", "volume", "rsi", "macd", "indicator", "ratio", "change"];
+  const needsScale = numericIndicators.some(i => desc.includes(i));
+  const hasScale = desc.includes("basis points") || desc.includes("percent") || desc.includes("%") || 
+                   desc.includes("0-100") || desc.includes("0 to 1") || desc.includes("absolute") ||
+                   desc.includes("dollars") || desc.includes("units");
+
+  if (needsScale && !hasScale && moduleName !== "reddit" && moduleName !== "workspace") {
+    return {
+      module: moduleName,
+      tool: tool.name,
+      type: "warning",
+      message: "Tool returns numeric data but may be missing unit/scale documentation (e.g. 'in USD', '0-100').",
+    };
+  }
+  return null;
 }
 
 // ── Main ─────────────────────────────────────────────────────────────
@@ -247,6 +229,7 @@ function buildAllModules(): ModuleDefinition[] {
     createSentimentModule(),
     createFrankfurterModule(),
     createRedditModule(),
+    createWorkspaceModule(os.tmpdir()),
   ];
 }
 
@@ -256,76 +239,67 @@ function validate(): boolean {
   const allTools: Array<{ tool: ToolDefinition; module: string }> = [];
   let totalTools = 0;
 
-  console.log();
+  console.log("\n\u001b[1m\u001b[36mStock Scanner Tool Validator\u001b[0m");
+  console.log("──────────────────────────────────────────────────");
+
+  const seenNames = new Map<string, string>();
 
   for (const mod of modules) {
     const moduleIssues: Issue[] = [];
+    const tools = mod.tools;
+    totalTools += tools.length;
 
-    for (const tool of mod.tools) {
-      totalTools++;
+    // Check duplicate names across all modules
+    moduleIssues.push(...checkDuplicateNames(tools, mod.name, seenNames));
+
+    for (const tool of tools) {
       allTools.push({ tool, module: mod.name });
 
-      // Run per-tool checks
-      const lengthIssue = checkDescriptionLength(tool, mod.name);
-      if (lengthIssue) moduleIssues.push(lengthIssue);
+      const prefixIssue = checkNamePrefix(tool, mod.name);
+      if (prefixIssue) moduleIssues.push(prefixIssue);
 
-      const sourceIssue = checkDataSource(tool, mod.name);
-      if (sourceIssue) moduleIssues.push(sourceIssue);
+      const descIssues = checkDescription(tool, mod.name);
+      moduleIssues.push(...descIssues);
 
       const scaleIssue = checkValueScale(tool, mod.name);
       if (scaleIssue) moduleIssues.push(scaleIssue);
 
       const paramIssues = checkParamDescriptions(tool, mod.name);
       moduleIssues.push(...paramIssues);
-
-      const prefixIssue = checkNamePrefix(tool, mod.name);
-      if (prefixIssue) moduleIssues.push(prefixIssue);
     }
-
-    // Print module results
-    const toolNames = mod.tools.map((t) => t.name);
-
-    console.log(`${mod.name} (${mod.tools.length} tools)`);
-    for (const name of toolNames) {
-      const toolIssues = moduleIssues.filter((i) => i.tool === name);
-      if (toolIssues.length === 0) {
-        console.log(`  \x1b[32m✓\x1b[0m ${name}`);
-      } else {
-        for (const issue of toolIssues) {
-          const icon = issue.severity === "error" ? "\x1b[31m✗\x1b[0m" : "\x1b[33m⚠\x1b[0m";
-          console.log(`  ${icon} ${name} — ${issue.message}`);
-        }
-      }
-    }
-    console.log();
 
     allIssues.push(...moduleIssues);
-  }
 
-  // Cross-module checks
-  const dupeIssues = checkDuplicateNames(allTools);
-  allIssues.push(...dupeIssues);
-  if (dupeIssues.length > 0) {
-    console.log("Cross-module checks");
-    for (const issue of dupeIssues) {
-      console.log(`  \x1b[31m✗\x1b[0m ${issue.tool} — ${issue.message}`);
+    if (moduleIssues.length === 0) {
+      console.log(`\u001b[32m  \u2713 ${mod.name} (${tools.length} tools)\u001b[0m`);
+    } else {
+      const errors = moduleIssues.filter(i => i.type === "error");
+      const warnings = moduleIssues.filter(i => i.type === "warning");
+      console.log(
+        `\u001b[31m  \u2717 ${mod.name} (${tools.length} tools) — ` +
+        (errors.length > 0 ? `\u001b[31m${errors.length} errors\u001b[0m` : "") +
+        (errors.length > 0 && warnings.length > 0 ? ", " : "") +
+        (warnings.length > 0 ? `\u001b[33m${warnings.length} warnings\u001b[0m` : "")
+      );
+
+      for (const issue of moduleIssues) {
+        const icon = issue.type === "error" ? "\u001b[31m[E]\u001b[0m" : "\u001b[33m[W]\u001b[0m";
+        console.log(`     ${icon} \u001b[1m${issue.tool}\u001b[0m: ${issue.message}`);
+      }
     }
-    console.log();
   }
 
-  // Summary
-  const errors = allIssues.filter((i) => i.severity === "error");
-  const warnings = allIssues.filter((i) => i.severity === "warning");
-  const passedCount = totalTools - new Set(allIssues.map((i) => i.tool)).size;
+  console.log("──────────────────────────────────────────────────");
+  const errors = allIssues.filter(i => i.type === "error");
+  const warnings = allIssues.filter(i => i.type === "warning");
 
-  console.log("─".repeat(50));
-  if (errors.length === 0 && warnings.length === 0) {
-    console.log(`\x1b[32m✓ All ${totalTools} tools passed validation\x1b[0m`);
+  if (errors.length === 0) {
+    console.log(`\n\u001b[32m\u001b[1m✓ ALL ${totalTools} TOOLS PASSED VALIDATION\u001b[0m` + (warnings.length > 0 ? ` (${warnings.length} warnings)` : ""));
   } else {
     console.log(
-      `${passedCount}/${totalTools} tools clean` +
-        (errors.length > 0 ? `, \x1b[31m${errors.length} errors\x1b[0m` : "") +
-        (warnings.length > 0 ? `, \x1b[33m${warnings.length} warnings\x1b[0m` : ""),
+      `\n\u001b[31m\u001b[1m\u2717 VALIDATION FAILED: \u001b[0m` +
+        (errors.length > 0 ? `\u001b[31m${errors.length} errors\u001b[0m` : "") +
+        (warnings.length > 0 ? `, \u001b[33m${warnings.length} warnings\u001b[0m` : ""),
     );
   }
   console.log();

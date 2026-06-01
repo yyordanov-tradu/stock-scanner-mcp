@@ -1,286 +1,238 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { MODULE_CATALOG } from "../registry.js";
+import { SIDECAR_ROUTES } from "../sidecar/routes.js";
+import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
+import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-8"));
 
-const openapi = {
-  openapi: "3.1.0",
-  info: {
-    title: "Stock Scanner Sidecar API",
-    description: "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    version: pkg.version,
-    contact: {
-      name: "Yordan Yordanov",
-      url: "https://github.com/yyordanov-tradu/stock-scanner-mcp"
+/**
+ * Robustly converts a Zod schema to an OpenAPI-compatible JSON schema.
+ * Handles Zod v4 incompatibilities and common wrappers.
+ */
+function convertZodToOpenApi(zod: any): any {
+  if (!zod) return { type: "string" };
+  const def = zod._def;
+  if (!def) return { type: "string" };
+  
+  // In this Zod version, type info is in constructor name or def.type
+  const typeName = zod.constructor.name;
+  const defType = def.type;
+  const description = zod.description || def.description || "";
+
+  // Handle wrappers (Optional, Nullable, Default)
+  if (typeName === "ZodOptional" || typeName === "ZodNullable" || typeName === "ZodDefault" || 
+      defType === "optional" || defType === "nullable" || defType === "default") {
+    const inner = convertZodToOpenApi(def.innerType || def.schema);
+    return { ...inner, optional: true, description: description || inner.description };
+  }
+
+  // Handle primitives
+  if (typeName === "ZodNumber" || defType === "number") {
+    return { type: zod.isInt ? "integer" : "number", description };
+  }
+  if (typeName === "ZodBoolean" || defType === "boolean") return { type: "boolean", description };
+  if (typeName === "ZodEnum" || defType === "enum") return { type: "string", enum: def.values, description };
+  if (typeName === "ZodString" || defType === "string") return { type: "string", description };
+
+  // Handle collections
+  if (typeName === "ZodArray" || defType === "array") {
+    const items = convertZodToOpenApi(def.element || def.type);
+    delete items.optional;
+    return { type: "array", items, description };
+  }
+
+  if (typeName === "ZodObject" || defType === "object") {
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
+    const shape = zod.shape || (typeof def.shape === 'function' ? def.shape() : def.shape) || {};
+    
+    for (const [key, value] of Object.entries(shape)) {
+      const info = convertZodToOpenApi(value);
+      const isOptional = info.optional;
+      delete info.optional;
+      properties[key] = info;
+      if (!isOptional) required.push(key);
+    }
+    const res: any = { type: "object", properties, description };
+    if (required.length > 0) res.required = required;
+    return res;
+  }
+
+  if (typeName === "ZodUnion" || defType === "union") {
+     return { anyOf: (def.options || []).map((o: any) => {
+        const info = convertZodToOpenApi(o);
+        delete info.optional;
+        return info;
+     }), description };
+  }
+
+  return { type: "string", description };
+}
+
+export function generateOpenApiSpec() {
+  const mockConfig = {
+    env: {
+      FINNHUB_API_KEY: "MOCK",
+      FRED_API_KEY: "MOCK",
+      ALPHA_VANTAGE_API_KEY: "MOCK",
     },
-    license: {
-      name: "MIT",
-      url: "https://opensource.org/licenses/MIT"
-    }
-  },
-  servers: [
-    {
-      "url": "http://localhost:3200",
-      "description": "Local Sidecar Server"
-    }
-  ],
-  paths: {} as any,
-  components: {
-    schemas: {
-      Error: {
-        type: "object",
-        properties: {
-          error: { type: "string" }
-        }
-      }
+    enableWorkspace: true,
+    defaultExchange: "NASDAQ",
+  } as any;
+
+  const allModules = MODULE_CATALOG
+    .map(entry => entry.factory(mockConfig))
+    .filter((m): m is ModuleDefinition => m !== null);
+
+  const toolsMap = new Map<string, ToolDefinition>();
+  for (const mod of allModules) {
+    for (const tool of mod.tools) {
+      toolsMap.set(tool.name, tool);
     }
   }
-};
 
-function addGet(path: string, summary: string, params: any[] = [], responseSchema: any = { type: "object" }) {
-  openapi.paths[path] = openapi.paths[path] || {};
-  openapi.paths[path].get = {
-    summary,
-    parameters: params.map(p => ({
-      name: p.name,
-      in: "query",
-      required: p.required ?? false,
-      description: p.description,
-      schema: p.schema ?? { type: "string" }
-    })),
-    responses: {
-      "200": {
-        description: "Successful response",
-        content: {
-          "application/json": {
-            schema: responseSchema
-          }
-        }
+  const openapi: any = {
+    openapi: "3.1.0",
+    info: {
+      title: "Stock Scanner Sidecar API",
+      description: "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
+      version: pkg.version,
+      contact: {
+        name: "Yordan Yordanov",
+        url: "https://github.com/yyordanov-tradu/stock-scanner-mcp"
       },
-      "400": {
-        description: "Invalid parameters",
-        content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
-      },
-      "404": {
-        description: "Not found or API key missing",
-        content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
-      }
-    }
-  };
-}
-
-function addPost(path: string, summary: string, bodySchema: any, responseSchema: any = { type: "object" }) {
-  openapi.paths[path] = openapi.paths[path] || {};
-  openapi.paths[path].post = {
-    summary,
-    requestBody: {
-      required: true,
-      content: {
-        "application/json": {
-          schema: bodySchema
-        }
+      license: {
+        name: "MIT",
+        url: "https://opensource.org/licenses/MIT"
       }
     },
-    responses: {
-      "200": {
-        description: "Successful response",
-        content: {
-          "application/json": {
-            schema: responseSchema
+    servers: [
+      {
+        "url": "http://localhost:3200",
+        "description": "Local Sidecar Server"
+      }
+    ],
+    paths: {},
+    components: {
+      schemas: {
+        Error: {
+          type: "object",
+          properties: {
+            error: { type: "string" }
           }
         }
-      },
-      "400": {
-        description: "Invalid request body",
-        content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
       }
     }
   };
+
+  openapi.paths["/health"] = {
+    get: {
+      summary: "Health check",
+      responses: {
+        "200": {
+          description: "Server is healthy",
+          content: { "application/json": { schema: { type: "object", properties: { status: { type: "string" } } } } }
+        }
+      }
+    }
+  };
+
+  for (const route of SIDECAR_ROUTES) {
+    const tool = toolsMap.get(route.tool);
+    if (!tool) continue;
+
+    const operation: any = {
+      summary: tool.description.split(".")[0],
+      description: tool.description,
+      responses: {
+        "200": {
+          description: "Successful response",
+          content: { "application/json": { schema: { type: "object", description: "Varies by tool" } } }
+        },
+        "400": {
+          description: "Invalid parameters",
+          content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+        },
+        "404": {
+          description: "Tool not found or API key missing",
+          content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+        },
+        "500": {
+          description: "Internal server error",
+          content: { "application/json": { schema: { "$ref": "#/components/schemas/Error" } } }
+        }
+      }
+    };
+
+    const jsonSchema = convertZodToOpenApi(tool.inputSchema);
+    const properties = { ...jsonSchema.properties };
+    const required = new Set(jsonSchema.required || []);
+
+    // Handle Aliases and Required logic
+    if (route.path === "/fred/indicator") {
+      properties["series"] = { type: "string", description: "Alias for series_id." };
+      required.delete("series_id");
+    } else if (route.path === "/fred/indicator-history") {
+      properties["series"] = { type: "string", description: "Alias for series_id." };
+      properties["startDate"] = { type: "string", description: "Alias for start_date." };
+      properties["endDate"] = { type: "string", description: "Alias for end_date." };
+      required.delete("series_id");
+      required.delete("start_date");
+      required.delete("end_date");
+    } else if (route.path === "/alpha-vantage/overview") {
+      properties["symbol"] = { type: "string", description: "Alias for symbols (single symbol)." };
+      required.delete("symbols");
+    } else if (route.path === "/reddit/trending") {
+      properties["subreddits"] = { type: "string", description: "Comma-separated subreddits." };
+    } else if (route.path === "/workspace/watchlists/update") {
+      properties["symbols"] = { type: "string", description: "Comma-separated symbols." };
+    }
+
+    if (route.method === "GET") {
+      operation.parameters = Object.entries(properties).map(([name, prop]: [string, any]) => {
+        const param: any = {
+          name,
+          in: "query",
+          required: required.has(name),
+          description: prop.description || "",
+        };
+
+        // Handle Array Query Params: Sidecar expects comma-separated strings
+        if (prop.type === "array") {
+          param.schema = { type: "string", description: prop.description + " (comma-separated list)" };
+        } else {
+          param.schema = prop;
+        }
+
+        return param;
+      });
+    } else {
+      operation.requestBody = {
+        required: true,
+        content: {
+          "application/json": {
+            schema: jsonSchema
+          }
+        }
+      };
+    }
+
+    openapi.paths[route.path] = openapi.paths[route.path] || {};
+    openapi.paths[route.path][route.method.toLowerCase()] = operation;
+  }
+
+  return openapi;
 }
 
-// --- Define Endpoints ---
-
-addGet("/health", "Health check", [], { type: "object", properties: { status: { type: "string" } } });
-
-// TradingView
-addPost("/tradingview/scan", "Scan US stocks", { type: "object", description: "Standard TradingView scanner parameters" });
-addGet("/tradingview/quote", "Get stock quotes", [{ name: "tickers", required: true, description: "Comma-separated tickers (AAPL,MSFT)" }]);
-addGet("/tradingview/technicals", "Get technical indicators", [
-  { name: "tickers", required: true, description: "Comma-separated tickers" },
-  { name: "timeframe", description: "e.g., 1h, 1d" }
-]);
-addGet("/tradingview/compare", "Compare stocks", [{ name: "tickers", required: true, description: "2-5 comma-separated tickers" }]);
-addGet("/tradingview/top-gainers", "Top gaining stocks", [
-  { name: "exchange", description: "NASDAQ, NYSE, AMEX" },
-  { name: "include_otc", schema: { type: "boolean" } },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/tradingview/top-losers", "Top losing stocks", [
-  { name: "exchange" },
-  { name: "include_otc", schema: { type: "boolean" } },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/tradingview/top-volume", "Highest volume stocks", [
-  { name: "exchange" },
-  { name: "include_otc", schema: { type: "boolean" } },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/tradingview/market-indices", "Market indices (VIX, SPX, NDX, DJI)");
-addGet("/tradingview/sector-performance", "S&P 500 sector performance");
-addGet("/tradingview/volume-breakout", "Unusual volume breakouts", [
-  { name: "exchange" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-
-// TradingView Crypto
-addPost("/tradingview-crypto/scan", "Scan crypto pairs", { type: "object" });
-addGet("/tradingview-crypto/quote", "Get crypto quotes", [{ name: "symbols", required: true, description: "Comma-separated pairs (BTCUSDT,ETHUSDT)" }]);
-addGet("/tradingview-crypto/technicals", "Crypto technical analysis", [
-  { name: "symbols", required: true },
-  { name: "timeframe" }
-]);
-addGet("/tradingview-crypto/top-gainers", "Top gaining crypto pairs", [
-  { name: "exchange" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-
-// Finnhub
-addGet("/finnhub/quote", "Real-time stock quote", [{ name: "symbol", required: true }]);
-addGet("/finnhub/company-profile", "Company profile", [{ name: "symbol", required: true }]);
-addGet("/finnhub/company-news", "Company news", [
-  { name: "symbol", required: true },
-  { name: "from", required: true, description: "YYYY-MM-DD" },
-  { name: "to", required: true, description: "YYYY-MM-DD" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/finnhub/earnings", "Earnings calendar", [
-  { name: "from", required: true },
-  { name: "to", required: true },
-  { name: "symbol" }
-]);
-addGet("/finnhub/analyst-ratings", "Analyst ratings", [{ name: "symbol", required: true }]);
-addGet("/finnhub/short-interest", "Short interest", [{ name: "symbol", required: true }]);
-addGet("/finnhub/market-news", "General market news", [
-  { name: "category", description: "general, forex, crypto, merger" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/finnhub/peers", "Industry peers", [{ name: "symbol", required: true }]);
-addGet("/finnhub/market-status", "Exchange status", [{ name: "exchange", description: "e.g., US" }]);
-
-// SEC EDGAR
-addGet("/sec-edgar/filings", "Search SEC filings", [
-  { name: "query", required: true },
-  { name: "dateRange", description: "YYYY-MM-DD,YYYY-MM-DD" },
-  { name: "forms", description: "Comma-separated (10-K,10-Q)" },
-  { name: "tickers", description: "Comma-separated" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/sec-edgar/company-filings", "Company specific filings", [
-  { name: "ticker", required: true },
-  { name: "forms" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/sec-edgar/company-facts", "Company financial facts (XBRL)", [{ name: "ticker", required: true }]);
-addGet("/sec-edgar/insider-trades", "Insider transaction history", [
-  { name: "ticker", required: true },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/sec-edgar/institutional-holdings", "Institutional holdings (13F)", [
-  { name: "query", required: true, description: "Ticker or manager name" },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/sec-edgar/ownership-filings", "Major ownership changes (13D/13G)", [
-  { name: "ticker", required: true },
-  { name: "limit", schema: { type: "integer" } }
-]);
-
-// Options
-addGet("/options/chain", "Options chain", [
-  { name: "symbol", required: true },
-  { name: "expiration", schema: { type: "integer" }, description: "Unix timestamp" }
-]);
-addGet("/options/expirations", "Available expiration dates", [{ name: "symbol", required: true }]);
-addGet("/options/unusual-activity", "Unusual options activity", [
-  { name: "symbol", required: true },
-  { name: "volume_oi_ratio", schema: { type: "number" } },
-  { name: "min_volume", schema: { type: "number" } },
-  { name: "side", description: "call, put, both" }
-]);
-addGet("/options/max-pain", "Options max pain strike", [
-  { name: "symbol", required: true },
-  { name: "expiration", description: "YYYY-MM-DD" }
-]);
-addGet("/options/implied-move", "Expected price move from straddle", [
-  { name: "symbol", required: true },
-  { name: "expiration", description: "YYYY-MM-DD" }
-]);
-addGet("/options/put-call-ratio", "CBOE Put/Call ratio", [
-  { name: "type", description: "total, equity, index" },
-  { name: "days", schema: { type: "integer" } }
-]);
-
-// Sentiment
-addGet("/sentiment/fear-greed", "CNN Fear & Greed Index");
-addGet("/sentiment/crypto-fear-greed", "Crypto Fear & Greed Index");
-
-// FRED
-addGet("/fred/indicator", "Latest economic indicator value", [{ name: "series", required: true, description: "Series ID (e.g., CPIAUCSL)" }]);
-addGet("/fred/calendar", "Economic release calendar", [{ name: "limit", schema: { type: "integer" } }]);
-addGet("/fred/indicator-history", "Historical economic data", [
-  { name: "series", required: true },
-  { name: "startDate", required: true },
-  { name: "endDate", required: true },
-  { name: "units", description: "lin, change, chg, pch, pc1, pca, cch, cca, log" }
-]);
-addGet("/fred/search", "Search FRED series", [
-  { name: "query", required: true },
-  { name: "limit", schema: { type: "integer" } }
-]);
-
-// Alpha Vantage
-addGet("/alpha-vantage/quote", "Stock quote (Alpha Vantage)", [{ name: "symbol", required: true }]);
-addGet("/alpha-vantage/daily", "Daily price history", [
-  { name: "symbol", required: true },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/alpha-vantage/overview", "Company fundamentals", [{ name: "symbol", required: true }]);
-addGet("/alpha-vantage/earnings", "Quarterly earnings history", [
-  { name: "symbol", required: true },
-  { name: "limit", schema: { type: "integer" } }
-]);
-addGet("/alpha-vantage/dividends", "Dividend payment history", [{ name: "symbol", required: true }]);
-
-// CoinGecko
-addGet("/coingecko/coin", "Detailed coin info", [{ name: "coinId", required: true, description: "e.g., bitcoin, solana" }]);
-addGet("/coingecko/trending", "Top trending coins");
-addGet("/coingecko/global", "Global crypto market stats");
-
-// Frankfurter
-addGet("/frankfurter/latest", "Latest forex rates", [
-  { name: "base", description: "Base currency (default USD)" },
-  { name: "symbols", description: "Comma-separated target currencies" }
-]);
-addGet("/frankfurter/historical", "Historical forex rates", [
-  { name: "date", required: true, description: "YYYY-MM-DD" },
-  { name: "base" },
-  { name: "symbols" }
-]);
-addGet("/frankfurter/timeseries", "Forex rate history", [
-  { name: "start_date", required: true },
-  { name: "symbols", required: true },
-  { name: "base" },
-  { name: "end_date" }
-]);
-addGet("/frankfurter/convert", "Currency conversion", [
-  { name: "amount", required: true, schema: { type: "number" } },
-  { name: "from", required: true },
-  { name: "to", required: true }
-]);
-addGet("/frankfurter/currencies", "List supported currency codes");
-
-const outputPath = join(__dirname, "../../docs/sidecar-openapi.json");
-writeFileSync(outputPath, JSON.stringify(openapi, null, 2), "utf-8");
-console.log(`OpenAPI spec generated at ${outputPath}`);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const spec = generateOpenApiSpec();
+  const outputPath = join(__dirname, "../../docs/sidecar-openapi.json");
+  writeFileSync(outputPath, JSON.stringify(spec, null, 2), "utf-8");
+  console.log(`OpenAPI spec generated at ${outputPath}`);
+}

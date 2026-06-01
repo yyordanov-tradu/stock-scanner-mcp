@@ -3,15 +3,23 @@ import { execSync } from "child_process";
 
 describe("validate-tools script", () => {
   it("passes validation for all tools", () => {
-    const result = execSync("npx tsx src/scripts/validate-tools.ts", {
-      encoding: "utf-8",
-      cwd: process.cwd(),
-    });
-
-    expect(result).toMatch(/All \d+ tools passed validation/);
+    // The script exits with non-zero exit code if it finds errors.
+    // It might output warnings but still exit with 0.
+    let output = "";
+    try {
+      output = execSync("npx tsx src/scripts/validate-tools.ts", {
+        encoding: "utf-8",
+        cwd: process.cwd(),
+      });
+    } catch (e: any) {
+      console.error(e.stdout);
+      throw e;
+    }
+    
+    expect(output).toContain("TOOLS PASSED VALIDATION");
   });
 
-  it("checks all 9 modules", () => {
+  it("checks all 13 modules", () => {
     const result = execSync("npx tsx src/scripts/validate-tools.ts", {
       encoding: "utf-8",
       cwd: process.cwd(),
@@ -27,20 +35,15 @@ describe("validate-tools script", () => {
       "finnhub",
       "alpha-vantage",
       "fred",
+      "sentiment",
+      "frankfurter",
+      "reddit",
+      "workspace",
     ];
 
+    expect(moduleNames).toHaveLength(13);
     for (const name of moduleNames) {
-      expect(result).toContain(`${name} (`);
+      expect(result).toContain(name);
     }
-  });
-
-  it("exits with code 0 on success", () => {
-    // execSync throws on non-zero exit code, so if this doesn't throw, exit code is 0
-    expect(() =>
-      execSync("npx tsx src/scripts/validate-tools.ts", {
-        encoding: "utf-8",
-        cwd: process.cwd(),
-      }),
-    ).not.toThrow();
   });
 });

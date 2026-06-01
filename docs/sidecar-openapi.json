@@ -3,7 +3,7 @@
   "info": {
     "title": "Stock Scanner Sidecar API",
     "description": "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    "version": "1.16.1",
+    "version": "1.16.2",
     "contact": {
       "name": "Yordan Yordanov",
       "url": "https://github.com/yyordanov-tradu/stock-scanner-mcp"
@@ -23,10 +23,9 @@
     "/health": {
       "get": {
         "summary": "Health check",
-        "parameters": [],
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Server is healthy",
             "content": {
               "application/json": {
                 "schema": {
@@ -39,6 +38,25 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/tradingview/scan": {
+      "post": {
+        "summary": "Scan US stocks with custom filters (price > X, RSI < 30, etc",
+        "description": "Scan US stocks with custom filters (price > X, RSI < 30, etc.). Returns up to `limit` rows with the requested columns.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid parameters",
@@ -51,7 +69,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -60,41 +88,80 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview/scan": {
-      "post": {
-        "summary": "Scan US stocks",
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "Standard TradingView scanner parameters"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
+                "properties": {
+                  "exchange": {
+                    "type": "string",
+                    "description": "Exchange filter, e.g. NASDAQ, NYSE, AMEX"
+                  },
+                  "filters": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "left": {
+                          "type": "string",
+                          "description": ""
+                        },
+                        "operation": {
+                          "type": "string",
+                          "description": ""
+                        },
+                        "right": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "description": ""
+                            },
+                            {
+                              "type": "string",
+                              "description": ""
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "number",
+                                "description": ""
+                              },
+                              "description": ""
+                            }
+                          ],
+                          "description": ""
+                        }
+                      },
+                      "description": "",
+                      "required": [
+                        "left",
+                        "operation",
+                        "right"
+                      ]
+                    },
+                    "description": "Scanner filters"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": ""
+                    },
+                    "description": "Columns to return (default: all 66)"
+                  },
+                  "timeframe": {
+                    "type": "string",
+                    "description": "Timeframe: 1m, 5m, 15m, 1h, 4h, 1d (default), 1W, 1M"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Max rows (default 50)"
+                  }
+                },
+                "description": ""
               }
             }
           }
@@ -103,25 +170,16 @@
     },
     "/tradingview/quote": {
       "get": {
-        "summary": "Get stock quotes",
-        "parameters": [
-          {
-            "name": "tickers",
-            "in": "query",
-            "required": true,
-            "description": "Comma-separated tickers (AAPL,MSFT)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get a 15-minute delayed quote for one or more stock tickers (e",
+        "description": "Get a 15-minute delayed quote for one or more stock tickers (e.g. 'AAPL' or 'NASDAQ:AAPL'). Returns price, change, volume, market cap, and pre-market/after-hours data when available. Data is delayed ~15 minutes during market hours — use finnhub_quote for real-time prices if available. If a ticker returns empty results, retry with the correct exchange prefix (e.g. 'NYSE:CDE', 'AMEX:XYZ').",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -137,7 +195,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -146,39 +214,104 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview/technicals": {
-      "get": {
-        "summary": "Get technical indicators",
+        },
         "parameters": [
           {
             "name": "tickers",
             "in": "query",
             "required": true,
-            "description": "Comma-separated tickers",
+            "description": "Stock tickers, e.g. ['AAPL', 'MSFT']",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock tickers, e.g. ['AAPL', 'MSFT'] (comma-separated list)"
+            }
+          }
+        ]
+      }
+    },
+    "/tradingview/technicals": {
+      "get": {
+        "summary": "Get technical indicators (RSI, MACD, moving averages, pivot points, etc",
+        "description": "Get technical indicators (RSI, MACD, moving averages, pivot points, etc.) for one or more stock tickers. If a ticker returns empty results, retry with the correct exchange prefix (e.g. 'NYSE:CDE', 'AMEX:XYZ').",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tickers",
+            "in": "query",
+            "required": true,
+            "description": "Stock tickers, e.g. ['AAPL', 'IBM']",
+            "schema": {
+              "type": "string",
+              "description": "Stock tickers, e.g. ['AAPL', 'IBM'] (comma-separated list)"
             }
           },
           {
             "name": "timeframe",
             "in": "query",
             "required": false,
-            "description": "e.g., 1h, 1d",
+            "description": "Timeframe (default: 1d)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Timeframe (default: 1d)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/tradingview/compare": {
+      "get": {
+        "summary": "Returns price, change, market cap, P/E, EPS, revenue, dividend yield, RSI, and analyst recommendation rating (-1 sell to +1 buy) for 2-5 stocks",
+        "description": "Returns price, change, market cap, P/E, EPS, revenue, dividend yield, RSI, and analyst recommendation rating (-1 sell to +1 buy) for 2-5 stocks. Revenue growth rate and analyst price targets are not available.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -194,7 +327,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -203,94 +346,33 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview/compare": {
-      "get": {
-        "summary": "Compare stocks",
+        },
         "parameters": [
           {
             "name": "tickers",
             "in": "query",
             "required": true,
-            "description": "2-5 comma-separated tickers",
+            "description": "2-5 stock tickers to compare (e.g. AAPL, MSFT)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "2-5 stock tickers to compare (e.g. AAPL, MSFT) (comma-separated list)"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/tradingview/top-gainers": {
       "get": {
-        "summary": "Top gaining stocks",
-        "parameters": [
-          {
-            "name": "exchange",
-            "in": "query",
-            "required": false,
-            "description": "NASDAQ, NYSE, AMEX",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "include_otc",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
+        "summary": "Get today's top gaining stocks by percentage change on a given exchange",
+        "description": "Get today's top gaining stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M. OTC penny stocks excluded by default.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -306,7 +388,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -315,45 +407,53 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "description": "Exchange (default: all US)",
+            "schema": {
+              "type": "string",
+              "description": "Exchange (default: all US)"
+            }
+          },
+          {
+            "name": "include_otc",
+            "in": "query",
+            "required": false,
+            "description": "Whether to include OTC penny stocks (default: false)",
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include OTC penny stocks (default: false)"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max results (default 20)",
+            "schema": {
+              "type": "integer",
+              "description": "Max results (default 20)"
+            }
+          }
+        ]
       }
     },
     "/tradingview/top-losers": {
       "get": {
-        "summary": "Top losing stocks",
-        "parameters": [
-          {
-            "name": "exchange",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "include_otc",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
+        "summary": "Get today's top losing stocks by percentage change on a given exchange",
+        "description": "Get today's top losing stocks by percentage change on a given exchange. Defaults to major US exchanges (NYSE, NASDAQ, AMEX) with market cap > $100M. OTC penny stocks excluded by default.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -369,7 +469,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -378,83 +488,134 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "description": "Exchange (default: all US)",
+            "schema": {
+              "type": "string",
+              "description": "Exchange (default: all US)"
+            }
+          },
+          {
+            "name": "include_otc",
+            "in": "query",
+            "required": false,
+            "description": "Whether to include OTC penny stocks (default: false)",
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to include OTC penny stocks (default: false)"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max results (default 20)",
+            "schema": {
+              "type": "integer",
+              "description": "Max results (default 20)"
+            }
+          }
+        ]
       }
     },
     "/tradingview/top-volume": {
       "get": {
-        "summary": "Highest volume stocks",
+        "summary": "Get stocks with the highest trading volume today",
+        "description": "Get stocks with the highest trading volume today. Defaults to major US exchanges.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "exchange",
             "in": "query",
             "required": false,
+            "description": "Exchange (default: all US)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Exchange (default: all US)"
             }
           },
           {
             "name": "include_otc",
             "in": "query",
             "required": false,
+            "description": "Whether to include OTC penny stocks (default: false)",
             "schema": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Whether to include OTC penny stocks (default: false)"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default 20)",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Max results (default 20)"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/tradingview/market-indices": {
       "get": {
-        "summary": "Market indices (VIX, SPX, NDX, DJI)",
-        "parameters": [],
+        "summary": "Get real-time values for major market indices: VIX (volatility), S&P 500, NASDAQ Composite, and Dow Jones",
+        "description": "Get real-time values for major market indices: VIX (volatility), S&P 500, NASDAQ Composite, and Dow Jones. Essential for gauging broad market conditions, risk sentiment, and options pricing context.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -470,7 +631,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -479,20 +650,22 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/tradingview/sector-performance": {
       "get": {
-        "summary": "S&P 500 sector performance",
-        "parameters": [],
+        "summary": "Get performance of S&P 500 sector ETFs (XLK, XLF, XLE, XLV, XLI, XLP, XLU, XLY, XLC, XLRE, XLB)",
+        "description": "Get performance of S&P 500 sector ETFs (XLK, XLF, XLE, XLV, XLI, XLP, XLU, XLY, XLC, XLRE, XLB). Shows which sectors are leading or lagging today. Essential for sector rotation analysis.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -508,7 +681,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -517,37 +700,93 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/tradingview/volume-breakout": {
       "get": {
-        "summary": "Unusual volume breakouts",
+        "summary": "Find stocks with unusual volume (current volume significantly above average)",
+        "description": "Find stocks with unusual volume (current volume significantly above average). Defaults to major exchanges.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "exchange",
             "in": "query",
             "required": false,
+            "description": "Exchange filter",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Exchange filter"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default 20)",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Max results (default 20)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/tradingview-crypto/scan": {
+      "post": {
+        "summary": "Scan cryptocurrency pairs using TradingView filters",
+        "description": "Scan cryptocurrency pairs using TradingView filters. Returns price, volume, and technical indicators.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -563,7 +802,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -572,40 +821,88 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview-crypto/scan": {
-      "post": {
-        "summary": "Scan crypto pairs",
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "left": {
+                          "type": "string",
+                          "description": "Column name (e.g. 'close', 'RSI', 'volume')"
+                        },
+                        "operation": {
+                          "type": "string",
+                          "description": "Comparison: 'greater', 'less', 'in_range', 'equal'"
+                        },
+                        "right": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "description": ""
+                            },
+                            {
+                              "type": "string",
+                              "description": ""
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "number",
+                                "description": ""
+                              },
+                              "description": ""
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "description": ""
+                              },
+                              "description": ""
+                            }
+                          ],
+                          "description": "Value to compare against"
+                        }
+                      },
+                      "description": "",
+                      "required": [
+                        "left",
+                        "operation",
+                        "right"
+                      ]
+                    },
+                    "description": "Filter conditions combined with AND"
+                  },
+                  "major_only": {
+                    "type": "boolean",
+                    "description": "Only include major exchanges (default: true)"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": ""
+                    },
+                    "description": "Columns to return (default: all 23)"
+                  },
+                  "timeframe": {
+                    "type": "string",
+                    "description": "Timeframe: '1m','5m','15m','1h','4h','1d','1W','1M'. Default: '1d'"
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Max results (default: 50, max: 200)"
+                  }
+                },
+                "description": ""
               }
             }
           }
@@ -614,25 +911,16 @@
     },
     "/tradingview-crypto/quote": {
       "get": {
-        "summary": "Get crypto quotes",
-        "parameters": [
-          {
-            "name": "symbols",
-            "in": "query",
-            "required": true,
-            "description": "Comma-separated pairs (BTCUSDT,ETHUSDT)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get real-time quotes for specific crypto pairs",
+        "description": "Get real-time quotes for specific crypto pairs. Supports 'BTCUSDT' (defaults to BINANCE) or 'BINANCE:BTCUSDT'.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -648,7 +936,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -657,37 +955,104 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview-crypto/technicals": {
-      "get": {
-        "summary": "Crypto technical analysis",
+        },
         "parameters": [
           {
             "name": "symbols",
             "in": "query",
             "required": true,
+            "description": "Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT'])",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Crypto pair symbols (e.g. ['BTCUSDT', 'ETHUSDT']) (comma-separated list)"
+            }
+          }
+        ]
+      }
+    },
+    "/tradingview-crypto/technicals": {
+      "get": {
+        "summary": "Get technical analysis for crypto pairs",
+        "description": "Get technical analysis for crypto pairs. Supports 'BTCUSDT' or 'BINANCE:BTCUSDT'.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "description": "Crypto symbols (e.g. ['BTCUSDT'])",
+            "schema": {
+              "type": "string",
+              "description": "Crypto symbols (e.g. ['BTCUSDT']) (comma-separated list)"
             }
           },
           {
             "name": "timeframe",
             "in": "query",
             "required": false,
+            "description": "Timeframe. Default: '1d'",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Timeframe. Default: '1d'"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/tradingview-crypto/top-gainers": {
+      "get": {
+        "summary": "Get top gaining cryptocurrency pairs by percentage change",
+        "description": "Get top gaining cryptocurrency pairs by percentage change. Defaults to major exchanges and volume > $10k.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -703,7 +1068,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -712,204 +1087,134 @@
               }
             }
           }
-        }
-      }
-    },
-    "/tradingview-crypto/top-gainers": {
-      "get": {
-        "summary": "Top gaining crypto pairs",
+        },
         "parameters": [
           {
             "name": "exchange",
             "in": "query",
             "required": false,
+            "description": "Specific exchange (e.g. BINANCE)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Specific exchange (e.g. BINANCE)"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Number of results (default: 20, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Number of results (default: 20, max: 50)"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/finnhub/quote": {
-      "get": {
-        "summary": "Real-time stock quote",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/finnhub/company-profile": {
-      "get": {
-        "summary": "Company profile",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/finnhub/company-news": {
       "get": {
-        "summary": "Company news",
+        "summary": "Get recent news for a specific company by ticker symbol",
+        "description": "Get recent news for a specific company by ticker symbol. Rate limit: 60 calls/min (free tier).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "symbol",
             "in": "query",
             "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
             }
           },
           {
             "name": "from",
             "in": "query",
             "required": true,
-            "description": "YYYY-MM-DD",
+            "description": "From date (YYYY-MM-DD)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "From date (YYYY-MM-DD)"
             }
           },
           {
             "name": "to",
             "in": "query",
             "required": true,
-            "description": "YYYY-MM-DD",
+            "description": "To date (YYYY-MM-DD)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "To date (YYYY-MM-DD)"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 20, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 20, max: 50)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/finnhub/earnings": {
+      "get": {
+        "summary": "Get upcoming or historical earnings reports within a date range",
+        "description": "Get upcoming or historical earnings reports within a date range. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -925,7 +1230,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -934,92 +1249,63 @@
               }
             }
           }
-        }
-      }
-    },
-    "/finnhub/earnings": {
-      "get": {
-        "summary": "Earnings calendar",
+        },
         "parameters": [
           {
             "name": "from",
             "in": "query",
             "required": true,
+            "description": "Start date (YYYY-MM-DD)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Start date (YYYY-MM-DD)"
             }
           },
           {
             "name": "to",
             "in": "query",
             "required": true,
+            "description": "End date (YYYY-MM-DD)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "End date (YYYY-MM-DD)"
             }
           },
           {
             "name": "symbol",
             "in": "query",
             "required": false,
+            "description": "Filter by specific symbol",
             "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
+              "type": "string",
+              "description": "Filter by specific symbol"
             }
           },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max results to return (default: 20, max: 100)",
+            "schema": {
+              "type": "number",
+              "description": "Max results to return (default: 20, max: 100)"
             }
           }
-        }
+        ]
       }
     },
     "/finnhub/analyst-ratings": {
       "get": {
-        "summary": "Analyst ratings",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get analyst consensus recommendations for a stock",
+        "description": "Get analyst consensus recommendations for a stock. Returns counts of Strong Buy, Buy, Hold, Sell, Strong Sell ratings and the last 4 months of rating history. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1035,7 +1321,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1044,29 +1340,33 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
       }
     },
     "/finnhub/short-interest": {
       "get": {
-        "summary": "Short interest",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get short interest and other key financial metrics for a stock",
+        "description": "Get short interest and other key financial metrics for a stock. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1082,7 +1382,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1091,38 +1401,104 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
       }
     },
     "/finnhub/market-news": {
       "get": {
-        "summary": "General market news",
+        "summary": "Get latest market news by category (general, forex, crypto, merger)",
+        "description": "Get latest market news by category (general, forex, crypto, merger). Rate limit: 60 calls/min (free tier).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "category",
             "in": "query",
             "required": false,
-            "description": "general, forex, crypto, merger",
+            "description": "Category: general, forex, crypto, merger",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Category: general, forex, crypto, merger"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 20, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 20, max: 50)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/finnhub/company-profile": {
+      "get": {
+        "summary": "Get company profile: name, industry, market cap, IPO date, logo, website, share count, and exchange",
+        "description": "Get company profile: name, industry, market cap, IPO date, logo, website, share count, and exchange. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1138,7 +1514,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1147,29 +1533,33 @@
               }
             }
           }
-        }
-      }
-    },
-    "/finnhub/peers": {
-      "get": {
-        "summary": "Industry peers",
+        },
         "parameters": [
           {
             "name": "symbol",
             "in": "query",
             "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/finnhub/peers": {
+      "get": {
+        "summary": "Get a list of peer/comparable companies in the same industry for a given stock",
+        "description": "Get a list of peer/comparable companies in the same industry for a given stock. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1185,7 +1575,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1194,30 +1594,94 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
       }
     },
     "/finnhub/market-status": {
       "get": {
-        "summary": "Exchange status",
+        "summary": "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market)",
+        "description": "Check if a stock exchange is currently open, and what session it is in (pre-market, regular, post-market). Rate limit: 60 calls/min (free tier).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "exchange",
             "in": "query",
             "required": false,
-            "description": "e.g., US",
+            "description": "Exchange code. Examples: US, L (London), T (Tokyo), HK",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Exchange code. Examples: US, L (London), T (Tokyo), HK"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/finnhub/quote": {
+      "get": {
+        "summary": "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close",
+        "description": "Get a real-time stock quote from Finnhub (requires API key): current price, change, percent change, day high/low, open, and previous close. Preferred over tradingview_quote during market hours for live prices. Use tradingview_quote as a keyless fallback when Finnhub is unavailable. Rate limit: 60 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1233,7 +1697,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1242,64 +1716,134 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
       }
     },
     "/sec-edgar/filings": {
       "get": {
-        "summary": "Search SEC filings",
+        "summary": "Search SEC EDGAR filings by keyword",
+        "description": "Search SEC EDGAR filings by keyword. Best for finding mentions of specific trends, technologies, or events across all companies. Returns metadata including accession numbers, form types, and direct sec.gov links.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "query",
             "in": "query",
             "required": true,
+            "description": "Keyword or phrase to search for (e.g. 'lithium mining', 'share repurchase program')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Keyword or phrase to search for (e.g. 'lithium mining', 'share repurchase program')"
             }
           },
           {
             "name": "dateRange",
             "in": "query",
             "required": false,
-            "description": "YYYY-MM-DD,YYYY-MM-DD",
+            "description": "Date range as 'YYYY-MM-DD,YYYY-MM-DD'",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Date range as 'YYYY-MM-DD,YYYY-MM-DD'"
             }
           },
           {
             "name": "forms",
             "in": "query",
             "required": false,
-            "description": "Comma-separated (10-K,10-Q)",
+            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K'])",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)"
             }
           },
           {
             "name": "tickers",
             "in": "query",
             "required": false,
-            "description": "Comma-separated",
+            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT'])",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 20, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 20, max: 50)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/edgar/filings": {
+      "get": {
+        "summary": "Search SEC EDGAR filings by keyword",
+        "description": "Search SEC EDGAR filings by keyword. Best for finding mentions of specific trends, technologies, or events across all companies. Returns metadata including accession numbers, form types, and direct sec.gov links.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1315,7 +1859,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1324,45 +1878,73 @@
               }
             }
           }
-        }
-      }
-    },
-    "/sec-edgar/company-filings": {
-      "get": {
-        "summary": "Company specific filings",
+        },
         "parameters": [
           {
-            "name": "ticker",
+            "name": "query",
             "in": "query",
             "required": true,
+            "description": "Keyword or phrase to search for (e.g. 'lithium mining', 'share repurchase program')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Keyword or phrase to search for (e.g. 'lithium mining', 'share repurchase program')"
+            }
+          },
+          {
+            "name": "dateRange",
+            "in": "query",
+            "required": false,
+            "description": "Date range as 'YYYY-MM-DD,YYYY-MM-DD'",
+            "schema": {
+              "type": "string",
+              "description": "Date range as 'YYYY-MM-DD,YYYY-MM-DD'"
             }
           },
           {
             "name": "forms",
             "in": "query",
             "required": false,
+            "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K'])",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Form types to filter (e.g. ['10-K', '10-Q', '8-K']) (comma-separated list)"
+            }
+          },
+          {
+            "name": "tickers",
+            "in": "query",
+            "required": false,
+            "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT'])",
+            "schema": {
+              "type": "string",
+              "description": "Company tickers to filter (e.g. ['AAPL', 'MSFT']) (comma-separated list)"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 20, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 20, max: 50)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/sec-edgar/company-filings": {
+      "get": {
+        "summary": "Retrieve the most recent official filings for a specific company",
+        "description": "Retrieve the most recent official filings for a specific company. Use this to find a company's latest 10-K (annual), 10-Q (quarterly), or 8-K (current events) reports.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1378,7 +1960,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1387,29 +1979,53 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
+            }
+          },
+          {
+            "name": "forms",
+            "in": "query",
+            "required": false,
+            "description": "Form types (e.g. ['10-K', '10-Q']). Default: all.",
+            "schema": {
+              "type": "string",
+              "description": "Form types (e.g. ['10-K', '10-Q']). Default: all. (comma-separated list)"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max results (default: 10, max: 50)",
+            "schema": {
+              "type": "number",
+              "description": "Max results (default: 10, max: 50)"
+            }
+          }
+        ]
       }
     },
     "/sec-edgar/company-facts": {
       "get": {
-        "summary": "Company financial facts (XBRL)",
-        "parameters": [
-          {
-            "name": "ticker",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Retrieve high-fidelity financial metrics (Revenue, Net Income, EPS, Assets, Liabilities) directly from SEC XBRL data",
+        "description": "Retrieve high-fidelity financial metrics (Revenue, Net Income, EPS, Assets, Liabilities) directly from SEC XBRL data. This is more reliable than extracting numbers from text filings.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1425,7 +2041,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1434,37 +2060,104 @@
               }
             }
           }
-        }
-      }
-    },
-    "/sec-edgar/insider-trades": {
-      "get": {
-        "summary": "Insider transaction history",
+        },
         "parameters": [
           {
             "name": "ticker",
             "in": "query",
             "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
+      }
+    },
+    "/sec-edgar/insider-trades": {
+      "get": {
+        "summary": "Monitor legal stock trades made by company executives and directors (Forms 3, 4, 5)",
+        "description": "Monitor legal stock trades made by company executives and directors (Forms 3, 4, 5). Returns detailed transaction data including insider names, titles, buy/sell type, share amounts, and prices.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 10)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 10)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/sec-edgar/institutional-holdings": {
+      "get": {
+        "summary": "Track 'big money' moves by searching Form 13F filings",
+        "description": "Track 'big money' moves by searching Form 13F filings. Use to find what hedge funds and institutional managers (e.g. 'Berkshire Hathaway') are holding or what firms own a specific ticker.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1480,7 +2173,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1489,38 +2192,43 @@
               }
             }
           }
-        }
-      }
-    },
-    "/sec-edgar/institutional-holdings": {
-      "get": {
-        "summary": "Institutional holdings (13F)",
+        },
         "parameters": [
           {
             "name": "query",
             "in": "query",
             "required": true,
-            "description": "Ticker or manager name",
+            "description": "Stock ticker (e.g. 'AAPL') or institutional manager name (e.g. 'Berkshire Hathaway')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock ticker (e.g. 'AAPL') or institutional manager name (e.g. 'Berkshire Hathaway')"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 10)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 10)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/sec-edgar/ownership-filings": {
+      "get": {
+        "summary": "Monitor significant changes in company ownership (5%+ stakes)",
+        "description": "Monitor significant changes in company ownership (5%+ stakes). Use 13D and 13G filings to identify activist investors (e.g. Carl Icahn, Ryan Cohen) entering or exiting a stock.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1536,7 +2244,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1545,37 +2263,43 @@
               }
             }
           }
-        }
-      }
-    },
-    "/sec-edgar/ownership-filings": {
-      "get": {
-        "summary": "Major ownership changes (13D/13G)",
+        },
         "parameters": [
           {
             "name": "ticker",
             "in": "query",
             "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 10)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 10)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/options/chain": {
+      "get": {
+        "summary": "Get the full option chain (calls and puts) with calculated Greeks (Delta, Gamma, Theta, Vega)",
+        "description": "Get the full option chain (calls and puts) with calculated Greeks (Delta, Gamma, Theta, Vega). Use options_expirations first to find valid dates. If expiration is omitted, uses nearest date. By default, returns strikes within ±20% of current price to save tokens. Use strike_min/strike_max for custom range, or all_strikes=true for everything.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1591,7 +2315,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1600,157 +2334,93 @@
               }
             }
           }
-        }
-      }
-    },
-    "/options/chain": {
-      "get": {
-        "summary": "Options chain",
+        },
         "parameters": [
           {
             "name": "symbol",
             "in": "query",
             "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')"
             }
           },
           {
             "name": "expiration",
             "in": "query",
             "required": false,
-            "description": "Unix timestamp",
+            "description": "Expiration date as YYYY-MM-DD (e.g. '2026-04-17'). If omitted, uses nearest.",
             "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/options/expirations": {
-      "get": {
-        "summary": "Available expiration dates",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/options/unusual-activity": {
-      "get": {
-        "summary": "Unusual options activity",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "volume_oi_ratio",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "min_volume",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "number"
+              "type": "string",
+              "description": "Expiration date as YYYY-MM-DD (e.g. '2026-04-17'). If omitted, uses nearest."
             }
           },
           {
             "name": "side",
             "in": "query",
             "required": false,
-            "description": "call, put, both",
+            "description": "Filter by option type (default: both)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Filter by option type (default: both)"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max contracts per side (default: 50, max: 200)",
+            "schema": {
+              "type": "number",
+              "description": "Max contracts per side (default: 50, max: 200)"
+            }
+          },
+          {
+            "name": "strike_min",
+            "in": "query",
+            "required": false,
+            "description": "Minimum strike price filter (e.g. 25.0)",
+            "schema": {
+              "type": "number",
+              "description": "Minimum strike price filter (e.g. 25.0)"
+            }
+          },
+          {
+            "name": "strike_max",
+            "in": "query",
+            "required": false,
+            "description": "Maximum strike price filter (e.g. 35.0)",
+            "schema": {
+              "type": "number",
+              "description": "Maximum strike price filter (e.g. 35.0)"
+            }
+          },
+          {
+            "name": "all_strikes",
+            "in": "query",
+            "required": false,
+            "description": "Return all strikes instead of centering around ATM (default: false)",
+            "schema": {
+              "type": "boolean",
+              "description": "Return all strikes instead of centering around ATM (default: false)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/options/expirations": {
+      "get": {
+        "summary": "Get all available option expiration dates for a stock ticker",
+        "description": "Get all available option expiration dates for a stock ticker. Call this first to discover valid dates, then pass one to options_chain or options_max_pain.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1766,7 +2436,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1775,38 +2455,124 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')"
+            }
+          }
+        ]
+      }
+    },
+    "/options/unusual-activity": {
+      "get": {
+        "summary": "Find options contracts with unusually high volume relative to open interest (a common 'smart money' signal)",
+        "description": "Find options contracts with unusually high volume relative to open interest (a common 'smart money' signal). Scans the nearest expiration and flags contracts where volume/OI exceeds a threshold.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')"
+            }
+          },
+          {
+            "name": "volume_oi_ratio",
+            "in": "query",
+            "required": false,
+            "description": "Min volume/OI ratio to flag as unusual (default: 3.0)",
+            "schema": {
+              "type": "number",
+              "description": "Min volume/OI ratio to flag as unusual (default: 3.0)"
+            }
+          },
+          {
+            "name": "min_volume",
+            "in": "query",
+            "required": false,
+            "description": "Min absolute volume (default: 100)",
+            "schema": {
+              "type": "number",
+              "description": "Min absolute volume (default: 100)"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": false,
+            "description": "Filter by option type (default: both)",
+            "schema": {
+              "type": "string",
+              "description": "Filter by option type (default: both)"
+            }
+          }
+        ]
       }
     },
     "/options/max-pain": {
       "get": {
-        "summary": "Options max pain strike",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "expiration",
-            "in": "query",
-            "required": false,
-            "description": "YYYY-MM-DD",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Calculate the max pain strike price — where cumulative option open interest expires worthless",
+        "description": "Calculate the max pain strike price — where cumulative option open interest expires worthless. This level often acts as a support/resistance zone near expiration.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1822,7 +2588,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1831,38 +2607,43 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')"
+            }
+          },
+          {
+            "name": "expiration",
+            "in": "query",
+            "required": false,
+            "description": "Expiration date as YYYY-MM-DD. If omitted, uses nearest.",
+            "schema": {
+              "type": "string",
+              "description": "Expiration date as YYYY-MM-DD. If omitted, uses nearest."
+            }
+          }
+        ]
       }
     },
     "/options/implied-move": {
       "get": {
-        "summary": "Expected price move from straddle",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "expiration",
-            "in": "query",
-            "required": false,
-            "description": "YYYY-MM-DD",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Calculate the expected move implied by options pricing (ATM straddle)",
+        "description": "Calculate the expected move implied by options pricing (ATM straddle). Essential for earnings plays — shows how much the market expects the stock to move. Compare implied vs historical moves to assess if premium is cheap or expensive.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1878,7 +2659,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1887,76 +2678,114 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'NYSE:GM')"
+            }
+          },
+          {
+            "name": "expiration",
+            "in": "query",
+            "required": false,
+            "description": "Expiration date as YYYY-MM-DD. If omitted, uses nearest.",
+            "schema": {
+              "type": "string",
+              "description": "Expiration date as YYYY-MM-DD. If omitted, uses nearest."
+            }
+          }
+        ]
       }
     },
     "/options/put-call-ratio": {
       "get": {
-        "summary": "CBOE Put/Call ratio",
+        "summary": "Get historical put/call ratio from CBOE (market-wide sentiment indicator)",
+        "description": "Get historical put/call ratio from CBOE (market-wide sentiment indicator). Ratio > 1.0 = more puts (bearish sentiment), < 0.7 = more calls (bullish/complacent). Types: 'total' (all options), 'equity' (stock options only), 'index' (index options only).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "type",
             "in": "query",
             "required": false,
-            "description": "total, equity, index",
+            "description": "Ratio type (default: total)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Ratio type (default: total)"
             }
           },
           {
             "name": "days",
             "in": "query",
             "required": false,
+            "description": "Number of recent trading days to return (default: 30, max: 252)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Number of recent trading days to return (default: 30, max: 252)"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/sentiment/fear-greed": {
       "get": {
-        "summary": "CNN Fear & Greed Index",
-        "parameters": [],
+        "summary": "Get the CNN Fear & Greed Index for the US stock market",
+        "description": "Get the CNN Fear & Greed Index for the US stock market. Returns a composite score (0-100) with rating (extreme fear/fear/neutral/greed/extreme greed) and 7 sub-indicators: S&P 500 momentum, stock price strength (52w highs vs lows), stock price breadth (McClellan), put/call ratio, VIX, junk bond demand, safe haven demand. Also includes previous close, 1-week, 1-month, and 1-year scores for trend context. Use this to gauge overall market sentiment before analyzing individual stocks.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -1972,7 +2801,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1981,20 +2820,22 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/sentiment/crypto-fear-greed": {
       "get": {
-        "summary": "Crypto Fear & Greed Index",
-        "parameters": [],
+        "summary": "Get the Crypto Fear & Greed Index from Alternative",
+        "description": "Get the Crypto Fear & Greed Index from Alternative.me. Returns a score (0-100) with rating (extreme fear/fear/neutral/greed/extreme greed). Based on Bitcoin volatility, market volume, social media, surveys, dominance, and trends. Use this alongside coingecko tools for crypto market context.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2010,7 +2851,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2019,30 +2870,22 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/fred/indicator": {
       "get": {
-        "summary": "Latest economic indicator value",
-        "parameters": [
-          {
-            "name": "series",
-            "in": "query",
-            "required": true,
-            "description": "Series ID (e.g., CPIAUCSL)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get the latest value of a US economic indicator from FRED",
+        "description": "Get the latest value of a US economic indicator from FRED. Accepts FRED series IDs (e.g. 'CPIAUCSL', 'DFF', 'UNRATE') or common aliases: cpi, core_cpi, ppi, gdp, unemployment, nonfarm_payrolls, fed_funds, treasury_10y, treasury_2y, initial_claims, core_pce. Returns the indicator metadata (title, frequency, units) and latest observation. Rate limit: 120 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2058,7 +2901,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2067,29 +2920,104 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": false,
+            "description": "FRED series ID or alias (e.g. 'cpi', 'UNRATE', 'treasury_10y')",
+            "schema": {
+              "type": "string",
+              "description": "FRED series ID or alias (e.g. 'cpi', 'UNRATE', 'treasury_10y')"
+            }
+          },
+          {
+            "name": "series",
+            "in": "query",
+            "required": false,
+            "description": "Alias for series_id.",
+            "schema": {
+              "type": "string",
+              "description": "Alias for series_id."
+            }
+          }
+        ]
       }
     },
     "/fred/calendar": {
       "get": {
-        "summary": "Economic release calendar",
+        "summary": "Get upcoming US economic release dates (FOMC, CPI, PPI, NFP, GDP, PCE, jobless claims, retail sales, ISM, treasury rates)",
+        "description": "Get upcoming US economic release dates (FOMC, CPI, PPI, NFP, GDP, PCE, jobless claims, retail sales, ISM, treasury rates). Filters to high-impact releases only. Use this to identify macro catalysts that could move markets. Rate limit: 120 calls/min (free tier).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max raw results to fetch before filtering (default: 60)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max raw results to fetch before filtering (default: 60)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/fred/indicator-history": {
+      "get": {
+        "summary": "Get historical values for a US economic indicator from FRED",
+        "description": "Get historical values for a US economic indicator from FRED. Accepts same series IDs/aliases as fred_indicator. Supports units transformation: 'lin' (raw level), 'chg' (change), 'pc1' (% change from year ago — useful for YoY inflation), 'pch' (% change from prior period). Use 'pc1' with CPI/PPI to get YoY inflation rates directly. Rate limit: 120 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2105,7 +3033,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2114,54 +3052,93 @@
               }
             }
           }
-        }
-      }
-    },
-    "/fred/indicator-history": {
-      "get": {
-        "summary": "Historical economic data",
+        },
         "parameters": [
           {
-            "name": "series",
+            "name": "series_id",
             "in": "query",
-            "required": true,
+            "required": false,
+            "description": "FRED series ID or alias",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "FRED series ID or alias"
             }
           },
           {
-            "name": "startDate",
+            "name": "start_date",
             "in": "query",
-            "required": true,
+            "required": false,
+            "description": "Start date YYYY-MM-DD",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Start date YYYY-MM-DD"
             }
           },
           {
-            "name": "endDate",
+            "name": "end_date",
             "in": "query",
-            "required": true,
+            "required": false,
+            "description": "End date YYYY-MM-DD",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "End date YYYY-MM-DD"
             }
           },
           {
             "name": "units",
             "in": "query",
             "required": false,
-            "description": "lin, change, chg, pch, pc1, pca, cch, cca, log",
+            "description": "Units: lin=level, pch=% change, pc1=YoY % change (default: lin)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Units: lin=level, pch=% change, pc1=YoY % change (default: lin)"
+            }
+          },
+          {
+            "name": "series",
+            "in": "query",
+            "required": false,
+            "description": "Alias for series_id.",
+            "schema": {
+              "type": "string",
+              "description": "Alias for series_id."
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "description": "Alias for start_date.",
+            "schema": {
+              "type": "string",
+              "description": "Alias for start_date."
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "description": "Alias for end_date.",
+            "schema": {
+              "type": "string",
+              "description": "Alias for end_date."
             }
           }
-        ],
+        ]
+      }
+    },
+    "/fred/search": {
+      "get": {
+        "summary": "Search FRED for economic data series by keyword",
+        "description": "Search FRED for economic data series by keyword. Returns series IDs that can be used with fred_indicator and fred_indicator_history. Results sorted by relevance. Use to discover series IDs for niche indicators. Rate limit: 120 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2177,7 +3154,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2186,84 +3173,43 @@
               }
             }
           }
-        }
-      }
-    },
-    "/fred/search": {
-      "get": {
-        "summary": "Search FRED series",
+        },
         "parameters": [
           {
             "name": "query",
             "in": "query",
             "required": true,
+            "description": "Search keywords (e.g. 'consumer price index', 'housing starts')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Search keywords (e.g. 'consumer price index', 'housing starts')"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Max results (default: 10, max: 50)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Max results (default: 10, max: 50)"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/alpha-vantage/quote": {
       "get": {
-        "summary": "Stock quote (Alpha Vantage)",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get real-time stock quote from Alpha Vantage",
+        "description": "Get real-time stock quote from Alpha Vantage. Returns price, change, volume, and day range. Rate limit: 5 calls/min on free tier.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2279,7 +3225,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2288,37 +3244,33 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL', 'MSFT')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL', 'MSFT')"
+            }
+          }
+        ]
       }
     },
     "/alpha-vantage/daily": {
       "get": {
-        "summary": "Daily price history",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
+        "summary": "Get daily OHLCV price history from Alpha Vantage",
+        "description": "Get daily OHLCV price history from Alpha Vantage. Returns up to 100 most recent trading days. Rate limit: 25 calls/day, 5 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2334,7 +3286,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2343,29 +3305,43 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of days to return (default: 30, max: 100)",
+            "schema": {
+              "type": "number",
+              "description": "Number of days to return (default: 30, max: 100)"
+            }
+          }
+        ]
       }
     },
     "/alpha-vantage/overview": {
       "get": {
-        "summary": "Company fundamentals",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "Get company fundamentals from Alpha Vantage",
+        "description": "Get company fundamentals from Alpha Vantage. Includes PE ratio, market cap, beta, sector, industry, earnings, and analyst target price. Supports batch requests (limit 5). Rate limit: 25 calls/day, 5 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2381,7 +3357,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2390,37 +3376,127 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": false,
+            "description": "One or more stock symbols (e.g. 'AAPL' or ['AAPL', 'MSFT'])",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": ""
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": ""
+                  },
+                  "description": ""
+                }
+              ],
+              "description": "One or more stock symbols (e.g. 'AAPL' or ['AAPL', 'MSFT'])"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "description": "Alias for symbols (single symbol).",
+            "schema": {
+              "type": "string",
+              "description": "Alias for symbols (single symbol)."
+            }
+          }
+        ]
       }
     },
     "/alpha-vantage/earnings": {
       "get": {
-        "summary": "Quarterly earnings history",
+        "summary": "Get historical earnings data (EPS actual vs estimate) for a specific ticker",
+        "description": "Get historical earnings data (EPS actual vs estimate) for a specific ticker. Rate limit: 25 calls/day, 5 calls/min (free tier).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "symbol",
             "in": "query",
             "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
             }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
+            "description": "Number of quarters to return (default: 8, max: 20)",
             "schema": {
-              "type": "integer"
+              "type": "number",
+              "description": "Number of quarters to return (default: 8, max: 20)"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/alpha-vantage/dividends": {
+      "get": {
+        "summary": "Get historical dividend data for a specific ticker",
+        "description": "Get historical dividend data for a specific ticker. Rate limit: 25 calls/day, 5 calls/min (free tier).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2436,38 +3512,391 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. 'AAPL')"
+            }
+          }
+        ]
+      }
+    },
+    "/reddit/trending": {
+      "get": {
+        "summary": "Get trending stock tickers from Reddit based on mention frequency",
+        "description": "Get trending stock tickers from Reddit based on mention frequency. Scans r/wallstreetbets, r/stocks, r/investing, and r/options for posts mentioning tickers. Returns tickers sorted by mention count with per-subreddit breakdown. Limitation: uses keyword extraction (cashtags + uppercase words), not NLP — some false positives possible. Best for gauging retail buzz, not precise sentiment.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subreddits",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated subreddits.",
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated subreddits."
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of trending tickers to return (default: 20)",
+            "schema": {
+              "type": "number",
+              "description": "Maximum number of trending tickers to return (default: 20)"
+            }
+          }
+        ]
+      }
+    },
+    "/reddit/mentions": {
+      "get": {
+        "summary": "Get mention count and top posts for a specific stock ticker across Reddit",
+        "description": "Get mention count and top posts for a specific stock ticker across Reddit. Searches r/wallstreetbets, r/stocks, r/investing, and r/options. Returns total mentions, per-subreddit breakdown, and top 10 posts by score. Use this to check how much retail attention a ticker is getting.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. AAPL, TSLA, GME)",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. AAPL, TSLA, GME)"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "Time period to search (default: day)",
+            "schema": {
+              "type": "string",
+              "description": "Time period to search (default: day)"
+            }
+          }
+        ]
+      }
+    },
+    "/reddit/sentiment": {
+      "get": {
+        "summary": "Get sentiment analysis for a stock ticker from Reddit discussions",
+        "description": "Get sentiment analysis for a stock ticker from Reddit discussions. Searches r/wallstreetbets, r/stocks, r/investing, and r/options, then scores each post using keyword matching (bullish terms like 'moon', 'calls', 'breakout' vs bearish terms like 'crash', 'puts', 'dump'). Returns bullish/bearish/neutral counts, average sentiment score, and sample posts. Limitation: keyword-based scoring, not NLP — sarcasm and context may be missed.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker symbol (e.g. AAPL, TSLA, GME)",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker symbol (e.g. AAPL, TSLA, GME)"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum posts to analyze per subreddit (default: 50)",
+            "schema": {
+              "type": "number",
+              "description": "Maximum posts to analyze per subreddit (default: 50)"
+            }
+          }
+        ]
+      }
+    },
+    "/workspace/profile": {
+      "get": {
+        "summary": "Get the current user's trading profile and workspace settings",
+        "description": "Get the current user's trading profile and workspace settings.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "summary": "Update the user's trading profile (style, asset focus, review cadence)",
+        "description": "Update the user's trading profile (style, asset focus, review cadence).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tradingStyle": {
+                    "type": "string",
+                    "description": "E.g., 'options', 'swing', 'day'"
+                  },
+                  "assetFocus": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": ""
+                    },
+                    "description": "Asset classes like 'equities', 'crypto'"
+                  },
+                  "workflowCadence": {
+                    "type": "string",
+                    "description": "How often you review the market"
+                  }
+                },
+                "description": ""
               }
             }
           }
         }
       }
     },
-    "/alpha-vantage/dividends": {
+    "/workspace/watchlists": {
       "get": {
-        "summary": "Dividend payment history",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "summary": "List all watchlists and their instruments",
+        "description": "List all watchlists and their instruments.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2483,12 +3912,317 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "summary": "Create a new empty watchlist (max 50 per workspace)",
+        "description": "Create a new empty watchlist (max 50 per workspace).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The ID/name of the watchlist (e.g., 'core', 'swing')"
+                  }
+                },
+                "description": "",
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/watchlists/update": {
+      "post": {
+        "summary": "Replace the instruments in a specific watchlist",
+        "description": "Replace the instruments in a specific watchlist.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The ID of the watchlist to update"
+                  },
+                  "symbols": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": ""
+                    },
+                    "description": "Raw symbols to track (e.g., ['AAPL', 'BTC'])"
+                  }
+                },
+                "description": "",
+                "required": [
+                  "name",
+                  "symbols"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/thesis": {
+      "get": {
+        "summary": "Get the saved global investment thesis for a specific symbol",
+        "description": "Get the saved global investment thesis for a specific symbol. Returns a stable JSON shape with a 'found' flag.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "The raw symbol (e.g., 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "The raw symbol (e.g., 'AAPL')"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Save or update the global investment thesis for a specific symbol (max 200 per workspace)",
+        "description": "Save or update the global investment thesis for a specific symbol (max 200 per workspace).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string",
+                    "description": "The raw symbol (e.g., 'AAPL')"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "Brief summary of your investment view"
+                  },
+                  "bullCase": {
+                    "type": "string",
+                    "description": "Arguments for price going up"
+                  },
+                  "bearCase": {
+                    "type": "string",
+                    "description": "Arguments for price going down"
+                  },
+                  "catalyst": {
+                    "type": "string",
+                    "description": "Upcoming events that might move the price"
+                  },
+                  "timeframe": {
+                    "type": "string",
+                    "description": "Investment horizon (e.g., '3-6 months')"
+                  }
+                },
+                "description": "",
+                "required": [
+                  "symbol",
+                  "summary"
+                ]
               }
             }
           }
@@ -2497,63 +4231,77 @@
     },
     "/coingecko/coin": {
       "get": {
-        "summary": "Detailed coin info",
+        "summary": "Get detailed cryptocurrency info from CoinGecko",
+        "description": "Get detailed cryptocurrency info from CoinGecko. Use slug IDs (e.g. 'bitcoin', 'ethereum', 'solana'), NOT ticker symbols.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "coinId",
             "in": "query",
             "required": true,
-            "description": "e.g., bitcoin, solana",
+            "description": "CoinGecko coin ID / slug (e.g. 'bitcoin', 'ethereum', 'cardano')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "CoinGecko coin ID / slug (e.g. 'bitcoin', 'ethereum', 'cardano')"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/coingecko/trending": {
       "get": {
-        "summary": "Top trending coins",
-        "parameters": [],
+        "summary": "Get trending cryptocurrencies on CoinGecko (top 7 by search popularity in last 24h)",
+        "description": "Get trending cryptocurrencies on CoinGecko (top 7 by search popularity in last 24h).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2569,7 +4317,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2578,20 +4336,22 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/coingecko/global": {
       "get": {
-        "summary": "Global crypto market stats",
-        "parameters": [],
+        "summary": "Get global cryptocurrency market statistics: total market cap, 24h volume, BTC/ETH dominance",
+        "description": "Get global cryptocurrency market statistics: total market cap, 24h volume, BTC/ETH dominance.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2607,7 +4367,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2616,39 +4386,93 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/frankfurter/latest": {
       "get": {
-        "summary": "Latest forex rates",
+        "summary": "Get latest forex exchange rates from the European Central Bank",
+        "description": "Get latest forex exchange rates from the European Central Bank. Returns daily reference rates for 31 major currencies. Updated once per business day at ~16:00 CET. These are reference rates, not real-time trading rates.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "base",
             "in": "query",
             "required": false,
-            "description": "Base currency (default USD)",
+            "description": "Base currency",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Base currency"
             }
           },
           {
             "name": "symbols",
             "in": "query",
             "required": false,
-            "description": "Comma-separated target currencies",
+            "description": "Comma-separated target currencies (e.g. 'EUR,GBP,JPY'). Omit for all 31.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Comma-separated target currencies (e.g. 'EUR,GBP,JPY'). Omit for all 31."
             }
           }
-        ],
+        ]
+      }
+    },
+    "/frankfurter/historical": {
+      "get": {
+        "summary": "Get ECB forex exchange rates for a specific past date",
+        "description": "Get ECB forex exchange rates for a specific past date. Daily reference rates, not real-time trading rates. If the date is a weekend or holiday, returns the previous business day's rates. Data available from 1999-01-04 (Euro inception).",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2664,7 +4488,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2673,46 +4507,53 @@
               }
             }
           }
-        }
-      }
-    },
-    "/frankfurter/historical": {
-      "get": {
-        "summary": "Historical forex rates",
+        },
         "parameters": [
           {
             "name": "date",
             "in": "query",
             "required": true,
-            "description": "YYYY-MM-DD",
+            "description": "Date in YYYY-MM-DD format",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Date in YYYY-MM-DD format"
             }
           },
           {
             "name": "base",
             "in": "query",
             "required": false,
+            "description": "Base currency",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Base currency"
             }
           },
           {
             "name": "symbols",
             "in": "query",
             "required": false,
+            "description": "Comma-separated target currencies. Omit for all.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Comma-separated target currencies. Omit for all."
             }
           }
-        ],
+        ]
+      }
+    },
+    "/frankfurter/timeseries": {
+      "get": {
+        "summary": "Get daily ECB forex rate history for a date range (max 90 days)",
+        "description": "Get daily ECB forex rate history for a date range (max 90 days). Daily reference rates, not real-time. Use for currency trend analysis. Only business days included (weekends/holidays omitted). Requires symbols filter to control response size.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2728,7 +4569,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2737,53 +4588,63 @@
               }
             }
           }
-        }
-      }
-    },
-    "/frankfurter/timeseries": {
-      "get": {
-        "summary": "Forex rate history",
+        },
         "parameters": [
           {
             "name": "start_date",
             "in": "query",
             "required": true,
+            "description": "Start date (YYYY-MM-DD)",
             "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "symbols",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "base",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Start date (YYYY-MM-DD)"
             }
           },
           {
             "name": "end_date",
             "in": "query",
             "required": false,
+            "description": "End date (YYYY-MM-DD, defaults to today, max 90 days from start)",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "End date (YYYY-MM-DD, defaults to today, max 90 days from start)"
+            }
+          },
+          {
+            "name": "base",
+            "in": "query",
+            "required": false,
+            "description": "Base currency",
+            "schema": {
+              "type": "string",
+              "description": "Base currency"
+            }
+          },
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "description": "Required: comma-separated target currencies (e.g. 'EUR,GBP')",
+            "schema": {
+              "type": "string",
+              "description": "Required: comma-separated target currencies (e.g. 'EUR,GBP')"
             }
           }
-        ],
+        ]
+      }
+    },
+    "/frankfurter/convert": {
+      "get": {
+        "summary": "Convert an amount between two currencies at the latest ECB daily reference rate",
+        "description": "Convert an amount between two currencies at the latest ECB daily reference rate. Updated once per business day — not suitable for intraday trading rates. Useful for cross-border stock valuation and currency exposure calculations.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2799,7 +4660,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2808,83 +4679,53 @@
               }
             }
           }
-        }
-      }
-    },
-    "/frankfurter/convert": {
-      "get": {
-        "summary": "Currency conversion",
+        },
         "parameters": [
           {
             "name": "amount",
             "in": "query",
             "required": true,
+            "description": "Amount to convert",
             "schema": {
-              "type": "number"
+              "type": "number",
+              "description": "Amount to convert"
             }
           },
           {
             "name": "from",
             "in": "query",
             "required": true,
+            "description": "Source currency (e.g. 'USD')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Source currency (e.g. 'USD')"
             }
           },
           {
             "name": "to",
             "in": "query",
             "required": true,
+            "description": "Target currency (e.g. 'EUR')",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Target currency (e.g. 'EUR')"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found or API key missing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/frankfurter/currencies": {
       "get": {
-        "summary": "List supported currency codes",
-        "parameters": [],
+        "summary": "List all 31 currencies supported by the Frankfurter API with their full names",
+        "description": "List all 31 currencies supported by the Frankfurter API with their full names. Use to look up valid currency codes before calling other frankfurter tools.",
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "Varies by tool"
                 }
               }
             }
@@ -2900,7 +4741,17 @@
             }
           },
           "404": {
-            "description": "Not found or API key missing",
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2909,7 +4760,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     }
   },
