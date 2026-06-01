@@ -21,11 +21,11 @@ To prevent race conditions and overwrites:
 | :--- | :--- | :--- | :--- | :--- |
 | P0 | Dynamic Sidecar Routing | Gemini | User | COMPLETED (v1.16.3) |
 | P0 | Automated OpenAPI 3.1 Generation | Gemini | User | COMPLETED (v1.16.3) |
-| P1 | Move `zod-to-json-schema` to production dependencies | Gemini/Codex | Gemini/Codex | PLANNED |
+| P1 | Move `zod-to-json-schema` to production dependencies | Gemini/Codex | Gemini/Codex | COMPLETED |
 | P1 | 100% Sidecar Tool Coverage (Workspace/Reddit) | Codex | User | COMPLETED (v1.16.3) |
-| P1 | Strong-typed OpenAPI Response Schemas | Codex | User | COMPLETED (v1.16.3) |
-| P2 | Docker Workspace Volume Mapping Documentation | Gemini/Codex | Gemini/Codex | PLANNED |
-| P2 | OpenAPI Generator Regression Tests | Codex | Gemini/Codex | PLANNED |
+| P1 | Strong-typed OpenAPI Response Schemas | Codex | User | COMPLETED |
+| P2 | Docker Workspace Volume Mapping Documentation | Gemini/Codex | Gemini/Codex | COMPLETED |
+| P2 | OpenAPI Generator Regression Tests | Codex | Gemini/Codex | COMPLETED |
 
 ## Active Review Thread
 
