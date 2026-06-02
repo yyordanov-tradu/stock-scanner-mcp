@@ -20,27 +20,21 @@ function convertZodToOpenApi(zod: any): any {
   const def = zod._def;
   if (!def) return { type: "string" };
   
-  // In this Zod version, type info is in constructor name or def.type
   const typeName = zod.constructor.name;
   const defType = def.type;
   const description = zod.description || def.description || "";
 
-  // Handle wrappers (Optional, Nullable, Default)
   if (typeName === "ZodOptional" || typeName === "ZodNullable" || typeName === "ZodDefault" || 
       defType === "optional" || defType === "nullable" || defType === "default") {
     const inner = convertZodToOpenApi(def.innerType || def.schema);
     return { ...inner, optional: true, description: description || inner.description };
   }
 
-  // Handle primitives
-  if (typeName === "ZodNumber" || defType === "number") {
-    return { type: zod.isInt ? "integer" : "number", description };
-  }
+  if (typeName === "ZodNumber" || defType === "number") return { type: zod.isInt ? "integer" : "number", description };
   if (typeName === "ZodBoolean" || defType === "boolean") return { type: "boolean", description };
   if (typeName === "ZodEnum" || defType === "enum") return { type: "string", enum: def.values, description };
   if (typeName === "ZodString" || defType === "string") return { type: "string", description };
 
-  // Handle collections
   if (typeName === "ZodArray" || defType === "array") {
     const items = convertZodToOpenApi(def.element || def.type);
     delete items.optional;
@@ -73,6 +67,62 @@ function convertZodToOpenApi(zod: any): any {
   }
 
   return { type: "string", description };
+}
+
+/**
+ * Heuristically define response schemas for tool families.
+ */
+function getResponseSchema(toolName: string): any {
+  if (toolName.startsWith("tradingview_") || toolName.startsWith("crypto_")) {
+    return {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          symbol: { type: "string" },
+          data: { type: "object", additionalProperties: true }
+        }
+      }
+    };
+  }
+  
+  if (toolName.startsWith("edgar_")) {
+    return { type: "array", items: { type: "object", additionalProperties: true } };
+  }
+
+  if (toolName === "finnhub_quote") {
+    return {
+      type: "object",
+      properties: {
+        c: { type: "number", description: "Current price" },
+        d: { type: "number", description: "Change" },
+        dp: { type: "number", description: "Percent change" },
+        h: { type: "number", description: "High price of the day" },
+        l: { type: "number", description: "Low price of the day" },
+        o: { type: "number", description: "Open price of the day" },
+        pc: { type: "number", description: "Previous close price" },
+        t: { type: "integer", description: "Timestamp" }
+      }
+    };
+  }
+
+  if (toolName.startsWith("finnhub_")) {
+    return { type: "object", additionalProperties: true };
+  }
+
+  if (toolName.startsWith("options_")) {
+    return { type: "object", additionalProperties: true };
+  }
+
+  if (toolName.startsWith("fred_")) {
+    return { type: "array", items: { type: "object", additionalProperties: true } };
+  }
+
+  if (toolName.startsWith("workspace_")) {
+    return { type: "object", additionalProperties: true };
+  }
+
+  return { type: "object", description: "Varies by tool" };
 }
 
 export function generateOpenApiSpec() {
@@ -153,7 +203,11 @@ export function generateOpenApiSpec() {
       responses: {
         "200": {
           description: "Successful response",
-          content: { "application/json": { schema: { type: "object", description: "Varies by tool" } } }
+          content: { 
+            "application/json": { 
+              schema: getResponseSchema(route.tool)
+            } 
+          }
         },
         "400": {
           description: "Invalid parameters",
@@ -174,7 +228,6 @@ export function generateOpenApiSpec() {
     const properties = { ...jsonSchema.properties };
     const required = new Set(jsonSchema.required || []);
 
-    // Handle Aliases and Required logic
     if (route.path === "/fred/indicator") {
       properties["series"] = { type: "string", description: "Alias for series_id." };
       required.delete("series_id");
@@ -203,9 +256,10 @@ export function generateOpenApiSpec() {
           description: prop.description || "",
         };
 
-        // Handle Array Query Params: Sidecar expects comma-separated strings
         if (prop.type === "array") {
-          param.schema = { type: "string", description: prop.description + " (comma-separated list)" };
+          const desc = prop.description + " (comma-separated list)";
+          param.description = desc;
+          param.schema = { type: "string", description: desc };
         } else {
           param.schema = prop;
         }

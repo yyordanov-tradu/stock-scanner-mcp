@@ -208,6 +208,14 @@ Data is stored locally in `workspace.json` — no cloud sync, no external calls.
 
 For the full list of workspace tools, see the [tool reference](#workspace--personalized-context-optional-no-api-key) below.
 
+## Documentation
+
+- **[Installation & Setup](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Installation-&-Setup)** — Getting the MCP server running in Claude Code or Cursor
+- **[Trading Skills](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Trading-Skills)** — Ready-made workflows for professional analysis
+- **[Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API)** — REST endpoints for non-MCP clients
+- **[Docker Deployment](docs/DOCKER.md)** — Running in containers with workspace persistence
+- **[FAQ & Troubleshooting](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/FAQ-&-Troubleshooting)** — Common issues and solutions
+
 ## Modules
 
 | Module | Tools | API Key | Description |
@@ -399,14 +407,16 @@ An optional HTTP server exposing all tools as REST endpoints for non-MCP integra
 npx stock-scanner-sidecar              # Start on port 3200
 npx stock-scanner-sidecar --port 8080  # Custom port
 
+# Optional: Enable the stateful Market Workspace via HTTP
+npx stock-scanner-sidecar --enable-workspace --data-dir ./my-data
+
 # Access the OpenAPI spec
 curl http://localhost:3200/openapi.json
 ```
 
-See [Sidecar HTTP API](wiki-repo/Sidecar-HTTP-API.md) for endpoint details.
-```
+See [Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for endpoint details.
 
-55 endpoints including `/tradingview/quote`, `/options/chain`, `/frankfurter/convert`, and more. See [wiki](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for the full route table.
+**64 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
 
 ## Rate Limits
 
@@ -462,7 +472,8 @@ src/
 │   └── reddit/           # 3 tools — trending tickers, mentions, sentiment from Reddit
 ├── sidecar/
 │   ├── index.ts          # HTTP sidecar entry point (port 3200)
-│   └── server.ts         # HTTP request handler (55 endpoints)
+│   ├── routes.ts         # Declarative URL routing table
+│   └── server.ts         # Dynamic HTTP request handler
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache

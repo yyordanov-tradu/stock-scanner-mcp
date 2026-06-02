@@ -12,6 +12,9 @@ export interface SidecarConfig {
   finnhubApiKey?: string;
   fredApiKey?: string;
   alphaVantageApiKey?: string;
+  enableWorkspace?: boolean;
+  dataDir?: string;
+  defaultExchange?: string;
 }
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
@@ -82,8 +85,9 @@ function buildTools(config: SidecarConfig): Map<string, ToolDefinition> {
       FRED_API_KEY: config.fredApiKey,
       ALPHA_VANTAGE_API_KEY: config.alphaVantageApiKey,
     },
-    enableWorkspace: false, 
-    defaultExchange: "NASDAQ",
+    enableWorkspace: config.enableWorkspace ?? false,
+    dataDir: config.dataDir,
+    defaultExchange: config.defaultExchange ?? "NASDAQ",
   } as any;
 
   const allModules = MODULE_CATALOG

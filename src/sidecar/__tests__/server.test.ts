@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import * as http from "node:http";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { createServer } from "../server.js";
 
 // Capture the REAL fetch before any test mocking
@@ -91,11 +94,19 @@ function mockUpstreamFetch(
 
 describe("sidecar server", () => {
   let server: http.Server;
+  const tmpDirs: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
     if (server) server.close();
+    await Promise.all(tmpDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
   });
+
+  async function makeTempDir(): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sidecar-workspace-test-"));
+    tmpDirs.push(dir);
+    return dir;
+  }
 
   // --- Health ---
 
@@ -113,6 +124,35 @@ describe("sidecar server", () => {
     const { status, data } = await get(server, "/unknown");
     expect(status).toBe(404);
     expect(data).toEqual({ error: "Not found" });
+  });
+
+  it("returns 404 for workspace routes when workspace is disabled", async () => {
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/workspace/profile");
+    expect(status).toBe(404);
+    expect((data as Record<string, string>).error).toContain("workspace_get_profile");
+  });
+
+  it("serves workspace routes when workspace is enabled", async () => {
+    const dataDir = await makeTempDir();
+    server = createServer({
+      port: 0,
+      enableWorkspace: true,
+      dataDir,
+      defaultExchange: "NYSE",
+    });
+
+    const profile = await get(server, "/workspace/profile");
+    expect(profile.status).toBe(200);
+    expect((profile.data as Record<string, unknown>).defaultExchange).toBe("NYSE");
+
+    const updated = await post(server, "/workspace/profile", {
+      tradingStyle: "swing",
+      assetFocus: ["equities"],
+      workflowCadence: "weekly",
+    });
+    expect(updated.status).toBe(200);
+    expect((updated.data as any).profile.tradingStyle).toBe("swing");
   });
 
   // --- TradingView scan ---
