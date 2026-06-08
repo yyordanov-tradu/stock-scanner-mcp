@@ -94,6 +94,11 @@ async function main() {
     process.exit(0);
   }
 
+  if (args.includes("--version") || args.includes("-v")) {
+    process.stderr.write(`stock-scanner-mcp v${pkg.version}\n`);
+    process.exit(0);
+  }
+
   if (args.includes("--help") || args.includes("-h")) {
     printHelp();
     process.exit(0);
