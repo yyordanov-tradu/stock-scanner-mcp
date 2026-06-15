@@ -42,6 +42,9 @@ jobs:
           # Uses your Max subscription via an OAuth token (no API key).
           # Add the token under Settings -> Secrets and variables -> Actions.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Temporary: surface the full model output so we can read the real
+          # error while debugging setup. Remove once @claude works end to end.
+          show_full_output: true
           # Keep automation runs bounded so a single task can't run away.
           claude_args: |
             --max-turns 15
