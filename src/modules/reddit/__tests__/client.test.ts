@@ -37,6 +37,15 @@ function mockFetchOk(data: unknown) {
   });
 }
 
+function mockFetchError() {
+  (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    ok: false,
+    status: 500,
+    statusText: "Server Error",
+    text: async () => "boom",
+  });
+}
+
 // ── extractTickers ───────────────────────────────────────────────────────────
 
 describe("extractTickers", () => {
@@ -269,17 +278,273 @@ describe("getTickerSentiment", () => {
   });
 });
 
+// ── scanWatchlist ────────────────────────────────────────────────────────────
+
+describe("scanWatchlist", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("aggregates mentions and sentiment per watchlist ticker", async () => {
+    // Subreddit order: wallstreetbets, stocks, investing, options
+    mockFetchOk(makeRedditListing([
+      { title: "$AAPL calls printing", score: 50, subreddit: "wallstreetbets" },
+      { title: "NVDA breakout incoming", score: 30, subreddit: "wallstreetbets" },
+    ]));
+    mockFetchOk(makeRedditListing([
+      { title: "$AAPL earnings report tomorrow", score: 80, subreddit: "stocks" },
+    ]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL", "NVDA"]);
+
+    expect(result.scanned).toBe(2);
+    expect(result.requestsMade).toBe(4);
+    expect(result.subredditsChecked).toEqual(["wallstreetbets", "stocks", "investing", "options"]);
+
+    const aapl = result.tickers.find((t) => t.symbol === "AAPL")!;
+    expect(aapl.mentions).toBe(2);
+    expect(aapl.sentiment.bullish).toBe(1); // "calls printing"
+    expect(aapl.sentiment.neutral).toBe(1); // "earnings report tomorrow"
+    expect(aapl.topPost).toEqual({ title: "$AAPL earnings report tomorrow", score: 80, subreddit: "stocks" });
+
+    const nvda = result.tickers.find((t) => t.symbol === "NVDA")!;
+    expect(nvda.mentions).toBe(1);
+    expect(nvda.sentiment.bullish).toBe(1); // "breakout"
+  });
+
+  it("normalizes lowercase input symbols to uppercase", async () => {
+    mockFetchOk(makeRedditListing([{ title: "$AAPL calls", score: 10, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["aapl"]);
+
+    expect(result.tickers).toHaveLength(1);
+    expect(result.tickers[0].symbol).toBe("AAPL");
+    expect(result.tickers[0].mentions).toBe(1);
+  });
+
+  it("includes zero-mention tickers without NaN scores", async () => {
+    mockFetchOk(makeRedditListing([{ title: "$AAPL moon calls", score: 5, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL", "MSFT"]);
+
+    const msft = result.tickers.find((t) => t.symbol === "MSFT")!;
+    expect(msft.mentions).toBe(0);
+    expect(msft.topPost).toBeNull();
+    expect(msft.hot).toBe(false);
+    expect(msft.sentiment.score).toBe(0);
+    expect(Number.isNaN(msft.sentiment.score)).toBe(false);
+  });
+
+  it("flags a ticker as hot at 5 or more mentions", async () => {
+    mockFetchOk(makeRedditListing(
+      Array.from({ length: 5 }, (_, i) => ({ title: "$GME squeeze", score: i, subreddit: "wallstreetbets" })),
+    ));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["GME"]);
+
+    expect(result.tickers[0].mentions).toBe(5);
+    expect(result.tickers[0].hot).toBe(true);
+  });
+
+  it("does not flag a ticker as hot below 5 mentions", async () => {
+    mockFetchOk(makeRedditListing(
+      Array.from({ length: 4 }, (_, i) => ({ title: "$AMC calls", score: i, subreddit: "wallstreetbets" })),
+    ));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AMC"]);
+
+    expect(result.tickers[0].mentions).toBe(4);
+    expect(result.tickers[0].hot).toBe(false);
+  });
+
+  it("batches >20 symbols into ceil(N/20) queries per subreddit", async () => {
+    // 21 symbols → 2 batches × 4 subreddits = 8 requests
+    for (let i = 0; i < 8; i++) mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const symbols = Array.from({ length: 21 }, (_, i) => `TICKER${i}`);
+    const result = await scanWatchlist(symbols);
+
+    expect(result.scanned).toBe(21);
+    expect(result.requestsMade).toBe(8);
+    expect(fetch).toHaveBeenCalledTimes(8);
+  });
+
+  it("sorts tickers by mention count descending", async () => {
+    mockFetchOk(makeRedditListing([
+      { title: "$AAPL up", score: 1, subreddit: "wallstreetbets" },
+      { title: "NVDA up NVDA again", score: 1, subreddit: "wallstreetbets" },
+    ]));
+    mockFetchOk(makeRedditListing([{ title: "NVDA third post", score: 1, subreddit: "stocks" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL", "NVDA"]);
+
+    for (let i = 1; i < result.tickers.length; i++) {
+      expect(result.tickers[i - 1].mentions).toBeGreaterThanOrEqual(result.tickers[i].mentions);
+    }
+    expect(result.tickers[0].symbol).toBe("NVDA");
+  });
+
+  it("ignores tickers that are not in the watchlist", async () => {
+    mockFetchOk(makeRedditListing([{ title: "TSLA mooning hard", score: 99, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL"]);
+
+    expect(result.tickers.map((t) => t.symbol)).toEqual(["AAPL"]);
+    expect(result.tickers[0].mentions).toBe(0);
+  });
+
+  it("under-reports symbols that collide with STOP_WORDS (known limitation)", async () => {
+    // "REAL" is in STOP_WORDS, so extractTickers never returns it.
+    mockFetchOk(makeRedditListing([{ title: "REAL is up today", score: 10, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["REAL"]);
+
+    expect(result.tickers[0].symbol).toBe("REAL");
+    expect(result.tickers[0].mentions).toBe(0);
+  });
+
+  it("caches results for identical inputs", async () => {
+    mockFetchOk(makeRedditListing([{ title: "$AAPL calls", score: 1, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const first = await scanWatchlist(["AAPL"]);
+    const second = await scanWatchlist(["AAPL"]);
+
+    expect(second).toEqual(first);
+    expect(fetch).toHaveBeenCalledTimes(4); // no extra fetches on the cached call
+  });
+
+  it("skips a failed subreddit fetch without aborting the scan or counting it", async () => {
+    // wallstreetbets fails; the other three succeed.
+    mockFetchError();
+    mockFetchOk(makeRedditListing([{ title: "$AAPL calls", score: 12, subreddit: "stocks" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL"]);
+
+    // Only the 3 fulfilled fetches count; the rejected one is skipped.
+    expect(result.requestsMade).toBe(3);
+    // Aggregation from the successful subreddits still happens.
+    expect(result.tickers[0].symbol).toBe("AAPL");
+    expect(result.tickers[0].mentions).toBe(1);
+    expect(result.tickers[0].topPost).toEqual({ title: "$AAPL calls", score: 12, subreddit: "stocks" });
+  });
+
+  it("forwards the period to the query and keys the cache by period", async () => {
+    // First scan: period "week".
+    mockFetchOk(makeRedditListing([])); mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([])); mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    await scanWatchlist(["AAPL"], "week");
+
+    const weekUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(weekUrl).toContain("t=week");
+    expect(fetch).toHaveBeenCalledTimes(4);
+
+    // Different period must NOT be served from the "week" cache entry.
+    mockFetchOk(makeRedditListing([])); mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([])); mockFetchOk(makeRedditListing([]));
+    await scanWatchlist(["AAPL"], "day");
+
+    expect(fetch).toHaveBeenCalledTimes(8); // fetched again, not cached
+    const dayUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[4][0] as string;
+    expect(dayUrl).toContain("t=day");
+  });
+
+  it("credits every matched ticker in a single multi-ticker post (per-post fan-out)", async () => {
+    mockFetchOk(makeRedditListing([
+      { title: "$AAPL and $NVDA both mooning calls", score: 42, subreddit: "wallstreetbets" },
+    ]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL", "NVDA"]);
+
+    const aapl = result.tickers.find((t) => t.symbol === "AAPL")!;
+    const nvda = result.tickers.find((t) => t.symbol === "NVDA")!;
+    // Both symbols get the single post's mention, the same (bullish) classification, and the same top post.
+    expect(aapl.mentions).toBe(1);
+    expect(nvda.mentions).toBe(1);
+    expect(aapl.sentiment.bullish).toBe(1);
+    expect(nvda.sentiment.bullish).toBe(1);
+    expect(aapl.topPost).toEqual(nvda.topPost);
+    expect(aapl.topPost).toEqual({ title: "$AAPL and $NVDA both mooning calls", score: 42, subreddit: "wallstreetbets" });
+  });
+
+  it("keeps the first-seen post on a topPost score tie (strict > tie-break)", async () => {
+    // Two posts with identical scores; the first-encountered subreddit wins.
+    mockFetchOk(makeRedditListing([{ title: "$AAPL first", score: 10, subreddit: "wallstreetbets" }]));
+    mockFetchOk(makeRedditListing([{ title: "$AAPL second", score: 10, subreddit: "stocks" }]));
+    mockFetchOk(makeRedditListing([]));
+    mockFetchOk(makeRedditListing([]));
+
+    const { scanWatchlist } = await import("../client.js");
+    const result = await scanWatchlist(["AAPL"]);
+
+    expect(result.tickers[0].mentions).toBe(2);
+    expect(result.tickers[0].topPost).toEqual({ title: "$AAPL first", score: 10, subreddit: "wallstreetbets" });
+  });
+});
+
 // ── createRedditModule ───────────────────────────────────────────────────────
 
 describe("createRedditModule", () => {
-  it("returns module with 3 tools and no required env vars", async () => {
+  it("returns module with 4 tools and no required env vars", async () => {
     vi.resetModules();
     const { createRedditModule } = await import("../index.js");
     const mod = createRedditModule();
     expect(mod.name).toBe("reddit");
     expect(mod.requiredEnvVars).toEqual([]);
-    expect(mod.tools).toHaveLength(3);
-    expect(mod.tools.map((t) => t.name)).toEqual(["reddit_trending", "reddit_mentions", "reddit_sentiment"]);
+    expect(mod.tools).toHaveLength(4);
+    expect(mod.tools.map((t) => t.name)).toEqual([
+      "reddit_trending",
+      "reddit_mentions",
+      "reddit_sentiment",
+      "reddit_watchlist_scan",
+    ]);
   });
 
   it("all tools have readOnly: true", async () => {

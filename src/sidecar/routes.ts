@@ -151,6 +151,17 @@ export const SIDECAR_ROUTES: SidecarRoute[] = [
   { method: "GET", path: "/reddit/trending", tool: "reddit_trending" },
   { method: "GET", path: "/reddit/mentions", tool: "reddit_mentions" },
   { method: "GET", path: "/reddit/sentiment", tool: "reddit_sentiment" },
+  {
+    method: "GET",
+    path: "/reddit/watchlist-scan",
+    tool: "reddit_watchlist_scan",
+    transformParams: (p) => ({
+      // Default to [] (not undefined) so a missing param fails Zod's .min(1)
+      // with a clear "at least 1" message rather than a generic type error.
+      symbols: p.get("symbols")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [],
+      period: p.get("period") || undefined,
+    }),
+  },
 
   // Workspace
   { method: "GET", path: "/workspace/profile", tool: "workspace_get_profile" },

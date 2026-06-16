@@ -35,7 +35,7 @@ export const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "fred", envVar: "FRED_API_KEY", toolCount: 4, factory: (config) => config.env.FRED_API_KEY ? createFredModule(config.env.FRED_API_KEY) : null },
   { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
   { name: "frankfurter", envVar: null, toolCount: 5, factory: () => createFrankfurterModule() },
-  { name: "reddit", envVar: null, toolCount: 3, factory: () => createRedditModule() },
+  { name: "reddit", envVar: null, toolCount: 4, factory: () => createRedditModule() },
   { name: "workspace", envVar: null, toolCount: 7, factory: (config) => config.enableWorkspace ? createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp"), config.defaultExchange) : null },
 ];
 

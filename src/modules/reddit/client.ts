@@ -20,6 +20,8 @@ export const DEFAULT_SUBREDDITS = [
 export const trendingCache = new TtlCache<TrendingTicker[]>(5 * 60 * 1000);
 // 2-minute TTL for mention/sentiment queries
 export const mentionCache = new TtlCache<unknown>(2 * 60 * 1000);
+// 5-minute TTL for watchlist scans (matches trendingCache freshness)
+export const watchlistCache = new TtlCache<WatchlistScanResult>(5 * 60 * 1000);
 
 // ── Stop words ───────────────────────────────────────────────────────────────
 
@@ -189,6 +191,21 @@ export interface TickerSentimentResult {
   samplePosts: Array<RedditPost & { sentimentScore: number }>;
 }
 
+export interface WatchlistTickerResult {
+  symbol: string;
+  mentions: number;
+  sentiment: { bullish: number; bearish: number; neutral: number; score: number };
+  topPost: { title: string; score: number; subreddit: string } | null;
+  hot: boolean;
+}
+
+export interface WatchlistScanResult {
+  scanned: number;
+  subredditsChecked: string[];
+  requestsMade: number;
+  tickers: WatchlistTickerResult[];
+}
+
 // ── Reddit API client ────────────────────────────────────────────────────────
 
 export async function fetchSubredditPosts(
@@ -290,6 +307,122 @@ export async function getTickerMentions(
   };
 
   mentionCache.set(cacheKey, result);
+  return result;
+}
+
+interface WatchlistAccumulator {
+  mentions: number;
+  bullish: number;
+  bearish: number;
+  neutral: number;
+  scoreSum: number;
+  topPost: { title: string; score: number; subreddit: string } | null;
+}
+
+// Batch size keeps each OR query well under Reddit's ~2000-char search URL cap:
+// worst case with the schema's 10-char symbol limit is
+// 20*10 + 19*len(" OR ") = 200 + 76 = 276 chars. If either constant or the
+// schema's symbol cap changes, re-check this stays under the budget.
+const WATCHLIST_BATCH_SIZE = 20;
+const HOT_THRESHOLD = 5;
+
+/**
+ * Scan multiple watchlist tickers for Reddit activity in a single pass.
+ *
+ * Tickers are combined into one OR query per subreddit (batched in groups of
+ * {@link WATCHLIST_BATCH_SIZE} to stay under Reddit's URL length limit), so a
+ * scan costs `ceil(symbols/20) × DEFAULT_SUBREDDITS.length` requests instead of
+ * one request per ticker. Subreddits within a batch are fetched in parallel.
+ *
+ * Attribution intersects {@link extractTickers} output with the input watchlist,
+ * so only requested symbols are counted. Sentiment is scored per-post (not
+ * per-ticker): a multi-ticker post applies the same score to each matched symbol.
+ * Symbols that overlap STOP_WORDS or fall outside the 2–5 char extractor range
+ * may report zero mentions even when discussed.
+ */
+export async function scanWatchlist(
+  symbols: string[],
+  period = "day",
+): Promise<WatchlistScanResult> {
+  const upperSymbols = symbols.map((s) => s.toUpperCase());
+  const cacheKey = `watchlist:${[...upperSymbols].sort().join(",")}:${period}`;
+  const cached = watchlistCache.get(cacheKey);
+  if (cached) return cached;
+
+  // Pre-initialise every input symbol so zero-mention tickers still appear.
+  const tickerData = new Map<string, WatchlistAccumulator>();
+  for (const sym of upperSymbols) {
+    tickerData.set(sym, { mentions: 0, bullish: 0, bearish: 0, neutral: 0, scoreSum: 0, topPost: null });
+  }
+
+  // Batch symbols to keep each OR query under the URL length limit.
+  const batches: string[][] = [];
+  for (let i = 0; i < upperSymbols.length; i += WATCHLIST_BATCH_SIZE) {
+    batches.push(upperSymbols.slice(i, i + WATCHLIST_BATCH_SIZE));
+  }
+
+  let requestsMade = 0;
+
+  for (const batch of batches) {
+    const orQuery = batch.join(" OR ");
+    // Fetch all subreddits for this batch in parallel.
+    const settled = await Promise.allSettled(
+      DEFAULT_SUBREDDITS.map((sub) => fetchSubredditPosts(sub, orQuery, period, 100)),
+    );
+
+    for (const outcome of settled) {
+      if (outcome.status !== "fulfilled") continue;
+      requestsMade += 1;
+      const posts = outcome.value;
+
+      for (const post of posts) {
+        const text = `${post.title} ${post.selftext}`;
+        const matched = extractTickers(text).filter((t) => tickerData.has(t));
+        if (matched.length === 0) continue;
+        const sentScore = scoreSentiment(text);
+
+        for (const sym of matched) {
+          const acc = tickerData.get(sym)!;
+          acc.mentions += 1;
+          if (sentScore > 0) acc.bullish += 1;
+          else if (sentScore < 0) acc.bearish += 1;
+          else acc.neutral += 1;
+          acc.scoreSum += sentScore;
+          if (!acc.topPost || post.score > acc.topPost.score) {
+            acc.topPost = { title: post.title, score: post.score, subreddit: post.subreddit };
+          }
+        }
+      }
+    }
+  }
+
+  const tickers: WatchlistTickerResult[] = upperSymbols
+    .map((sym) => {
+      const acc = tickerData.get(sym)!;
+      const total = acc.bullish + acc.bearish + acc.neutral;
+      return {
+        symbol: sym,
+        mentions: acc.mentions,
+        sentiment: {
+          bullish: acc.bullish,
+          bearish: acc.bearish,
+          neutral: acc.neutral,
+          score: total > 0 ? Math.round((acc.scoreSum / total) * 100) / 100 : 0,
+        },
+        topPost: acc.topPost,
+        hot: acc.mentions >= HOT_THRESHOLD,
+      };
+    })
+    .sort((a, b) => b.mentions - a.mentions);
+
+  const result: WatchlistScanResult = {
+    scanned: upperSymbols.length,
+    subredditsChecked: [...DEFAULT_SUBREDDITS],
+    requestsMade,
+    tickers,
+  };
+
+  watchlistCache.set(cacheKey, result);
   return result;
 }
 
