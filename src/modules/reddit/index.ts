@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ModuleDefinition } from "../../shared/types.js";
 import { successResult } from "../../shared/types.js";
-import { getTrendingTickers, getTickerMentions, getTickerSentiment, DEFAULT_SUBREDDITS } from "./client.js";
+import { getTrendingTickers, getTickerMentions, getTickerSentiment, scanWatchlist, DEFAULT_SUBREDDITS } from "./client.js";
 import { withMetadata } from "../../shared/utils.js";
 
 const trendingTool = {
@@ -65,11 +65,41 @@ const sentimentTool = {
   }, { source: "reddit", dataDelay: "real-time" }),
 };
 
+const watchlistScanTool = {
+  name: "reddit_watchlist_scan",
+  description:
+    "Batch Reddit sentiment scan for a list of stock tickers in a single pass. " +
+    "Combines the tickers into one OR query per subreddit (r/wallstreetbets, r/stocks, " +
+    "r/investing, r/options), costing ceil(symbols/20)×4 requests instead of one call per " +
+    "ticker — prefer this over calling reddit_mentions or reddit_sentiment for each symbol " +
+    "in a watchlist. Returns, per ticker: mention count, bullish/bearish/neutral sentiment " +
+    "breakdown with an average score, the top post by upvotes, and a 'hot' flag (true when a " +
+    "ticker has 5 or more mentions in the period). " +
+    "Limitations: keyword-based scoring, not NLP (sarcasm/context may be missed); sentiment is " +
+    "scored per-post, not per-ticker, so a multi-ticker post applies the same score to each " +
+    "matched symbol; symbols that collide with common English words/finance acronyms " +
+    "(e.g. REAL, OPEN, HOLD, SELL) or fall outside 2–5 uppercase characters may report zero " +
+    "mentions even when discussed; and because each subreddit's combined query shares one " +
+    "100-post cap, heavily-discussed tickers in a large batch can crowd out quieter ones, so " +
+    "counts may run lower than a single-ticker reddit_mentions query. Results cached for 5 minutes.",
+  inputSchema: z.object({
+    symbols: z.array(z.string().max(10)).min(1).max(50)
+      .describe("Watchlist stock tickers to scan, e.g. ['AAPL', 'NVDA', 'TSLA'] (1–50 symbols)"),
+    period: z.enum(["hour", "day", "week"]).default("day")
+      .describe("Time window to search Reddit posts (default: day)"),
+  }),
+  readOnly: true,
+  handler: withMetadata(async (args: { symbols: string[]; period?: string }) => {
+    const result = await scanWatchlist(args.symbols, args.period ?? "day");
+    return successResult(JSON.stringify(result, null, 2));
+  }, { source: "reddit", dataDelay: "real-time" }),
+};
+
 export function createRedditModule(): ModuleDefinition {
   return {
     name: "reddit",
     description: "Reddit sentiment — trending tickers, mention tracking, and sentiment analysis from popular investing subreddits",
     requiredEnvVars: [],
-    tools: [trendingTool, mentionsTool, sentimentTool],
+    tools: [trendingTool, mentionsTool, sentimentTool, watchlistScanTool],
   };
 }

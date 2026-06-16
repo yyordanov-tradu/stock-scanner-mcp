@@ -6,7 +6,7 @@
 
 A modular MCP server for Claude Code and Claude Desktop that provides real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and optionally save your own watchlists and thesis notes from one server.
 
-**64 tools** across **13 modules** — 9 modules work with zero API keys, including an optional stateful Market Workspace.
+**65 tools** across **13 modules** — 9 modules work with zero API keys, including an optional stateful Market Workspace.
 
 ## Quick Start
 
@@ -97,7 +97,7 @@ Once answered, it saves your profile and creates a `core` watchlist:
 
 You can also skip the skill and ask Claude directly: *"Set up my workspace — I'm a swing trader, create a core watchlist with MARA, HOOD, BTC, daily reviews."*
 
-**That's it.** You now have 64 tools, 19 skills, and a personalized workspace. Try `/workspace-morning-brief` for your first tailored market scan.
+**That's it.** You now have 65 tools, 19 skills, and a personalized workspace. Try `/workspace-morning-brief` for your first tailored market scan.
 
 ## What You Can Do
 
@@ -228,7 +228,7 @@ For the full list of workspace tools, see the [tool reference](#workspace--perso
 | options-cboe | 1 | None | CBOE put/call ratio sentiment indicator |
 | sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
 | frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
-| reddit | 3 | None | Reddit trending tickers, mention tracking, and sentiment from r/wallstreetbets, r/stocks, r/investing, r/options |
+| reddit | 4 | None | Reddit trending tickers, mention tracking, sentiment, and batch watchlist scan from r/wallstreetbets, r/stocks, r/investing, r/options |
 | workspace | 7 | None | Optional stateful profile, watchlists, and thesis tracking for personalized workflows (`--enable-workspace`) |
 | finnhub | 9 | `FINNHUB_API_KEY` | Quotes, news, earnings, analyst ratings, short interest |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
@@ -238,7 +238,7 @@ Modules auto-enable when their API key is set. No-key modules are always enabled
 
 For a complete list of every tool with descriptions, see the [Full Tool Reference](#full-tool-reference-64-tools) below.
 
-## Full Tool Reference (64 tools)
+## Full Tool Reference (65 tools)
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -323,6 +323,7 @@ For a complete list of every tool with descriptions, see the [Full Tool Referenc
 | `reddit_trending` | Trending stock tickers from Reddit by mention frequency across r/wallstreetbets, r/stocks, r/investing, r/options |
 | `reddit_mentions` | Mention count and top posts for a specific ticker across Reddit investing subreddits |
 | `reddit_sentiment` | Keyword-based sentiment analysis (bullish/bearish/neutral) for a ticker from Reddit discussions |
+| `reddit_watchlist_scan` | Batch Reddit scan for a list of tickers in one pass (combined OR query, ceil(N/20)×4 requests) — per-ticker mentions, sentiment, top post, and a hot flag (≥5 mentions) |
 
 ### Workspace — Personalized Context (optional, no API key)
 
@@ -416,7 +417,7 @@ curl http://localhost:3200/openapi.json
 
 See [Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for endpoint details.
 
-**64 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
+**65 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
 
 ## Rate Limits
 
@@ -469,7 +470,7 @@ src/
 │   ├── fred/             # 4 tools — economic calendar, indicators, historical data
 │   ├── sentiment/        # 2 tools — Fear & Greed indexes (market + crypto)
 │   ├── frankfurter/      # 5 tools — forex exchange rates (ECB, 31 currencies)
-│   └── reddit/           # 3 tools — trending tickers, mentions, sentiment from Reddit
+│   └── reddit/           # 4 tools — trending tickers, mentions, sentiment, watchlist scan from Reddit
 ├── sidecar/
 │   ├── index.ts          # HTTP sidecar entry point (port 3200)
 │   ├── routes.ts         # Declarative URL routing table
