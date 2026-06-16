@@ -3,7 +3,7 @@
   "info": {
     "title": "Stock Scanner Sidecar API",
     "description": "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    "version": "1.16.4",
+    "version": "1.17.0",
     "contact": {
       "name": "Yordan Yordanov",
       "url": "https://github.com/yyordanov-tradu/stock-scanner-mcp"
