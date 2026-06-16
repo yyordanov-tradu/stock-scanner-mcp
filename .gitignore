@@ -7,3 +7,4 @@ dist/
 .claude/scheduled_tasks.lock
 .idea/
 wiki/
+graphify-out/
