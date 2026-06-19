@@ -1,11 +1,12 @@
 {
   "mcpServers": {
     "stock-scanner": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "stock-scanner-mcp"],
       "env": {
         "FINNHUB_API_KEY": "${FINNHUB_API_KEY}",
-        "ALPHA_VANTAGE_API_KEY": "${ALPHA_VANTAGE_API_KEY}"
+        "ALPHA_VANTAGE_API_KEY": "${ALPHA_VANTAGE_API_KEY}",
+        "FRED_API_KEY": "${FRED_API_KEY}"
       }
     }
   }
