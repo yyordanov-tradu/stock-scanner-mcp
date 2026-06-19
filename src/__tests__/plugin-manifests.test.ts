@@ -60,6 +60,7 @@ describe("plugin manifests", () => {
     const marketplace = readJson(".claude-plugin/marketplace.json") as MarketplaceJson;
     expect(plugin.name).toBe("stock-scanner");
     expect(marketplace.name).toBe("tradu-marketplace");
+    expect(marketplace.plugins.length).toBeGreaterThan(0);
     expect(marketplace.plugins[0].name).toBe("stock-scanner");
     expect(marketplace.plugins[0].name).toBe(plugin.name);
   });
@@ -73,6 +74,7 @@ describe("plugin manifests", () => {
 
   it("marketplace.json plugin source is exactly './'", () => {
     const marketplace = readJson(".claude-plugin/marketplace.json") as MarketplaceJson;
+    expect(marketplace.plugins.length).toBeGreaterThan(0);
     expect(marketplace.plugins[0].source).toBe("./");
   });
 
