@@ -53,6 +53,8 @@ stock-scanner-mcp/
 │       ├── types.ts          # Shared types + result builders
 │       ├── resolver.ts       # Ticker resolution (AAPL → NASDAQ:AAPL)
 │       └── utils.ts          # withMetadata() wrapper
+├── .claude-plugin/           # Claude Code plugin manifests (plugin.json, marketplace.json)
+├── .mcp.json                 # MCP server launch config for the plugin (npx)
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
