@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "tradu-marketplace",
+  "owner": {
+    "name": "Yordan Yordanov"
+  },
+  "plugins": [
+    {
+      "name": "stock-scanner",
+      "source": "./",
+      "description": "Stock and crypto market data for Claude Code -- technical indicators, news, filings, fundamentals, and crypto metrics from free APIs",
+      "category": "data"
+    }
+  ]
+}

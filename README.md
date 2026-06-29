@@ -52,6 +52,13 @@ This gives you **46 tools** immediately with no API keys. API keys are optional 
 
 Restart Claude Desktop after saving. Claude Code picks up the config automatically.
 
+> **Claude Code shortcut — install as a plugin instead of Step 1.** If you use Claude Code, you can skip the manual config above and install the server with two commands:
+> ```
+> /plugin marketplace add yyordanov-tradu/stock-scanner-mcp
+> /plugin install stock-scanner@tradu-marketplace
+> ```
+> Then run `/mcp` — you should see the `stock-scanner` server listed as connected. The plugin launches the server via `npx -y stock-scanner-mcp`, so the first launch downloads the package once (then it is cached). Optional API keys (`FINNHUB_API_KEY`, `ALPHA_VANTAGE_API_KEY`, `FRED_API_KEY`) are passed through from your environment; modules without a key are skipped automatically. Steps 2 and 3 below still apply.
+
 ### Step 2 — Install the trading skills
 
 Run this command in your terminal:
