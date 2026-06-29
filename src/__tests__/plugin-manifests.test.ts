@@ -85,6 +85,10 @@ describe("plugin manifests", () => {
     expect(server.command).toBe("npx");
     expect(server.args).toContain("stock-scanner-mcp");
     expect(server.args).toContain("-y");
+    // Workspace must stay enabled so plugin users get the full tool set
+    // (workspace tools + /setup-market-workspace). Data dir defaults to
+    // ~/.stock-scanner-mcp, which is CWD-independent under npx.
+    expect(server.args).toContain("--enable-workspace");
     // Negative assertion: the rejected dist/-commit path must never come back.
     expect(server.args).not.toContain("${CLAUDE_PLUGIN_ROOT}/dist/index.js");
     expect(server.args.some((a) => a.includes("dist/index.js"))).toBe(false);
