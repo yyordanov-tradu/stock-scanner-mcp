@@ -497,13 +497,19 @@ Paste the `tradingview_scan` output snippet and a "Pass 1 (branch) verified" not
 Once the expert loop approved, CI is green, and Pass 1 is verified, merge the PR (squash or per repo convention) to `main`.
 
 ### Step 9.2 — Manual acceptance (Pass 2: main)
-Because `/plugin marketplace add` reads from the default branch (main), re-run the four steps from main to prove the merged state actually works:
+Because `/plugin marketplace add` reads from the default branch (main), re-run the steps from main to prove the merged state actually works.
+
+**Run Pass 2 from a directory OUTSIDE this repo** (e.g. `cd ~` or any empty folder). The repo's own `skills/` and `.mcp.json`, plus any skills previously copied into `~/.claude/skills/` by the `stock-scanner-install-skills` npm command, will shadow the plugin's bundled copies and make namespaced activation impossible to verify from inside the repo. If `~/.claude/skills/` holds old unprefixed copies (analyze-stock, compare, etc.), move them aside first so the `stock-scanner:` namespace is unambiguous.
+
 1. `/plugin marketplace add yyordanov-tradu/stock-scanner-mcp` (no `@branch`)
 2. `/plugin install stock-scanner@tradu-marketplace`
 3. `/mcp` — confirm `stock-scanner` **connected**
 4. Call `tradingview_scan` — confirm non-error JSON
+5. **Skills namespace check** — run `/reload-plugins`, then confirm the bundled skills surface under the plugin namespace: `stock-scanner:analyze-stock`, `stock-scanner:compare`, `stock-scanner:swing-setup`, etc. appear in the skill list, and the command `/stock-scanner:scan` is available. Invoke one, e.g. `/stock-scanner:analyze-stock AAPL`, and confirm it runs. This proves plugin skill/command auto-discovery (the `skills/` and `commands/` dirs) works for a real user, not just the local-repo developer.
 
-Expected: all four pass from main. This closes the Definition of Done. If a user installed an older marketplace entry, they may need `/plugin marketplace update` to pick up main — note this if Pass 2 shows stale data.
+Expected: all five pass from main. This closes the Definition of Done. If a user installed an older marketplace entry, they may need `/plugin marketplace update` to pick up main — note this if Pass 2 shows stale data.
+
+> Note on skills distribution: bundled skills need NO separate install via the plugin path — `/plugin install` auto-discovers `skills/` and `commands/` and registers them as `stock-scanner:<name>`. The npm `stock-scanner-install-skills` bin is the separate, pre-plugin path that copies skills into `~/.claude/skills/` (unprefixed) for users who only add the MCP server. The two paths can coexist and will collide on names; that is expected, not a bug.
 
 ---
 
@@ -517,6 +523,7 @@ Expected: all four pass from main. This closes the Definition of Done. If a user
 - [ ] Release process has the version-lockstep note.
 - [ ] Expert review loop: zero critical + zero major.
 - [ ] Pass 1 (branch) and Pass 2 (main) manual acceptance both verified, with `tradingview_scan` output captured.
+- [ ] Pass 2 skills-namespace check: bundled skills appear as `stock-scanner:<name>` and `/stock-scanner:scan` works, verified from OUTSIDE the repo with old `~/.claude/skills/` copies cleared.
 
 ---
 
