@@ -4,6 +4,8 @@ Ready-made trading workflows that orchestrate [stock-scanner-mcp](https://www.np
 
 ## Quick Start
 
+> **Installed the Claude Code plugin?** You already have these skills — the plugin bundles them and loads them under the `stock-scanner:` namespace (e.g. `/stock-scanner:morning-briefing`). Skip the installer below; it is only for the manual MCP-server setup.
+
 **Prerequisites:** stock-scanner-mcp configured as an MCP server in Claude Code.
 
 ```bash

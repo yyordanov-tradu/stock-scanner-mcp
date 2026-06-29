@@ -52,14 +52,18 @@ This gives you **46 tools** immediately with no API keys. API keys are optional 
 
 Restart Claude Desktop after saving. Claude Code picks up the config automatically.
 
-> **Claude Code shortcut — install as a plugin instead of Step 1.** If you use Claude Code, you can skip the manual config above and install the server with two commands:
+> **Claude Code shortcut — install as a plugin instead of Steps 1 and 2.** If you use Claude Code, skip the manual config above and install everything with two commands:
 > ```
 > /plugin marketplace add yyordanov-tradu/stock-scanner-mcp
 > /plugin install stock-scanner@tradu-marketplace
 > ```
-> Then run `/mcp` — you should see the `stock-scanner` server listed as connected. The plugin launches the server via `npx -y stock-scanner-mcp`, so the first launch downloads the package once (then it is cached). Optional API keys (`FINNHUB_API_KEY`, `ALPHA_VANTAGE_API_KEY`, `FRED_API_KEY`) are passed through from your environment; modules without a key are skipped automatically. Steps 2 and 3 below still apply.
+> Run `/reload-plugins`, then `/mcp` — you should see the `stock-scanner` server listed as connected. The first launch runs `npx -y stock-scanner-mcp`, which downloads the package once (then it is cached). The plugin enables the workspace by default (data is stored in `~/.stock-scanner-mcp`) and passes the optional API keys (`FINNHUB_API_KEY`, `ALPHA_VANTAGE_API_KEY`, `FRED_API_KEY`) through from your environment; modules without a key are skipped automatically.
+>
+> **The plugin already bundles the skills — do NOT run Step 2.** All 19 skills ship with the plugin and load under the `stock-scanner:` namespace, e.g. `/stock-scanner:analyze-stock AAPL`, `/stock-scanner:morning-briefing`, `/stock-scanner:setup-market-workspace`. Running the Step 2 installer as well copies a second, unprefixed set into `~/.claude/skills/`, and the two collide — Step 2 is only for the manual (non-plugin) install. After installing, go straight to Step 3, using the namespaced command: `/stock-scanner:setup-market-workspace`.
 
 ### Step 2 — Install the trading skills
+
+> Skip this step if you installed via the plugin above — the plugin already bundles these skills (as `stock-scanner:<name>`). This step is only for the manual config in Step 1.
 
 Run this command in your terminal:
 
