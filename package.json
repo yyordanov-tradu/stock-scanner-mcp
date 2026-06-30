@@ -87,7 +87,7 @@
     "@emnapi/core": "^1.9.2",
     "@emnapi/runtime": "^1.9.2",
     "@emnapi/wasi-threads": "^2.0.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.0.1",
     "@types/proper-lockfile": "^4.1.4",
     "tsup": "^8.0.0",
     "tsx": "^4.21.0",
