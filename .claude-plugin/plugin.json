@@ -1,7 +1,7 @@
 {
   "name": "stock-scanner",
   "description": "Stock and crypto market data for Claude Code -- technical indicators, news, filings, fundamentals, and crypto metrics from free APIs",
-  "version": "0.1.0",
+  "version": "1.17.1",
   "author": {
     "name": "Yordan Yordanov"
   },
