@@ -48,6 +48,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      # Block a PR before merge if it introduces a critical-severity advisory
+      # in a shipped (production) dependency. Lower severities are caught in
+      # real time by Dependabot alerts, so we don't fail PRs on upstream noise.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Check for hardcoded secrets
         run: |
           if grep -rn --include="*.ts" -E "(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][A-Za-z0-9]{16,}" src/ | grep -v __tests__/ | grep -v ".example"; then
