@@ -32,7 +32,7 @@ jobs:
       id-token: write         # short-lived auth for the action
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
