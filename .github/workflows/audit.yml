@@ -22,4 +22,6 @@ jobs:
       - run: npm ci
 
       - name: Audit dependencies
-        run: npm audit --omit=dev
+        # Match the PR gate: fail only on critical advisories in production
+        # deps. Lower severities are surfaced by Dependabot alerts instead.
+        run: npm audit --omit=dev --audit-level=critical
