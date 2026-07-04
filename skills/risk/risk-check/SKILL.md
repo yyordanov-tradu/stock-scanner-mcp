@@ -34,6 +34,7 @@ Normalize ticker to uppercase. Set `ticker` variable.
 | `options_implied_move`        | symbol=ticker                               | REQUIRED    |
 | `finnhub_short_interest`      | symbol=ticker                               | REQUIRED    |
 | `finnhub_earnings_calendar`   | from=today, to=today+14, symbol=ticker      | REQUIRED    |
+| `market_breadth`              | universe=major_us                           | ENRICHMENT  |
 | `tradingview_sector_performance` |                                           | ENRICHMENT  |
 | `sentiment_fear_greed`        |                                             | ENRICHMENT  |
 | `options_max_pain`            | symbol=ticker                               | ENRICHMENT  |
@@ -71,6 +72,8 @@ After scoring, derive key levels:
 - Max pain: options max pain strike (if available)
 - Suggested stop: below nearest support level, or 2-3% below entry for a standard risk tolerance
 
+Use market breadth as qualitative context, not as a ninth flag. Weak breadth, low % above SMA50/SMA200, or expanding new lows should make sizing commentary more conservative when the flag score is already MODERATE or worse.
+
 ## Output Format
 
 ### [TICKER] -- Pre-Trade Risk Assessment
@@ -97,7 +100,7 @@ PASS = flag NOT triggered (favorable). FAIL = flag triggered (risk present).
 **Risk Score: X / 8 flags -- [LEVEL]**
 
 **Market Context**
-VIX level and trend, Fear & Greed index value and label, broad market direction.
+VIX level and trend, Fear & Greed index value and label, broad market direction, and breadth confirmation if available.
 
 **Sector Context**
 Stock's sector, sector rank today, top and bottom 3 sectors.
@@ -132,3 +135,5 @@ Data from TradingView and Yahoo Finance is 15-minute delayed. CBOE and sentiment
   see VIX=23.5 (PASS), not just PASS.
 - DO NOT give position sizing advice without referencing the flag count. Every
   sizing recommendation MUST tie back to the risk score.
+- DO NOT add market breadth as a ninth scored flag. Use it to qualify the
+  market context and sizing language only.

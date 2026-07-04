@@ -20,15 +20,17 @@ Parse the arguments:
 1. **Determine asset type:** If the symbol looks like a crypto ticker (BTC, ETH, SOL, DOGE, ADA, XRP, DOT, AVAX, MATIC, LINK, UNI, ATOM), use crypto tools. Otherwise use stock tools.
 
 2. **For stocks**, run these tools in parallel:
-   - `tradingview_scan_indicators` -- technicals for the symbol + timeframe
+   - `tradingview_technicals` -- technicals for the symbol + timeframe
+   - `tradingview_quote` -- delayed quote for current price context
    - `finnhub_company_news` -- recent news (if available)
-   - `edgar_recent_filings` -- recent SEC filings (if available)
-   - `alpha_vantage_quote` -- current price (if available)
-   - `alpha_vantage_company_overview` -- fundamentals (if available)
+   - `edgar_company_filings` -- recent SEC filings (if available)
+   - `alphavantage_quote` -- current price (if available)
+   - `alphavantage_overview` -- fundamentals (if available)
 
 3. **For crypto**, run these tools in parallel:
-   - `crypto_scan_indicators` -- technicals for the pair + timeframe
-   - `coingecko_coin_data` -- price, market cap, volume
+   - `crypto_technicals` -- technicals for the pair + timeframe
+   - `crypto_quote` -- pair quote and 24h change
+   - `coingecko_coin` -- price, market cap, volume
 
 4. **Synthesize** the results into a concise market summary:
    - Current price and change

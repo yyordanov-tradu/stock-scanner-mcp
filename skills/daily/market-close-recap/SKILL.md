@@ -7,9 +7,9 @@ description: Produce an end-of-day market recap covering index performance, sect
 
 ## Overview
 
-Desk analyst closing the book. Collect final index prints, sector scores, top movers, volume anomalies, and late-day headlines in one parallel wave, then synthesize into a concise session narrative.
+Desk analyst closing the book. Collect final index prints, market breadth, sector scores, top movers, volume anomalies, and late-day headlines in one parallel wave, then synthesize into a concise session narrative.
 
-Announce at start: "Running market close recap -- collecting final prints, sectors, movers, and headlines."
+Announce at start: "Running market close recap -- collecting final prints, breadth, sectors, movers, and headlines."
 
 ## Data Collection
 
@@ -18,6 +18,7 @@ Announce at start: "Running market close recap -- collecting final prints, secto
 | Tool | Parameters | Priority |
 |------|-----------|----------|
 | `tradingview_market_indices` | (defaults) | REQUIRED |
+| `market_breadth` | universe=major_us | REQUIRED |
 | `sentiment_fear_greed` | (defaults) | REQUIRED |
 | `tradingview_sector_performance` | (defaults) | REQUIRED |
 | `tradingview_top_gainers` | limit=10 | REQUIRED |
@@ -36,8 +37,9 @@ DO NOT reproduce raw tool output. Synthesize a session narrative by answering:
 1. **Session driver** -- What single theme or catalyst best explains today's price action? Name it explicitly.
 2. **Sector leaders and laggards** -- Identify the top 2 and bottom 2 sectors. Explain WHY they led or lagged using news, earnings, or macro context.
 3. **Index divergence** -- Did the major indices move in lockstep or diverge? If NASDAQ outperformed Dow (or vice versa), note the growth-vs-value implication.
-4. **Unusual volume** -- Flag names with abnormal volume that are NOT already in the gainers/losers lists. These are tomorrow's watchlist candidates.
-5. **Sentiment alignment** -- Does the Fear & Greed reading match the day's action, or is there a disconnect worth noting?
+4. **Breadth confirmation** -- Did advance/decline ratio, % above SMA50/SMA200, and new highs/lows confirm the index move or reveal narrow leadership?
+5. **Unusual volume** -- Flag names with abnormal volume that are NOT already in the gainers/losers lists. These are tomorrow's watchlist candidates.
+6. **Sentiment alignment** -- Does the Fear & Greed reading match the day's action and breadth, or is there a disconnect worth noting?
 
 ## Output Format
 
@@ -47,6 +49,10 @@ DO NOT reproduce raw tool output. Synthesize a session narrative by answering:
 |-------|-------|--------|----------|
 
 Include S&P 500, NASDAQ Composite, Dow Jones, VIX. Add a one-sentence narrative below the table.
+
+### Market Breadth
+
+Report advance/decline ratio, % above SMA50, % above SMA200, new highs, and new lows. Add a one-sentence breadth verdict: CONFIRMED / NARROW / DETERIORATING.
 
 ### Sector Scorecard
 
@@ -85,4 +91,5 @@ Data from TradingView and Yahoo Finance is 15-minute delayed. CBOE and sentiment
 - Restating every gainer and loser without identifying the common thread that connects them.
 - Presenting sector data without explaining what drove the leaders and laggards.
 - Omitting the VIX context -- a rising VIX on a green day is a critical signal.
+- Calling a green index session risk-on when breadth is weak or new lows are expanding.
 - Listing headlines without connecting them to observed price action.

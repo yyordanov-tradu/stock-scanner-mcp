@@ -24,13 +24,14 @@ Based ONLY on the symbols found in the user's workspace, fetch relevant data usi
 - **Crypto Exposure Check:** If the watchlist contains crypto-exposed equities (e.g., MARA, CIFR, COIN) or Bitcoin, you MUST fetch the current price and 24h change of BTC (using `tradingview_quote` for `BINANCE:BTCUSDT`). Evaluate the correlation and note if the stocks are tracking or diverging from the BTC move.
 - **Event Risk Check:** For active equity names (e.g., HOOD, SOFI), check for upcoming earnings today using `finnhub_earnings_calendar` and recent news using `finnhub_company_news`.
 - **Risk Tone Check:** If the watchlist contains Gold or Silver (or proxies like GLD/SLV), fetch their current prices. Note any sharp moves that might change the overall market risk tone.
-- **Market Pulse:** Fetch a basic S&P 500 / VIX quote (`tradingview_quote` for `SPY` and `VIX`) to establish the baseline market direction.
+- **Market Pulse:** Fetch a basic S&P 500 / VIX quote (`tradingview_quote` for `SPY` and `VIX`) plus `market_breadth` with universe=major_us to establish whether the baseline market direction is broad or narrow.
 
 ### STEP 3: SYNTHESIZE THE BRIEF
 Do NOT give a generic, broad market recap. Structure your response to answer the following questions specifically about the user's watchlist:
 
 #### 1. What Matters Today
 Highlight the overarching theme for the user's specific portfolio (e.g., "Crypto proxies are leading the market today," or "A defensive risk-off tone driven by a drop in Gold").
+Include whether broad-market breadth supports or contradicts that theme when it affects the user's saved names.
 
 #### 2. Active Names & Event Risk
 List the tickers from the watchlist that are moving significantly (pre-market or early trading) or have an immediate catalyst (Earnings, News, Options Flow).
