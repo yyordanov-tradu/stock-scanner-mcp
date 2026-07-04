@@ -3,7 +3,7 @@
 ## Status
 
 **Version:** 1.18.0 — Published on npm as `stock-scanner-mcp`
-**Modules:** 14 implemented (66 tools total)
+**Modules:** 15 implemented (69 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 
@@ -43,7 +43,8 @@ stock-scanner-mcp/
 │   │   ├── sentiment/        # Market & crypto Fear & Greed sentiment (no key)
 │   │   ├── frankfurter/      # Forex exchange rates — ECB daily rates (no key)
 │   │   ├── market-breadth/   # Market breadth indicators (no key)
-│   │   └── reddit/           # Reddit trending tickers & sentiment (no key)
+│   │   ├── reddit/           # Reddit trending tickers & sentiment (no key)
+│   │   └── unified-market/   # Smart provider routing (no key)
 │   ├── sidecar/
 │   │   ├── index.ts          # HTTP sidecar entry point (port 3200)
 │   │   ├── routes.ts         # Declarative URL routing table
@@ -110,6 +111,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | frankfurter | (none) | Always |
 | reddit | (none) | Always |
 | market-breadth | (none) | Always |
+| unified-market | (none) | Always |
 
 ## Development Standards
 

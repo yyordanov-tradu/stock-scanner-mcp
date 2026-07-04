@@ -3,7 +3,7 @@
   "info": {
     "title": "Stock Scanner Sidecar API",
     "description": "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    "version": "1.17.1",
+    "version": "1.18.0",
     "contact": {
       "name": "Yordan Yordanov",
       "url": "https://github.com/yyordanov-tradu/stock-scanner-mcp"
@@ -4596,6 +4596,189 @@
             "schema": {
               "type": "number",
               "description": "Proximity threshold to count new 52-week high or low (e.g. 0.5 means within 0.5% of high/low, default 0.5)."
+            }
+          }
+        ]
+      }
+    },
+    "/market/quote": {
+      "get": {
+        "summary": "Get current price, change, volume, and day high/low for a given symbol",
+        "description": "Get current price, change, volume, and day high/low for a given symbol. Automatically routes to the best available data provider (Finnhub, Alpha Vantage, or TradingView).",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker or crypto pair (e.g., 'AAPL', 'BTCUSDT', 'NYSE:IBM')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker or crypto pair (e.g., 'AAPL', 'BTCUSDT', 'NYSE:IBM')"
+            }
+          }
+        ]
+      }
+    },
+    "/market/profile": {
+      "get": {
+        "summary": "Get general company metrics, exchange, description, and capitalization",
+        "description": "Get general company metrics, exchange, description, and capitalization. Automatically routes to the best available data provider.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker (e.g., 'AAPL')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker (e.g., 'AAPL')"
+            }
+          }
+        ]
+      }
+    },
+    "/market/technicals": {
+      "get": {
+        "summary": "Get common technical indicators (RSI, moving averages, etc",
+        "description": "Get common technical indicators (RSI, moving averages, etc.) for a given symbol. Currently powered by TradingView.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "description": "Stock ticker or crypto pair (e.g., 'AAPL', 'BTCUSDT')",
+            "schema": {
+              "type": "string",
+              "description": "Stock ticker or crypto pair (e.g., 'AAPL', 'BTCUSDT')"
             }
           }
         ]
