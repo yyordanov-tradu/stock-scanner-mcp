@@ -175,6 +175,11 @@ export const SIDECAR_ROUTES: SidecarRoute[] = [
   // Market Breadth
   { method: "GET", path: "/market-breadth", tool: "market_breadth" },
 
+  // Unified Market
+  { method: "GET", path: "/market/quote", tool: "market_get_quote" },
+  { method: "GET", path: "/market/profile", tool: "market_get_profile" },
+  { method: "GET", path: "/market/technicals", tool: "market_get_technicals" },
+
   // CoinGecko
   { method: "GET", path: "/coingecko/coin", tool: "coingecko_coin" },
   { method: "GET", path: "/coingecko/trending", tool: "coingecko_trending" },

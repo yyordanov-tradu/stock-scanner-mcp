@@ -1,4 +1,5 @@
 import { ToolResult } from "./types.js";
+import { classifyError } from "./errors.js";
 
 export interface MetadataOptions {
   source: string;
@@ -25,23 +26,16 @@ export function withMetadata(
       
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      
-      // Attempt to extract error code
-      let code = "INTERNAL_ERROR";
-      if (message.includes("HTTP 429")) code = "RATE_LIMITED";
-      if (message.includes("HTTP 403")) code = "FORBIDDEN";
-      if (message.includes("fetch failed")) code = "FETCH_FAILED";
-      if (message.includes("not found")) code = "NOT_FOUND";
+      const classified = classifyError(err);
 
       return {
         content: [{
           type: "text",
           text: JSON.stringify({
             error: true,
-            code,
-            message,
-            retryable: code === "RATE_LIMITED" || code === "FETCH_FAILED",
+            code: classified.code,
+            message: classified.original.message,
+            retryable: classified.retryable,
           }, null, 2)
         }],
         isError: true,
