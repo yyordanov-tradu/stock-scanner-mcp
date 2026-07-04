@@ -19,7 +19,7 @@ describe("validate-tools script", () => {
     expect(output).toContain("TOOLS PASSED VALIDATION");
   });
 
-  it("checks all 13 modules", () => {
+  it("checks all 14 modules", () => {
     const result = execSync("npx tsx src/scripts/validate-tools.ts", {
       encoding: "utf-8",
       cwd: process.cwd(),
@@ -38,10 +38,11 @@ describe("validate-tools script", () => {
       "sentiment",
       "frankfurter",
       "reddit",
+      "market-breadth",
       "workspace",
     ];
 
-    expect(moduleNames).toHaveLength(13);
+    expect(moduleNames).toHaveLength(14);
     for (const name of moduleNames) {
       expect(result).toContain(name);
     }

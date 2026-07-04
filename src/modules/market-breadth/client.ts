@@ -1,7 +1,7 @@
 import { scanStocks } from "../tradingview/scanner.js";
 import { TtlCache } from "../../shared/cache.js";
 
-export type MarketBreadthUniverse = "major_us" | "both" | "NYSE" | "NASDAQ" | "AMEX";
+export type MarketBreadthUniverse = "major_us" | "NYSE" | "NASDAQ" | "AMEX";
 
 export interface MarketBreadthOptions {
   universe?: MarketBreadthUniverse;
@@ -46,7 +46,7 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 const cache = new TtlCache<MarketBreadthResult>(CACHE_TTL);
 
 export function aggregateMarketBreadth(
-  rows: Array<{ s: string; data: Record<string, any> }>,
+  rows: Array<{ symbol: string; data: Record<string, any> }>,
   options: Required<MarketBreadthOptions>
 ): Omit<MarketBreadthResult, "universe" | "exchanges" | "metadata"> {
   let advancers = 0;
@@ -170,8 +170,6 @@ export async function getMarketBreadth(options: MarketBreadthOptions = {}): Prom
   let exchanges: string[] = [];
   if (universe === "major_us") {
     exchanges = ["NYSE", "NASDAQ", "AMEX"];
-  } else if (universe === "both") {
-    exchanges = ["NYSE", "NASDAQ"];
   } else {
     exchanges = [universe];
   }

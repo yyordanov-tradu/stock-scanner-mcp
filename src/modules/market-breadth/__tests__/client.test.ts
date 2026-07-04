@@ -24,9 +24,9 @@ describe("market-breadth module", () => {
   describe("aggregateMarketBreadth", () => {
     it("aggregates advance/decline metrics correctly", () => {
       const rows = [
-        { s: "A", data: { close: 100, change: 1.5, SMA50: 90, SMA200: 80, price_52_week_high: 105, price_52_week_low: 95, type: "stock" } },
-        { s: "B", data: { close: 100, change: -2.0, SMA50: 110, SMA200: 120, price_52_week_high: 115, price_52_week_low: 98, type: "stock" } },
-        { s: "C", data: { close: 100, change: 0, SMA50: 100, SMA200: 100, price_52_week_high: 100, price_52_week_low: 100, type: "stock" } },
+        { symbol: "A", data: { close: 100, change: 1.5, SMA50: 90, SMA200: 80, price_52_week_high: 105, price_52_week_low: 95, type: "stock" } },
+        { symbol: "B", data: { close: 100, change: -2.0, SMA50: 110, SMA200: 120, price_52_week_high: 115, price_52_week_low: 98, type: "stock" } },
+        { symbol: "C", data: { close: 100, change: 0, SMA50: 100, SMA200: 100, price_52_week_high: 100, price_52_week_low: 100, type: "stock" } },
       ];
 
       const res = aggregateMarketBreadth(rows, {
@@ -58,7 +58,7 @@ describe("market-breadth module", () => {
   describe("getMarketBreadth", () => {
     it("performs scanStocks calls for major_us exchanges and merges results", async () => {
       (scanStocks as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { s: "NYSE:X", data: { close: 10, change: 0.1, SMA50: 9, SMA200: 8, price_52_week_high: 11, price_52_week_low: 9, type: "stock" } },
+        { symbol: "NYSE:X", data: { close: 10, change: 0.1, SMA50: 9, SMA200: 8, price_52_week_high: 11, price_52_week_low: 9, type: "stock" } },
       ]);
 
       const result = await getMarketBreadth({ universe: "major_us", limit: 1000 });
@@ -96,7 +96,7 @@ describe("market-breadth module", () => {
 
     it("performs single call for individual exchange", async () => {
       (scanStocks as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { s: "NASDAQ:AAPL", data: { close: 150, change: 2.0, SMA50: 140, SMA200: 130, price_52_week_high: 160, price_52_week_low: 120, type: "stock" } },
+        { symbol: "NASDAQ:AAPL", data: { close: 150, change: 2.0, SMA50: 140, SMA200: 130, price_52_week_high: 160, price_52_week_low: 120, type: "stock" } },
       ]);
 
       const result = await getMarketBreadth({ universe: "NASDAQ", limit: 500 });
