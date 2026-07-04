@@ -16,6 +16,7 @@
 - [ ] `npm run lint` passes
 - [ ] `npm test` passes
 - [ ] `npm run validate-tools` passes
+- [ ] `npm run validate-doc-tools` passes
 - [ ] `npm run build` succeeds
 - [ ] Tests added or updated for changed code
 

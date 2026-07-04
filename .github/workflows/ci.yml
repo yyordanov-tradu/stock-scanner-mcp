@@ -37,6 +37,9 @@ jobs:
       - name: Validate tools
         run: npm run validate-tools
 
+      - name: Validate docs tool references
+        run: npm run validate-doc-tools
+
       - name: Build
         run: npm run build
 
