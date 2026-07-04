@@ -72,9 +72,11 @@ export function aggregateMarketBreadth(
     const change = d.change != null ? Number(d.change) : null;
     
     // Support either case for 52-week High/Low
-    const high52 = d["High.52Week"] != null ? Number(d["High.52Week"]) : 
+    const high52 = d.price_52_week_high != null ? Number(d.price_52_week_high) : 
+                   d["High.52Week"] != null ? Number(d["High.52Week"]) : 
                    d["High.52week"] != null ? Number(d["High.52week"]) : null;
-    const low52 = d["Low.52Week"] != null ? Number(d["Low.52Week"]) : 
+    const low52 = d.price_52_week_low != null ? Number(d.price_52_week_low) : 
+                  d["Low.52Week"] != null ? Number(d["Low.52Week"]) : 
                   d["Low.52week"] != null ? Number(d["Low.52week"]) : null;
 
     const sma50 = d.SMA50 != null ? Number(d.SMA50) : null;
@@ -175,15 +177,16 @@ export async function getMarketBreadth(options: MarketBreadthOptions = {}): Prom
   }
 
   // Request minimal columns to optimize network and parser
-  const columns = ["close", "change", "SMA50", "SMA200", "High.52Week", "Low.52Week", "type", "volume"];
-  const filters = [
-    { left: "type", operation: "equal", right: "stock" },
-    { left: "volume", operation: "greater", right: 10000 },
-  ];
+  const columns = ["close", "change", "SMA50", "SMA200", "price_52_week_high", "price_52_week_low", "type", "volume"];
 
   let mergedRows: any[] = [];
   for (const ex of exchanges) {
     try {
+      const filters = [
+        { left: "type", operation: "equal", right: "stock" },
+        { left: "volume", operation: "greater", right: 10000 },
+        { left: "exchange", operation: "equal", right: ex },
+      ];
       const rows = await scanStocks({
         exchange: ex,
         columns,
