@@ -6,7 +6,7 @@
 
 A modular MCP server for Claude Code and Claude Desktop that provides real-time access to stock and crypto market data. Scan markets, check technicals, monitor insider trades, track earnings, analyze options flow, and optionally save your own watchlists and thesis notes from one server.
 
-**65 tools** across **13 modules** — 9 modules work with zero API keys, including an optional stateful Market Workspace.
+**66 tools** across **14 modules** — 10 modules work with zero API keys, including an optional stateful Market Workspace.
 
 ## Quick Start
 
@@ -108,7 +108,7 @@ Once answered, it saves your profile and creates a `core` watchlist:
 
 You can also skip the skill and ask Claude directly: *"Set up my workspace — I'm a swing trader, create a core watchlist with MARA, HOOD, BTC, daily reviews."*
 
-**That's it.** You now have 65 tools, 19 skills, and a personalized workspace. Try `/workspace-morning-brief` for your first tailored market scan.
+**That's it.** You now have 66 tools, 19 skills, and a personalized workspace. Try `/workspace-morning-brief` for your first tailored market scan.
 
 ## What You Can Do
 
@@ -240,6 +240,7 @@ For the full list of workspace tools, see the [tool reference](#workspace--perso
 | sentiment | 2 | None | CNN Fear & Greed Index, Crypto Fear & Greed Index |
 | frankfurter | 5 | None | Forex exchange rates — 31 currencies from ECB (daily reference rates) |
 | reddit | 4 | None | Reddit trending tickers, mention tracking, sentiment, and batch watchlist scan from r/wallstreetbets, r/stocks, r/investing, r/options |
+| market-breadth | 1 | None | Market breadth metrics (advance/decline ratio, SMA 50/200, 52-week highs/lows) |
 | workspace | 7 | None | Optional stateful profile, watchlists, and thesis tracking for personalized workflows (`--enable-workspace`) |
 | finnhub | 9 | `FINNHUB_API_KEY` | Quotes, news, earnings, analyst ratings, short interest |
 | alpha-vantage | 5 | `ALPHA_VANTAGE_API_KEY` | Quotes, daily prices, fundamentals, earnings, dividends |
@@ -247,9 +248,9 @@ For the full list of workspace tools, see the [tool reference](#workspace--perso
 
 Modules auto-enable when their API key is set. No-key modules are always enabled, except `workspace`, which requires `--enable-workspace`.
 
-For a complete list of every tool with descriptions, see the [Full Tool Reference](#full-tool-reference-64-tools) below.
+For a complete list of every tool with descriptions, see the [Full Tool Reference](#full-tool-reference-66-tools) below.
 
-## Full Tool Reference (65 tools)
+## Full Tool Reference (66 tools)
 
 ### TradingView — Stock Scanning (no API key)
 
@@ -335,6 +336,12 @@ For a complete list of every tool with descriptions, see the [Full Tool Referenc
 | `reddit_mentions` | Mention count and top posts for a specific ticker across Reddit investing subreddits |
 | `reddit_sentiment` | Keyword-based sentiment analysis (bullish/bearish/neutral) for a ticker from Reddit discussions |
 | `reddit_watchlist_scan` | Batch Reddit scan for a list of tickers in one pass (combined OR query, ceil(N/20)×4 requests) — per-ticker mentions, sentiment, top post, and a hot flag (≥5 mentions) |
+
+### Market Breadth — Breadth Indicators (no API key)
+
+| Tool | Description |
+|------|-------------|
+| `market_breadth` | Get market breadth statistics for US equities: advance/decline ratio, SMA 50/200 percent above, and 52-week new highs/lows |
 
 ### Workspace — Personalized Context (optional, no API key)
 
@@ -428,7 +435,7 @@ curl http://localhost:3200/openapi.json
 
 See [Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki/Sidecar-HTTP-API) for endpoint details.
 
-**65 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
+**66 tools** exposed as REST routes, including `/tradingview/quote`, `/options/chain`, `/workspace/profile`, and more.
 
 ## Rate Limits
 

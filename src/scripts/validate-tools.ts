@@ -26,6 +26,7 @@ import { createSentimentModule } from "../modules/sentiment/index.js";
 import { createFrankfurterModule } from "../modules/frankfurter/index.js";
 import { createRedditModule } from "../modules/reddit/index.js";
 import { createWorkspaceModule } from "../modules/workspace/index.js";
+import { createMarketBreadthModule } from "../modules/market-breadth/index.js";
 import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
 import * as os from "node:os";
 
@@ -47,6 +48,7 @@ const MODULE_PREFIX_MAP: Record<string, string[]> = {
   frankfurter: ["frankfurter_"],
   reddit: ["reddit_"],
   workspace: ["workspace_"],
+  "market-breadth": ["market_"],
 };
 
 const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
@@ -63,6 +65,7 @@ const DATA_SOURCE_KEYWORDS: Record<string, string[]> = {
   frankfurter: ["frankfurter", "ecb", "forex"],
   reddit: ["reddit", "wallstreetbets", "stocks"],
   workspace: ["local", "saved", "workspace", "profile"],
+  "market-breadth": ["tradingview", "15-min", "15 min", "delayed", "breadth"],
 };
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -229,6 +232,7 @@ function buildAllModules(): ModuleDefinition[] {
     createSentimentModule(),
     createFrankfurterModule(),
     createRedditModule(),
+    createMarketBreadthModule(),
     createWorkspaceModule(os.tmpdir()),
   ];
 }

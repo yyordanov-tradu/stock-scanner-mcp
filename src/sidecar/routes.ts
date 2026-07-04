@@ -172,6 +172,9 @@ export const SIDECAR_ROUTES: SidecarRoute[] = [
   { method: "GET", path: "/workspace/thesis", tool: "workspace_get_thesis" },
   { method: "POST", path: "/workspace/thesis", tool: "workspace_save_thesis" },
 
+  // Market Breadth
+  { method: "GET", path: "/market-breadth", tool: "market_breadth" },
+
   // CoinGecko
   { method: "GET", path: "/coingecko/coin", tool: "coingecko_coin" },
   { method: "GET", path: "/coingecko/trending", tool: "coingecko_trending" },
