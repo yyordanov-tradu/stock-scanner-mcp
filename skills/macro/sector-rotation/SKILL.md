@@ -7,9 +7,9 @@ description: Analyze sector performance across timeframes, detect risk-on vs ris
 
 ## Overview
 
-Act as a sector strategist. Collect sector performance data across multiple timeframes, overlay technical signals on leaders and laggards, and determine whether capital is rotating toward risk-on or risk-off sectors. Produce actionable sector allocation guidance.
+Act as a sector strategist. Collect sector performance data across multiple timeframes, overlay market breadth and technical signals on leaders and laggards, and determine whether capital is rotating toward risk-on or risk-off sectors. Produce actionable sector allocation guidance.
 
-Announce at start: "Running sector rotation analysis -- collecting sector performance, market indices, and technical signals."
+Announce at start: "Running sector rotation analysis -- collecting sector performance, breadth, market indices, and technical signals."
 
 ## Data Collection
 
@@ -19,6 +19,7 @@ Announce at start: "Running sector rotation analysis -- collecting sector perfor
 |------------------------------|-----------------------|-------------|
 | `tradingview_sector_performance` | (default)         | REQUIRED    |
 | `tradingview_market_indices`     | (default)         | REQUIRED    |
+| `market_breadth`                 | universe=major_us | ENRICHMENT  |
 | `sentiment_fear_greed`           | (default)         | ENRICHMENT  |
 | `fred_indicator`                 | series_id=treasury_10y | ENRICHMENT |
 
@@ -39,7 +40,7 @@ DO NOT proceed to analysis until ALL REQUIRED calls return. ENRICHMENT failures 
 Cross-reference the collected data across four dimensions:
 
 1. **Timeframe Divergence** -- Compare 1-day vs 1-week vs 1-month vs YTD performance for each sector. Short-term moves diverging from longer-term trends signal emerging rotation.
-2. **Risk Appetite** -- Defensive sectors (XLU, XLP, XLV) outperforming cyclicals (XLY, XLI, XLF) = RISK-OFF. Cyclicals outperforming defensives = RISK-ON. Mixed leadership = no clear signal.
+2. **Risk Appetite** -- Defensive sectors (XLU, XLP, XLV) outperforming cyclicals (XLY, XLI, XLF) = RISK-OFF. Cyclicals outperforming defensives = RISK-ON. Mixed leadership = no clear signal. Use breadth as confirmation: strong breadth confirms broad risk-on rotation; weak breadth implies narrow leadership.
 3. **Rate Sensitivity** -- Compare rate-sensitive sectors (XLU, XLRE) performance to 10Y yield direction. Rising yields should pressure these sectors. Outperformance despite rising yields is a strong signal.
 4. **Technical Confirmation** -- Use RSI and trend data from Wave 2 to confirm or contradict the rotation signal. Overbought leaders (RSI >70) may reverse. Oversold laggards (RSI <30) may bounce.
 
@@ -72,6 +73,9 @@ DO NOT reproduce raw tool output. Synthesize and interpret.
 ### Rate Sensitivity
 Note how rate-sensitive sectors (XLU, XLRE) are behaving relative to the current 10Y yield direction. Flag any divergence.
 
+### Breadth Confirmation
+State whether market breadth confirms or contradicts the sector rotation signal. Reference advance/decline ratio, % above SMA50/SMA200, and new highs/lows when available.
+
 ### Sector Picks
 
 **Overweight (top 2):**
@@ -90,3 +94,4 @@ Data from TradingView and Yahoo Finance is 15-minute delayed. CBOE and sentiment
 - Classifying rotation signal without comparing defensive vs cyclical sector groups explicitly
 - Skipping Wave 2 technicals and making sector picks without RSI or trend confirmation
 - Ignoring interest rate direction when assessing rate-sensitive sectors like Utilities and Real Estate
+- Treating leadership in one or two sectors as broad risk-on rotation without checking market breadth

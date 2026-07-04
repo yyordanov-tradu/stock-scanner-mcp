@@ -7,11 +7,11 @@ description: Build a comprehensive macroeconomic dashboard covering rates, infla
 
 ## Overview
 
-Act as a macro strategist. Collect key economic indicators, yield curve data, inflation metrics, labor market signals, and market sentiment to produce a unified macro picture. Cross-reference all data points to classify the current economic regime.
+Act as a macro strategist. Collect key economic indicators, yield curve data, inflation metrics, labor market signals, market breadth, and market sentiment to produce a unified macro picture. Cross-reference all data points to classify the current economic regime.
 
 **Prerequisite:** This skill requires FRED_API_KEY to be configured. Without it, only market indices and sentiment data are available.
 
-Announce at start: "Building macro dashboard -- collecting economic indicators, yield curve, inflation, labor, and sentiment data."
+Announce at start: "Building macro dashboard -- collecting economic indicators, yield curve, inflation, labor, breadth, and sentiment data."
 
 ## Data Collection
 
@@ -29,6 +29,7 @@ Announce at start: "Building macro dashboard -- collecting economic indicators, 
 | `fred_indicator`           | series_id=initial_claims    | ENRICHMENT  |
 | `fred_economic_calendar`   | limit=15                    | REQUIRED    |
 | `tradingview_market_indices` | (default)                 | REQUIRED    |
+| `market_breadth`           | universe=major_us           | ENRICHMENT  |
 | `sentiment_fear_greed`     | (default)                   | ENRICHMENT  |
 
 DO NOT proceed to analysis until ALL REQUIRED calls return. ENRICHMENT failures are acceptable.
@@ -41,7 +42,7 @@ Cross-reference the collected data across five dimensions:
 2. **Inflation Trajectory** -- Compare CPI and Core PCE to the Fed's 2% target. Determine if inflation is accelerating, decelerating, or anchored.
 3. **Labor Market Health** -- Assess unemployment rate direction and initial claims trend. Rising claims with rising unemployment = deterioration.
 4. **Fed Policy Stance** -- Current Fed Funds rate vs inflation readings. Is policy restrictive (rate > inflation) or accommodative?
-5. **Market Pricing of Risk** -- Extract VIX from market indices. Combine with Fear & Greed score. Elevated VIX (>25) with extreme fear = stress.
+5. **Market Pricing of Risk** -- Extract VIX from market indices. Combine with Fear & Greed score and breadth. Elevated VIX (>25) with extreme fear and weak breadth = stress.
 
 Synthesize all five dimensions into a single macro regime classification.
 
@@ -75,6 +76,7 @@ DO NOT reproduce raw tool output. Synthesize and interpret.
 ### Market Risk Gauges
 - VIX level and interpretation
 - Fear & Greed score and classification
+- Market breadth: advance/decline ratio, % above SMA50/SMA200, and new highs/lows if available
 
 ### Upcoming Releases (Next 2 Weeks)
 List the most market-moving releases from the economic calendar with dates.
@@ -95,3 +97,4 @@ Data from TradingView and Yahoo Finance is 15-minute delayed. CBOE and sentiment
 - Forgetting to compute the yield curve spread (just listing 2Y and 10Y separately)
 - Classifying regime based on a single indicator instead of cross-referencing all five dimensions
 - Ignoring the direction/trend of indicators and only reporting the latest snapshot value
+- Ignoring market breadth when market indices and sentiment disagree

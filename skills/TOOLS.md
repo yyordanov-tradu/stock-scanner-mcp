@@ -1,6 +1,6 @@
 # stock-scanner-mcp Tool Reference
 
-Quick reference for all 54 MCP tools available to trading skills.
+Quick reference for all 66 MCP tools available to trading skills.
 
 ## TradingView (10 tools)
 
@@ -110,3 +110,32 @@ Quick reference for all 54 MCP tools available to trading skills.
 | `frankfurter_timeseries` | Daily rate history (max 90 days) | start_date, end_date, base, symbols |
 | `frankfurter_convert` | Convert amount between currencies | amount, from, to |
 | `frankfurter_currencies` | List all 31 supported currency codes | (none) |
+
+## Reddit (4 tools)
+
+| Tool | Purpose | Key Params |
+|------|---------|------------|
+| `reddit_trending` | Trending stock tickers from investing subreddits | subreddits, limit |
+| `reddit_mentions` | Mentions and top posts for a ticker | symbol, period |
+| `reddit_sentiment` | Keyword sentiment for a ticker | symbol, limit |
+| `reddit_watchlist_scan` | Batch scan watchlist tickers in one pass | symbols, period |
+
+## Market Breadth (1 tool)
+
+| Tool | Purpose | Key Params |
+|------|---------|------------|
+| `market_breadth` | Advance/decline ratio, % above SMA50/SMA200, 52-week highs/lows | universe, limit, newHighLowThresholdPct |
+
+## Workspace (7 tools)
+
+Requires the MCP server to run with `--enable-workspace`.
+
+| Tool | Purpose | Key Params |
+|------|---------|------------|
+| `workspace_get_profile` | Read saved trading profile and defaults | (none) |
+| `workspace_update_profile` | Save trading style, asset focus, cadence | tradingStyle, assetFocus, workflowCadence |
+| `workspace_list_watchlists` | List saved watchlists | (none) |
+| `workspace_create_watchlist` | Create a named watchlist | name |
+| `workspace_update_watchlist` | Replace watchlist symbols | name, symbols |
+| `workspace_get_thesis` | Read saved thesis for a symbol | symbol |
+| `workspace_save_thesis` | Save or update thesis for a symbol | symbol, summary, bullCase, bearCase, catalyst, timeframe |
