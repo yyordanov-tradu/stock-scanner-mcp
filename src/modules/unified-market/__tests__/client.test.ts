@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { routeGetQuote, routeGetProfile } from "../client.js";
-import { Config } from "../../../shared/config.js";
+import { Config } from "../../../config.js";
 import * as finnhubClient from "../../finnhub/client.js";
 import * as avClient from "../../alpha-vantage/client.js";
 import * as tvScanner from "../../tradingview/scanner.js";

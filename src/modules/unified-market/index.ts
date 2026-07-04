@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { Config } from "../../shared/config.js";
+import { Config } from "../../config.js";
 import { withMetadata } from "../../shared/utils.js";
 import { routeGetQuote, routeGetProfile, routeGetTechnicals } from "./client.js";
 

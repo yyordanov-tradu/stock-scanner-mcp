@@ -1,4 +1,4 @@
-import { Config } from "../../shared/config.js";
+import { Config } from "../../config.js";
 import { resolveTicker } from "../../shared/resolver.js";
 import { classifyError } from "../../shared/errors.js";
 import { getQuote as getFinnhubQuote, getCompanyProfile as getFinnhubProfile } from "../finnhub/client.js";
@@ -199,7 +199,7 @@ export async function routeGetProfile(symbol: string, config: Config): Promise<U
         exchange: p.exchange,
         industry: p.industry,
         marketCap: p.marketCap,
-        sharesOutstanding: p.sharesOutstanding,
+        sharesOutstanding: 0,
         website: "", // AV overview doesn't reliably include website URL
         description: p.description,
         resolvedProvider: "alpha-vantage",
