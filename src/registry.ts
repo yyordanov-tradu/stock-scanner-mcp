@@ -12,6 +12,7 @@ import { createSentimentModule } from "./modules/sentiment/index.js";
 import { createFrankfurterModule } from "./modules/frankfurter/index.js";
 import { createRedditModule } from "./modules/reddit/index.js";
 import { createWorkspaceModule } from "./modules/workspace/index.js";
+import { createMarketBreadthModule } from "./modules/market-breadth/index.js";
 import type { Config } from "./config.js";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -36,6 +37,7 @@ export const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { name: "sentiment", envVar: null, toolCount: 2, factory: () => createSentimentModule() },
   { name: "frankfurter", envVar: null, toolCount: 5, factory: () => createFrankfurterModule() },
   { name: "reddit", envVar: null, toolCount: 4, factory: () => createRedditModule() },
+  { name: "market-breadth", envVar: null, toolCount: 1, factory: () => createMarketBreadthModule() },
   { name: "workspace", envVar: null, toolCount: 7, factory: (config) => config.enableWorkspace ? createWorkspaceModule(config.dataDir || path.join(os.homedir(), ".stock-scanner-mcp"), config.defaultExchange) : null },
 ];
 

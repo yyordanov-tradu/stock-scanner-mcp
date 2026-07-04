@@ -3,7 +3,7 @@
   "info": {
     "title": "Stock Scanner Sidecar API",
     "description": "REST API for stock and crypto market data, SEC filings, and technical analysis. This is the HTTP sidecar for the stock-scanner-mcp server.",
-    "version": "1.17.0",
+    "version": "1.17.1",
     "contact": {
       "name": "Yordan Yordanov",
       "url": "https://github.com/yyordanov-tradu/stock-scanner-mcp"
@@ -4518,6 +4518,87 @@
             }
           }
         }
+      }
+    },
+    "/market-breadth": {
+      "get": {
+        "summary": "Get market breadth statistics for US equities (NYSE, NASDAQ, AMEX)",
+        "description": "Get market breadth statistics for US equities (NYSE, NASDAQ, AMEX). Recommends default 'major_us' representing NYSE+NASDAQ+AMEX. Filters out ETFs, funds, and illiquid symbols (volume < 10k) by default to measure standard stock performance.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Varies by tool"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found or API key missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "query",
+            "required": false,
+            "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. both includes NYSE and NASDAQ. NYSE, NASDAQ, or AMEX queries single exchange.",
+            "schema": {
+              "type": "string",
+              "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. both includes NYSE and NASDAQ. NYSE, NASDAQ, or AMEX queries single exchange."
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max stocks to scan per exchange (default 3000).",
+            "schema": {
+              "type": "integer",
+              "description": "Max stocks to scan per exchange (default 3000)."
+            }
+          },
+          {
+            "name": "newHighLowThresholdPct",
+            "in": "query",
+            "required": false,
+            "description": "Proximity threshold to count new 52-week high or low (e.g. 0.5 means within 0.5% of high/low, default 0.5).",
+            "schema": {
+              "type": "number",
+              "description": "Proximity threshold to count new 52-week high or low (e.g. 0.5 means within 0.5% of high/low, default 0.5)."
+            }
+          }
+        ]
       }
     },
     "/coingecko/coin": {

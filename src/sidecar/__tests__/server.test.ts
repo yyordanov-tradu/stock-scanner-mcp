@@ -1204,4 +1204,24 @@ describe("sidecar server", () => {
     expect(status).toBe(400);
     expect((data as Record<string, string>).error.toLowerCase()).toContain("amount");
   });
+
+  // ========================================================================
+  // Market Breadth routes
+  // ========================================================================
+
+  it("GET /market-breadth returns breadth statistics", async () => {
+    mockUpstreamFetch("scanner.tradingview.com", {
+      data: [
+        { s: "NYSE:A", d: [100, 1.5, 90, 80, 105, 95, "stock", 50000] },
+      ],
+    });
+
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/market-breadth?universe=NYSE");
+
+    expect(status).toBe(200);
+    expect((data as any).universe).toBe("NYSE");
+    expect((data as any).sampleSize).toBe(1);
+    expect((data as any).advanceDecline.advancers).toBe(1);
+  });
 });
