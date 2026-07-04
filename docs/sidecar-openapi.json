@@ -4572,10 +4572,10 @@
             "name": "universe",
             "in": "query",
             "required": false,
-            "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. both includes NYSE and NASDAQ. NYSE, NASDAQ, or AMEX queries single exchange.",
+            "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. NYSE, NASDAQ, or AMEX queries single exchange.",
             "schema": {
               "type": "string",
-              "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. both includes NYSE and NASDAQ. NYSE, NASDAQ, or AMEX queries single exchange."
+              "description": "Stock exchange universe. major_us includes NYSE, NASDAQ, and AMEX. NYSE, NASDAQ, or AMEX queries single exchange."
             }
           },
           {
