@@ -953,14 +953,24 @@ describe("sidecar server", () => {
   it("GET /sec-edgar/company-filings returns filing data", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("company_tickers.json")) {
-        return new Response(JSON.stringify({ "0": { cik_str: 320193, ticker: "AAPL", title: "Apple Inc." } }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (urlStr.includes("submissions/CIK")) {
+      if (urlStr.includes("search-index") || urlStr.includes("efts.sec.gov")) {
         return new Response(JSON.stringify({
-          cik: "0000320193",
-          name: "Apple Inc.",
-          filings: { recent: { accessionNumber: ["0001234-24-000001"], filingDate: ["2026-03-20"], form: ["10-K"], primaryDocument: ["doc.htm"], primaryDocDescription: ["ANNUAL REPORT"] } },
+          hits: {
+            hits: [
+              {
+                _id: "0001234567-24-000001",
+                _source: {
+                  file_num: "001-12345",
+                  file_date: "2026-03-20",
+                  form_type: "10-K",
+                  entity_name: "Apple Inc.",
+                  tickers: "AAPL",
+                  display_names: ["Apple Inc."],
+                  file_description: "ANNUAL REPORT",
+                },
+              },
+            ],
+          },
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return realFetch(url, init);
@@ -969,6 +979,7 @@ describe("sidecar server", () => {
     const { status, data } = await get(server, "/sec-edgar/company-filings?ticker=AAPL");
     expect(status).toBe(200);
     expect(Array.isArray(data)).toBe(true);
+    expect((data as any)[0].accessionNumber).toBe("0001234567-24-000001");
   });
 
   it("returns 400 for /sec-edgar/company-filings without ticker", async () => {
