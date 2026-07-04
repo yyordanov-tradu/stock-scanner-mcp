@@ -13,22 +13,8 @@
  */
 
 import { z } from "zod";
-import { createTradingviewModule } from "../modules/tradingview/index.js";
-import { createTradingviewCryptoModule } from "../modules/tradingview-crypto/index.js";
-import { createSecEdgarModule } from "../modules/sec-edgar/index.js";
-import { createCoingeckoModule } from "../modules/coingecko/index.js";
-import { createFinnhubModule } from "../modules/finnhub/index.js";
-import { createAlphaVantageModule } from "../modules/alpha-vantage/index.js";
-import { createOptionsModule } from "../modules/options/index.js";
-import { createOptionsCboeModule } from "../modules/options-cboe/index.js";
-import { createFredModule } from "../modules/fred/index.js";
-import { createSentimentModule } from "../modules/sentiment/index.js";
-import { createFrankfurterModule } from "../modules/frankfurter/index.js";
-import { createRedditModule } from "../modules/reddit/index.js";
-import { createWorkspaceModule } from "../modules/workspace/index.js";
-import { createMarketBreadthModule } from "../modules/market-breadth/index.js";
-import type { ModuleDefinition, ToolDefinition } from "../shared/types.js";
-import * as os from "node:os";
+import type { ToolDefinition } from "../shared/types.js";
+import { buildAllModules } from "./tool-registry.js";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -217,25 +203,6 @@ function checkValueScale(tool: ToolDefinition, moduleName: string): Issue | null
 }
 
 // ── Main ─────────────────────────────────────────────────────────────
-
-function buildAllModules(): ModuleDefinition[] {
-  return [
-    createTradingviewModule(),
-    createTradingviewCryptoModule(),
-    createSecEdgarModule(),
-    createCoingeckoModule(),
-    createOptionsModule(),
-    createOptionsCboeModule(),
-    createFinnhubModule("mock-key"),
-    createAlphaVantageModule("mock-key"),
-    createFredModule("mock-key"),
-    createSentimentModule(),
-    createFrankfurterModule(),
-    createRedditModule(),
-    createMarketBreadthModule(),
-    createWorkspaceModule(os.tmpdir()),
-  ];
-}
 
 function validate(): boolean {
   const modules = buildAllModules();

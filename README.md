@@ -457,8 +457,9 @@ All modules use in-memory TTL caching to minimize API calls.
 
 ```bash
 npm install && npm run build && npm test
-npm run lint          # TypeScript type checking
-npm run validate-tools # Tool description quality check
+npm run lint               # TypeScript type checking
+npm run validate-tools     # Tool description quality check
+npm run validate-doc-tools # Skill/command tool reference check
 ```
 
 ## Credibility Artifacts

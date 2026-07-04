@@ -401,10 +401,11 @@ Before any PR is merged:
 npm run lint            # TypeScript type checking — must pass
 npm test                # All tests — must pass
 npm run validate-tools  # Tool description quality — must pass
+npm run validate-doc-tools # Skill/command tool references — must pass
 npm run build           # Build — must succeed
 ```
 
-All four MUST pass. No exceptions.
+All five MUST pass. No exceptions.
 
 ### Tool Description Validation
 
@@ -416,6 +417,12 @@ All four MUST pass. No exceptions.
 4. **Value-scale documentation** — tools returning recommendations/ratings document the scale
 
 Runs in CI alongside lint and test. See `src/scripts/validate-tools.ts` for implementation.
+
+### Skill and Command Tool Reference Validation
+
+`npm run validate-doc-tools` scans `skills/**/*.md` and `commands/**/*.md` for backticked MCP tool references and fails if any referenced tool is not registered in code. This prevents skills from instructing the model to call stale or nonexistent tools after tool names change.
+
+Runs in CI alongside lint, test, and tool validation. See `src/scripts/validate-doc-tool-references.ts` for implementation.
 
 ### Code Hygiene
 

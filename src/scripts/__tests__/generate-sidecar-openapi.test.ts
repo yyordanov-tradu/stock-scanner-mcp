@@ -60,7 +60,7 @@ describe("generateOpenApiSpec", () => {
     expect(seriesId.required).toBe(false);
   });
 
-  it("contains all 65 tools (mapped to routes)", () => {
+  it("contains the registered tool routes", () => {
     // Some routes map to the same tool (aliases like /edgar/filings)
     // but every tool should be represented at least once.
     const toolNames = new Set<string>();
