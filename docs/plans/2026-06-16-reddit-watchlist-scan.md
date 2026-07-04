@@ -1,6 +1,6 @@
 ---
 name: reddit-watchlist-scan
-status: revised-after-readiness-review
+status: implemented
 created: 2026-06-16T08:05:00Z
 updated: 2026-06-16T08:55:00Z
 issue: 197
