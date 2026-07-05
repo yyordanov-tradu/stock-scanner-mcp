@@ -6,5 +6,7 @@
     "name": "Yordan Yordanov"
   },
   "license": "MIT",
+  "homepage": "https://github.com/yyordanov-tradu/stock-scanner-mcp",
+  "repository": "https://github.com/yyordanov-tradu/stock-scanner-mcp",
   "keywords": ["stocks", "crypto", "trading", "market-data", "technical-analysis"]
 }
