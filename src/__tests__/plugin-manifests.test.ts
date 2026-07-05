@@ -20,6 +20,8 @@ interface PackageJson {
 interface PluginJson {
   name: string;
   version: string;
+  homepage: string;
+  repository: string;
 }
 interface McpServer {
   command: string;
@@ -35,6 +37,7 @@ interface MarketplacePlugin {
 }
 interface MarketplaceJson {
   name: string;
+  description: string;
   owner: { name: string };
   plugins: MarketplacePlugin[];
 }
@@ -63,6 +66,22 @@ describe("plugin manifests", () => {
     expect(marketplace.plugins.length).toBeGreaterThan(0);
     expect(marketplace.plugins[0].name).toBe("stock-scanner");
     expect(marketplace.plugins[0].name).toBe(plugin.name);
+  });
+
+  it("plugin.json homepage and repository point at the GitHub repo", () => {
+    const plugin = readJson(".claude-plugin/plugin.json") as PluginJson;
+    // Directory listings surface these links — they must exist and be valid URLs.
+    const repoUrl = "https://github.com/yyordanov-tradu/stock-scanner-mcp";
+    expect(plugin.homepage).toBe(repoUrl);
+    expect(plugin.repository).toBe(repoUrl);
+    expect(() => new URL(plugin.homepage)).not.toThrow();
+  });
+
+  it("marketplace.json has a non-empty description", () => {
+    const marketplace = readJson(".claude-plugin/marketplace.json") as MarketplaceJson;
+    // `claude plugin validate` warns when this is missing — keep it present.
+    expect(typeof marketplace.description).toBe("string");
+    expect(marketplace.description.length).toBeGreaterThan(0);
   });
 
   it("marketplace.json has a required non-empty owner.name", () => {
