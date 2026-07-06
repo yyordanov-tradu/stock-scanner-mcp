@@ -935,7 +935,9 @@ describe("sidecar server", () => {
   it("GET /sec-edgar/company-filings returns filing data", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("search-index") || urlStr.includes("efts.sec.gov")) {
+      // Match the SEC full-text search host exactly (parsed, not substring) so this
+      // mock router is not flagged as an incomplete URL sanitization check by CodeQL.
+      if (new URL(urlStr).hostname === "efts.sec.gov") {
         return new Response(JSON.stringify({
           hits: {
             hits: [
