@@ -4,6 +4,14 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createServer } from "../server.js";
+import { generateOpenApiSpec } from "../../scripts/generate-sidecar-openapi.js";
+
+// Wrap the real OpenAPI generator in a spy so individual tests can force it to
+// throw (to exercise the 500 error path) while keeping normal behavior by default.
+vi.mock("../../scripts/generate-sidecar-openapi.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../scripts/generate-sidecar-openapi.js")>();
+  return { ...actual, generateOpenApiSpec: vi.fn(actual.generateOpenApiSpec) };
+});
 
 // Capture the REAL fetch before any test mocking
 const realFetch = globalThis.fetch;
@@ -432,6 +440,25 @@ describe("sidecar server", () => {
 
     expect(status).toBe(400);
     expect((data as Record<string, string>).error).toBe("Invalid JSON body");
+  });
+
+  // --- 500 responses do not leak internal error detail ---
+
+  it("returns a generic message on 500 without exposing the underlying error", async () => {
+    const secret = "sensitive internal detail /Users/secret/db.sqlite";
+    vi.mocked(generateOpenApiSpec).mockImplementationOnce(() => {
+      throw new Error(secret);
+    });
+
+    server = createServer({ port: 0 });
+    const { status, data } = await get(server, "/openapi.json");
+
+    expect(status).toBe(500);
+    const error = (data as Record<string, string>).error;
+    expect(error).toBe("Failed to generate OpenAPI spec");
+    // The thrown error's message must not reach the client.
+    expect(error).not.toContain(secret);
+    expect(JSON.stringify(data)).not.toContain("secret");
   });
 
   // --- CORS preflight ---
