@@ -92,6 +92,42 @@ function mockUpstreamFetch(
   }));
 }
 
+/**
+ * Stub the Yahoo Finance session flow used by the options module:
+ *   1. GET fc.yahoo.com/curveball        -> session cookie
+ *   2. GET query1.finance.yahoo.com/.../getcrumb -> crumb (same host, so match path first)
+ *   3. GET query1|query2.finance.yahoo.com/...   -> the actual API response
+ *
+ * Hosts are matched on the parsed hostname (not substring) so this mock router
+ * is not flagged as an incomplete URL sanitization check by CodeQL.
+ */
+function stubYahooFetch(mockResponse: unknown): void {
+  vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+    const { hostname, pathname } = new URL(urlStr);
+
+    if (hostname === "fc.yahoo.com") {
+      return new Response("", {
+        status: 302,
+        headers: { "Set-Cookie": "A3=testcookievalue; Path=/; Domain=.yahoo.com" },
+      });
+    }
+    if (pathname.includes("getcrumb")) {
+      return new Response("test-crumb-value", {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+    if (hostname === "query1.finance.yahoo.com" || hostname === "query2.finance.yahoo.com") {
+      return new Response(JSON.stringify(mockResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return realFetch(url, init);
+  }));
+}
+
 describe("sidecar server", () => {
   let server: http.Server;
   const tmpDirs: string[] = [];
@@ -285,37 +321,7 @@ describe("sidecar server", () => {
     };
 
     // Yahoo session flow: curveball -> cookie, getcrumb -> crumb, then actual API
-    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-
-      // Step 1: curveball for cookie
-      if (urlStr.includes("fc.yahoo.com")) {
-        return new Response("", {
-          status: 302,
-          headers: {
-            "Set-Cookie": "A3=testcookievalue; Path=/; Domain=.yahoo.com",
-          },
-        });
-      }
-
-      // Step 2: getcrumb endpoint
-      if (urlStr.includes("getcrumb")) {
-        return new Response("test-crumb-value", {
-          status: 200,
-          headers: { "Content-Type": "text/plain" },
-        });
-      }
-
-      // Step 3: actual options API call
-      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) {
-        return new Response(JSON.stringify(mockYahooResponse), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      return realFetch(url, init);
-    }));
+    stubYahooFetch(mockYahooResponse);
 
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/options/chain?symbol=AAPL");
@@ -839,13 +845,7 @@ describe("sidecar server", () => {
         }],
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
-      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
-      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
-      return realFetch(url, init);
-    }));
+    stubYahooFetch(mockYahooResponse);
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/options/expirations?symbol=GOOG");
     expect(status).toBe(200);
@@ -869,13 +869,7 @@ describe("sidecar server", () => {
         }],
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
-      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
-      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
-      return realFetch(url, init);
-    }));
+    stubYahooFetch(mockYahooResponse);
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/options/unusual-activity?symbol=TSLA");
     expect(status).toBe(200);
@@ -899,13 +893,7 @@ describe("sidecar server", () => {
         }],
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
-      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
-      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
-      return realFetch(url, init);
-    }));
+    stubYahooFetch(mockYahooResponse);
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/options/max-pain?symbol=AMZN");
     expect(status).toBe(200);
@@ -929,13 +917,7 @@ describe("sidecar server", () => {
         }],
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes("fc.yahoo.com")) return new Response("", { status: 302, headers: { "Set-Cookie": "A3=test; Path=/; Domain=.yahoo.com" } });
-      if (urlStr.includes("getcrumb")) return new Response("test-crumb", { status: 200, headers: { "Content-Type": "text/plain" } });
-      if (urlStr.includes("query1.finance.yahoo.com") || urlStr.includes("query2.finance.yahoo.com")) return new Response(JSON.stringify(mockYahooResponse), { status: 200, headers: { "Content-Type": "application/json" } });
-      return realFetch(url, init);
-    }));
+    stubYahooFetch(mockYahooResponse);
     server = createServer({ port: 0 });
     const { status, data } = await get(server, "/options/implied-move?symbol=MSFT");
     expect(status).toBe(200);
