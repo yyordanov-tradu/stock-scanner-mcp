@@ -136,7 +136,9 @@ export function createServer(config: SidecarConfig): http.Server {
           const spec = generateOpenApiSpec();
           json(res, req, 200, spec);
         } catch (e) {
-          json(res, req, 500, { error: `Failed to generate OpenAPI spec: ${e}` });
+          // Log the underlying error server-side; don't leak internals to the client.
+          console.error("[sidecar] failed to generate OpenAPI spec:", e);
+          json(res, req, 500, { error: "Failed to generate OpenAPI spec" });
         }
         return;
       }
@@ -255,7 +257,16 @@ export function createServer(config: SidecarConfig): http.Server {
         message.includes("Invalid JSON") ||
         message === "Request body too large" ||
         message.includes("ZodError");
-      json(res, req, is400 ? 400 : status, { error: message });
+      const responseStatus = is400 ? 400 : status;
+      // 4xx responses carry self-generated, client-safe messages (e.g. "Invalid JSON
+      // body", validation text). A 5xx means an unexpected error whose message could
+      // leak internal detail, so log it server-side and return a generic message.
+      if (responseStatus >= 500) {
+        console.error("[sidecar] unhandled request error:", err);
+        json(res, req, responseStatus, { error: "Internal server error" });
+      } else {
+        json(res, req, responseStatus, { error: message });
+      }
     }
   });
 
