@@ -14,9 +14,10 @@ import { createTradingviewModule } from "../modules/tradingview/index.js";
 import { createTradingviewCryptoModule } from "../modules/tradingview-crypto/index.js";
 import { createWorkspaceModule } from "../modules/workspace/index.js";
 import type { ModuleDefinition } from "../shared/types.js";
+import { TtlCache } from "../shared/cache.js";
 
 export function buildAllModules(): ModuleDefinition[] {
-  return [
+  const modules = [
     createTradingviewModule(),
     createTradingviewCryptoModule(),
     createSecEdgarModule(),
@@ -32,6 +33,8 @@ export function buildAllModules(): ModuleDefinition[] {
     createMarketBreadthModule(),
     createWorkspaceModule(os.tmpdir()),
   ];
+  TtlCache.setDb(null);
+  return modules;
 }
 
 export function getRegisteredToolNames(modules = buildAllModules()): Set<string> {
