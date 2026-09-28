@@ -48,8 +48,8 @@ export class SqliteCacheStore implements CacheStore {
     const db = await dbManager.open();
     dbManager.transaction("IMMEDIATE", (d) => {
       d.exec(SHARED_CACHE_DDL);
-      const row = d.prepare("SELECT value FROM cache_meta WHERE key = 'version'").get() as { value: string } | undefined;
-      if (row?.value !== options.version) {
+      const stored = d.prepare("SELECT value FROM cache_meta WHERE key = 'version'").get()?.value;
+      if (typeof stored !== "string" || stored !== options.version) {
         d.exec("DELETE FROM shared_cache");
         d.prepare("INSERT OR REPLACE INTO cache_meta (key, value) VALUES ('version', ?)").run(options.version);
       }
@@ -99,7 +99,7 @@ export class SqliteCacheStore implements CacheStore {
 }
 
 // Best effort: a persistent cache that cannot be opened must never stop the server.
-export async function enablePersistentCache(dataDir: string, version: string): Promise<SqliteCacheStore | null> {
+export async function openPersistentCache(dataDir: string, version: string): Promise<SqliteCacheStore | null> {
   try {
     const store = await SqliteCacheStore.open(dataDir, { version });
     setSharedCacheStore(store);

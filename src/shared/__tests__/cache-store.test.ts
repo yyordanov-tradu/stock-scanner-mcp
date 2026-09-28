@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { SqliteCacheStore, enablePersistentCache, CACHE_DB_FILE } from "../cache-store.js";
+import { DatabaseSync } from "node:sqlite";
+import { SqliteCacheStore, openPersistentCache, CACHE_DB_FILE } from "../cache-store.js";
 import { TtlCache, getSharedCacheStore, setSharedCacheStore } from "../cache.js";
 
 describe("SqliteCacheStore", () => {
@@ -92,6 +93,34 @@ describe("SqliteCacheStore", () => {
     expect(reopened.get("k5")).toBeDefined();
   });
 
+  it("treats rows with unexpected column types as misses", async () => {
+    const store = await open();
+    const raw = new DatabaseSync(store.dbPath);
+    raw.prepare("INSERT INTO shared_cache (cache_key, value, expires_at, source) VALUES (?, ?, ?, ?)").run("t:k", "v", "soon", "t");
+    raw.close();
+    expect(store.get("t:k")).toBeUndefined();
+  });
+
+  it("serves from memory and logs when another process holds the write lock", async () => {
+    const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+    const store = await SqliteCacheStore.open(tmpDir, { version: "1.0.0", busyTimeoutMs: 10 });
+    stores.push(store);
+    setSharedCacheStore(store);
+    const cache = new TtlCache<string>(60_000, "finnhub");
+
+    const other = new DatabaseSync(store.dbPath);
+    other.exec("BEGIN IMMEDIATE");
+    try {
+      cache.set("k", "v");
+      expect(cache.get("k")).toBe("v");
+      expect(stderr.mock.calls.some((c) => String(c[0]).includes("database is locked"))).toBe(true);
+    } finally {
+      other.exec("ROLLBACK");
+      other.close();
+    }
+    expect(store.get("finnhub:k")).toBeUndefined();
+  });
+
   it("refuses a symlinked cache.db", async () => {
     fs.writeFileSync(path.join(tmpDir, "target"), "");
     fs.symlinkSync(path.join(tmpDir, "target"), path.join(tmpDir, CACHE_DB_FILE));
@@ -99,7 +128,7 @@ describe("SqliteCacheStore", () => {
   });
 });
 
-describe("enablePersistentCache", () => {
+describe("openPersistentCache", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -116,7 +145,7 @@ describe("enablePersistentCache", () => {
 
   it("opens the store, registers it as the shared store and logs the path", async () => {
     const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
-    const store = await enablePersistentCache(tmpDir, "1.0.0");
+    const store = await openPersistentCache(tmpDir, "1.0.0");
     expect(store).toBeInstanceOf(SqliteCacheStore);
     expect(getSharedCacheStore()).toBe(store);
     expect(stderr.mock.calls[0][0]).toContain(`persistent cache enabled at ${path.join(tmpDir, CACHE_DB_FILE)}`);
@@ -124,9 +153,9 @@ describe("enablePersistentCache", () => {
 
   it("closes the previous store when enabled twice", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const first = await enablePersistentCache(tmpDir, "1.0.0");
+    const first = await openPersistentCache(tmpDir, "1.0.0");
     const closeSpy = vi.spyOn(first as SqliteCacheStore, "close");
-    const second = await enablePersistentCache(tmpDir, "1.0.0");
+    const second = await openPersistentCache(tmpDir, "1.0.0");
     // Avoid matchers that pretty-print the closed store's finalized statements.
     expect(second === first).toBe(false);
     expect(closeSpy).toHaveBeenCalledOnce();
@@ -138,7 +167,7 @@ describe("enablePersistentCache", () => {
     fs.writeFileSync(path.join(tmpDir, "target"), "");
     fs.symlinkSync(path.join(tmpDir, "target"), path.join(tmpDir, CACHE_DB_FILE));
 
-    const store = await enablePersistentCache(tmpDir, "1.0.0");
+    const store = await openPersistentCache(tmpDir, "1.0.0");
     expect(store).toBeNull();
     expect(getSharedCacheStore()).toBeNull();
     expect(stderr.mock.calls[0][0]).toContain("persistent cache disabled");

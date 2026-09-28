@@ -93,6 +93,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 - `--default-exchange` -- default exchange for symbol resolution (default: NASDAQ)
 - `--enable-workspace` -- stateful workspace tools (SQLite, Node >= 22.13)
 - `--persistent-cache` -- persist the API response cache to `cache.db` in the data dir (Node >= 22.13)
+- `--data-dir` -- directory for `workspace.db`/`workspace.json`/`cache.db` (default `~/.stock-scanner-mcp`; must be under the home directory; `STOCK_SCANNER_DATA_DIR` env var is the fallback)
 
 ## Module System
 

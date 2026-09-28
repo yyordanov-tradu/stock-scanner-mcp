@@ -219,7 +219,7 @@ return { id: s.id, title: s.title }; // TypeError: Cannot read properties of und
 All tool handlers MUST be wrapped with `withMetadata()`. It:
 - Catches all errors and returns structured JSON: `{ error: true, code, message, retryable }`
 - Maps HTTP status codes to error codes (429 → `RATE_LIMITED`, 403 → `FORBIDDEN`)
-- Injects `_meta` with `lastUpdated`, `source`, `dataDelay`
+- Injects `_meta` with `lastUpdated`, `source`, `dataDelay` — `lastUpdated` is the tool invocation time; cached data may be up to the module TTL old, also across restarts when `--persistent-cache` is on
 
 ### Layer 3: Server Registration (catch-all)
 
@@ -259,7 +259,7 @@ All HTTP calls MUST go through `shared/http.ts`. Direct `fetch()` calls are proh
 | Implementation | `TtlCache` from `shared/cache.ts` |
 | Namespace | Required constructor argument: a string literal equal to the module directory name, or `{module}-{purpose}` when a module owns several caches (`new TtlCache(ttl, "finnhub")`, `"reddit-trending"`); unique across modules, never derived at runtime (enforced by `src/__tests__/cache-namespaces.test.ts`) |
 | Scope | One cache instance per module (module-level `const`) |
-| Persistence | Opt-in via `--persistent-cache`: entry points call `enablePersistentCache(dataDir, version)` (`shared/cache-store.ts`), which registers a SQLite-backed `CacheStore` (`cache.db`, separate from `workspace.db`) behind the in-memory layer. Values > 256 KB stay in memory only, rows are capped at 5,000, the table is cleared on a package version change, and a store failure logs and falls back to memory |
+| Persistence | Opt-in via `--persistent-cache`: entry points call `openPersistentCache(dataDir, version)` (`shared/cache-store.ts`), which registers a SQLite-backed `CacheStore` (`cache.db`, separate from `workspace.db`) behind the in-memory layer. Values > 256 KB stay in memory only, rows are capped at 5,000, the table is cleared on a package version change, and a store failure logs and falls back to memory |
 | TTL | 5 minutes default; shorter for real-time data (quotes) |
 | Key format | `{entity}:{param1}:{param2}` colon-separated |
 | Utility | Use `cache.getOrFetch(key, fetcher)` when possible |
@@ -347,7 +347,7 @@ npm run test:watch    # Watch mode during development
 | `successResult()` / `errorResult()` | `shared/types.ts` | ToolResult builders |
 | `withMetadata()` | `shared/utils.ts` | Error handling + metadata injection |
 | `resolveTicker()` | `shared/resolver.ts` | Ticker normalization (e.g., `AAPL` → `{ ticker: "AAPL", exchange: "NASDAQ" }`) |
-| `CacheStore` / `SqliteCacheStore` / `enablePersistentCache()` | `shared/cache-store.ts` | Optional second-level cache shared across processes (`cache.db`), wired only from entry points |
+| `CacheStore` / `SqliteCacheStore` / `openPersistentCache()` | `shared/cache-store.ts` | Optional second-level cache shared across processes (`cache.db`), wired only from entry points |
 | `DatabaseManager` | `shared/db.ts` | SQLite (`node:sqlite`) connection: lazy open, WAL, busy timeout, symlink guards, `transaction()` helper |
 | `checkSqliteNodeSupport()` | `shared/node-version.ts` | Logs a readable message and returns `false` when Node.js is too old for a `node:sqlite` feature, so entry points degrade instead of exiting |
 

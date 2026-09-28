@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createServer } from "./server.js";
 import { checkSqliteNodeSupport } from "../shared/node-version.js";
-import { enablePersistentCache } from "../shared/cache-store.js";
+import { openPersistentCache } from "../shared/cache-store.js";
 import { DEFAULT_DATA_DIR } from "../config.js";
 
 function parsePort(args: string[]): number {
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const persistentCache =
     args.includes("--persistent-cache") && checkSqliteNodeSupport("the persistent cache", "--persistent-cache");
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
-  const cacheStore = persistentCache ? await enablePersistentCache(dataDir ?? DEFAULT_DATA_DIR, pkg.version) : null;
+  const cacheStore = persistentCache ? await openPersistentCache(dataDir ?? DEFAULT_DATA_DIR, pkg.version) : null;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;
   const fredApiKey = process.env.FRED_API_KEY;

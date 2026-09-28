@@ -9,7 +9,7 @@ import { z } from "zod";
 import { parseConfig, DEFAULT_DATA_DIR } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
 import { checkSqliteNodeSupport } from "./shared/node-version.js";
-import { enablePersistentCache } from "./shared/cache-store.js";
+import { openPersistentCache } from "./shared/cache-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -118,7 +118,7 @@ async function main() {
     config.enablePersistentCache = false;
   }
   if (config.enablePersistentCache) {
-    await enablePersistentCache(config.dataDir || DEFAULT_DATA_DIR, pkg.version);
+    await openPersistentCache(config.dataDir || DEFAULT_DATA_DIR, pkg.version);
   }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))
