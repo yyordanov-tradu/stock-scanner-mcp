@@ -107,7 +107,9 @@ async function main() {
   }
 
   const config = parseConfig(args);
-  if (config.enableWorkspace && !checkSqliteNodeSupport("the workspace module", "--enable-workspace")) {
+  const workspaceUnsupported =
+    config.enableWorkspace && !checkSqliteNodeSupport("the workspace module", "--enable-workspace");
+  if (workspaceUnsupported) {
     config.enableWorkspace = false;
   }
   const allModules = MODULE_CATALOG
@@ -156,7 +158,8 @@ async function main() {
     } else if (config.enabledModules && !config.enabledModules.includes(entry.name)) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (excluded by --modules)`);
     } else if (entry.name === "workspace" && !config.enableWorkspace) {
-      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (--enable-workspace not set)`);
+      const reason = workspaceUnsupported ? "Node.js >= 22.13 required" : "--enable-workspace not set";
+      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (${reason})`);
     } else if (entry.envVar) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (${entry.envVar} not set)`);
     }

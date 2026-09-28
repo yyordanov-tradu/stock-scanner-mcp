@@ -2,7 +2,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { ZodError } from "zod";
-import type { DatabaseSync } from "node:sqlite";
 import { DatabaseManager, assertNotSymlinkSync, isSqliteBusyError } from "../../shared/db.js";
 import { RESERVED_KEYS, Workspace, WorkspaceSchema } from "./types.js";
 import {
@@ -62,6 +61,7 @@ export class StorageManager {
   private readonly defaultExchange: string;
   private ready = false;
   private readying: Promise<void> | null = null;
+  private generation = 0;
   private ignoredLegacyMtime: number | null = null;
 
   constructor(dataDir: string, defaultExchange = "NASDAQ", options: StorageOptions = {}) {
@@ -77,9 +77,11 @@ export class StorageManager {
   private async ensureReady(): Promise<void> {
     if (this.ready) return;
     if (!this.readying) {
+      const generation = this.generation;
       this.readying = this.dbManager
         .open()
         .then(() => {
+          if (generation !== this.generation) throw new Error("Workspace storage was closed while opening");
           this.withBusyMapping(() => this.dbManager.transaction("IMMEDIATE", createWorkspaceSchema));
           this.ready = true;
         })
@@ -141,9 +143,10 @@ export class StorageManager {
     this.withBusyMapping(() =>
       this.dbManager.transaction("IMMEDIATE", (db) => {
         const current = readProfileVersion(db);
-        const recordedMtime = Number(readMeta(db, MIRROR_MTIME_KEY));
-        const upToDate = Number.isFinite(recordedMtime) && legacyMtime <= recordedMtime;
-        if (current !== null && upToDate) return;
+        const recorded = readMeta(db, MIRROR_MTIME_KEY);
+        const recordedMtime = recorded === null ? Number.NaN : Number(recorded);
+        // Strictly older only; an equal mtime (coarse-grained filesystems) falls through to the hash check.
+        if (current !== null && Number.isFinite(recordedMtime) && legacyMtime < recordedMtime) return;
 
         const raw = fs.readFileSync(this.legacyPath, "utf-8");
         const hash = sha256(raw);
@@ -199,7 +202,9 @@ export class StorageManager {
     const content = JSON.stringify(data, null, 2);
     const tmpPath = `${this.legacyPath}.${process.pid}.tmp`;
 
-    const next = this.withBusyMapping(() =>
+    let next: number;
+    try {
+      next = this.withBusyMapping(() =>
       this.dbManager.transaction("IMMEDIATE", (db) => {
         const current = readProfileVersion(db);
 
@@ -223,7 +228,15 @@ export class StorageManager {
         this.writeMirrorTemp(tmpPath, content);
         return version;
       }),
-    );
+      );
+    } catch (e) {
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        // nothing was staged
+      }
+      throw e;
+    }
 
     this.publishMirror(tmpPath, content, next);
     return next;
@@ -276,6 +289,7 @@ export class StorageManager {
   }
 
   close(): void {
+    this.generation++;
     this.dbManager.close();
     this.ready = false;
   }

@@ -456,6 +456,38 @@ describe("StorageManager", () => {
       await expect(make().load()).rejects.toThrow("newer than this version");
     });
 
+    it("re-imports exactly once when the mirror metadata row is missing", async () => {
+      const { data, version } = await manager.load();
+      data.profile.tradingStyle = "from-db";
+      await manager.save(data, version);
+      withRawDb((db) => db.exec("DELETE FROM workspace_meta"));
+
+      const other = make();
+      expect((await other.load()).version).toBe(2);
+      expect((await other.load()).version).toBe(2);
+      expect((await other.load()).data.profile.tradingStyle).toBe("from-db");
+    });
+
+    it("warns again when an ignored workspace.json is fixed and then broken again", async () => {
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { data, version } = await manager.load();
+      await manager.save(data, version);
+      const legacyPath = path.join(tmpDir, "workspace.json");
+
+      let t = new Date(Date.now() + 5_000);
+      await fs.writeFile(legacyPath, "{ broken");
+      await fs.utimes(legacyPath, t, t);
+      await manager.load();
+      await manager.load();
+
+      t = new Date(Date.now() + 10_000);
+      await fs.writeFile(legacyPath, "{ broken again");
+      await fs.utimes(legacyPath, t, t);
+      await manager.load();
+
+      expect(stderr.mock.calls.filter((c) => String(c[0]).includes("Ignoring"))).toHaveLength(2);
+    });
+
     it("does not re-import a mirror it wrote itself", async () => {
       const { data, version } = await manager.load();
       data.profile.tradingStyle = "from-db";
@@ -491,15 +523,19 @@ describe("StorageManager", () => {
       const loaded = await manager.load();
       loaded.data.profile.tradingStyle = "rejected";
       const exec = DatabaseSync.prototype.exec;
-      let armed = true;
+      // save() first runs the legacy sync in its own transaction; fail the second COMMIT (the save itself),
+      // after the mirror temp file has been staged.
+      let commits = 0;
+      let staged = false;
       vi.spyOn(DatabaseSync.prototype, "exec").mockImplementation(function (this: DatabaseSync, sql: string) {
-        if (armed && sql.startsWith("COMMIT")) {
-          armed = false;
+        if (sql.startsWith("COMMIT") && ++commits === 2) {
+          staged = fsSync.readdirSync(tmpDir).some((f) => f.endsWith(".tmp"));
           throw new Error("disk I/O error");
         }
         return exec.call(this, sql);
       });
       await expect(manager.save(loaded.data, loaded.version)).rejects.toThrow("disk I/O error");
+      expect(staged).toBe(true);
 
       expect(await fs.readFile(legacyPath, "utf-8")).toBe(before);
       expect((await fs.readdir(tmpDir)).filter((f) => f.endsWith(".tmp"))).toEqual([]);
