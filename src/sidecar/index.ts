@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { createServer } from "./server.js";
 import { checkSqliteNodeSupport } from "../shared/node-version.js";
 import { enablePersistentCache } from "../shared/cache-store.js";
@@ -20,6 +23,8 @@ function parseStringFlag(args: string[], flag: string): string | undefined {
   return undefined;
 }
 
+const pkg = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "package.json"), "utf-8")) as { version: string };
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const port = parsePort(args);
@@ -28,9 +33,7 @@ async function main(): Promise<void> {
   const persistentCache =
     args.includes("--persistent-cache") && checkSqliteNodeSupport("the persistent cache", "--persistent-cache");
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
-  if (persistentCache) {
-    await enablePersistentCache(dataDir ?? DEFAULT_DATA_DIR);
-  }
+  const cacheStore = persistentCache ? await enablePersistentCache(dataDir ?? DEFAULT_DATA_DIR, pkg.version) : null;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;
   const fredApiKey = process.env.FRED_API_KEY;
@@ -62,6 +65,7 @@ async function main(): Promise<void> {
 
   const shutdown = (): void => {
     console.error("[stock-scanner-sidecar] shutting down...");
+    cacheStore?.close();
     server.close(() => process.exit(0));
     // Force exit after 5s if connections linger
     setTimeout(() => process.exit(0), 5000).unref();

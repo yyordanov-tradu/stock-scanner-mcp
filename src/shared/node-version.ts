@@ -41,7 +41,11 @@ export function checkSqliteNodeSupport(feature: string, flag: string, proc: Node
 // node:sqlite emits an ExperimentalWarning on load, which would otherwise show up in the
 // MCP client's log on every session start. Wrapping emitWarning (rather than replacing the
 // "warning" listeners) keeps --no-warnings / --trace-warnings behaviour for everything else.
+const filteredProcesses = new WeakSet<NodeJS.Process>();
+
 export function suppressSqliteExperimentalWarning(proc: NodeJS.Process = process): void {
+  if (filteredProcesses.has(proc)) return;
+  filteredProcesses.add(proc);
   const original = proc.emitWarning.bind(proc);
   const filtered: NodeJS.Process["emitWarning"] = (warning, ...rest) => {
     const message = typeof warning === "string" ? warning : warning.message;

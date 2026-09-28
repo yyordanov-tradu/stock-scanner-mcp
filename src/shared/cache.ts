@@ -15,6 +15,7 @@ export interface CacheStore {
   set(key: string, value: string, expiresAt: number, source: string): void;
   delete(key: string): void;
   purgeExpired(now: number): void;
+  close?(): void;
 }
 
 export const MAX_PERSISTED_VALUE_BYTES = 256 * 1024;
@@ -23,9 +24,18 @@ const PURGE_INTERVAL_MS = 60_000;
 let sharedStore: CacheStore | null = null;
 let lastPurgeAt = 0;
 
+// Replaces (and closes) any previously registered store.
 export function setSharedCacheStore(store: CacheStore | null): void {
+  const previous = sharedStore;
   sharedStore = store;
   lastPurgeAt = 0;
+  if (previous && previous !== store) {
+    try {
+      previous.close?.();
+    } catch (e) {
+      logStoreFailure("close", "shared", e);
+    }
+  }
 }
 
 export function getSharedCacheStore(): CacheStore | null {
@@ -65,7 +75,7 @@ export class TtlCache<T> {
     try {
       const row = shared.get(sharedKey);
       if (!row) return undefined;
-      if (now > row.expiresAt) {
+      if (!Number.isFinite(row.expiresAt) || now > row.expiresAt) {
         shared.delete(sharedKey);
         return undefined;
       }
@@ -92,7 +102,7 @@ export class TtlCache<T> {
     if (!shared) return;
     try {
       const serialized = JSON.stringify(value);
-      if (serialized === undefined || serialized.length > MAX_PERSISTED_VALUE_BYTES) return;
+      if (serialized === undefined || Buffer.byteLength(serialized, "utf8") > MAX_PERSISTED_VALUE_BYTES) return;
       shared.set(this.sharedKey(key), serialized, expiresAt, this.namespace);
       if (now - lastPurgeAt >= PURGE_INTERVAL_MS) {
         lastPurgeAt = now;

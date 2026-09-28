@@ -12,6 +12,7 @@ class MemoryStore implements CacheStore {
   rows = new Map<string, CacheStoreEntry & { source: string }>();
   purgeCalls = 0;
   failing = false;
+  close?: () => void;
 
   get(key: string): CacheStoreEntry | undefined {
     if (this.failing) throw new Error("store down");
@@ -171,16 +172,55 @@ describe("TtlCache", () => {
 
     it("purges expired rows at most once per minute", () => {
       const cache = new TtlCache<string>(1_000, "t");
-      vi.advanceTimersByTime(61_000);
       cache.set("a", "1");
       expect(store.purgeCalls).toBe(1);
+      vi.advanceTimersByTime(59_999);
       cache.set("b", "2");
       expect(store.purgeCalls).toBe(1);
 
-      vi.advanceTimersByTime(60_000);
+      vi.advanceTimersByTime(1);
       cache.set("c", "3");
       expect(store.purgeCalls).toBe(2);
-      expect([...store.rows.keys()]).toEqual(["t:c"]);
+      expect([...store.rows.keys()]).toEqual(["t:b", "t:c"]);
+    });
+
+    it("getOrFetch serves a store row without calling the fetcher", async () => {
+      store.rows.set("finnhub:k", { value: JSON.stringify({ c: 1 }), expiresAt: Date.now() + 1000, source: "finnhub" });
+      const cache = new TtlCache<{ c: number }>(60_000, "finnhub");
+      const fetcher = vi.fn().mockResolvedValue({ c: 2 });
+      expect(await cache.getOrFetch("k", fetcher)).toEqual({ c: 1 });
+      expect(fetcher).not.toHaveBeenCalled();
+    });
+
+    it("treats a non-finite expiry as a miss and deletes the row", () => {
+      store.rows.set("finnhub:k", { value: "1", expiresAt: Number.NaN, source: "finnhub" });
+      const cache = new TtlCache<number>(60_000, "finnhub");
+      expect(cache.get("k")).toBeUndefined();
+      expect(store.rows.has("finnhub:k")).toBe(false);
+    });
+
+    it("logs and keeps the memory value when serialisation throws", () => {
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+      const cache = new TtlCache<Record<string, unknown>>(60_000, "t");
+      const cyclic: Record<string, unknown> = {};
+      cyclic.self = cyclic;
+      cache.set("k", cyclic);
+      expect(cache.get("k")).toBe(cyclic);
+      expect(store.rows.size).toBe(0);
+      expect(stderr.mock.calls[0][0]).toContain("persistent cache write failed (t)");
+    });
+
+    it("measures the size cap in bytes, not UTF-16 code units", () => {
+      const cache = new TtlCache<string>(60_000, "t");
+      cache.set("wide", "€".repeat(MAX_PERSISTED_VALUE_BYTES / 3));
+      expect(store.rows.size).toBe(0);
+    });
+
+    it("closes the previous store when a new one is registered", () => {
+      const closed = vi.fn();
+      store.close = closed;
+      setSharedCacheStore(new MemoryStore());
+      expect(closed).toHaveBeenCalledOnce();
     });
   });
 });

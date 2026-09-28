@@ -17,7 +17,7 @@ docker run -d \
   -v $(pwd)/my-market-data:/data \
   -e FINNHUB_API_KEY=your_key \
   stock-scanner-mcp \
-  npx stock-scanner-sidecar --enable-workspace --data-dir /data
+  npx stock-scanner-sidecar --enable-workspace --persistent-cache --data-dir /data
 ```
 
 ### Docker Compose Example

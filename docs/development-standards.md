@@ -257,9 +257,9 @@ All HTTP calls MUST go through `shared/http.ts`. Direct `fetch()` calls are proh
 | Rule | Detail |
 |------|--------|
 | Implementation | `TtlCache` from `shared/cache.ts` |
-| Namespace | Required constructor argument, the module name as a literal (`new TtlCache(ttl, "finnhub")`); never derived at runtime |
+| Namespace | Required constructor argument: a string literal equal to the module directory name, or `{module}-{purpose}` when a module owns several caches (`new TtlCache(ttl, "finnhub")`, `"reddit-trending"`); unique across modules, never derived at runtime (enforced by `src/__tests__/cache-namespaces.test.ts`) |
 | Scope | One cache instance per module (module-level `const`) |
-| Persistence | Opt-in via `--persistent-cache`: entry points call `enablePersistentCache()` (`shared/cache-store.ts`), which registers a SQLite-backed `CacheStore` (`cache.db`) behind the in-memory layer. Values > 256 KB stay in memory only; a store failure logs and falls back to memory |
+| Persistence | Opt-in via `--persistent-cache`: entry points call `enablePersistentCache(dataDir, version)` (`shared/cache-store.ts`), which registers a SQLite-backed `CacheStore` (`cache.db`, separate from `workspace.db`) behind the in-memory layer. Values > 256 KB stay in memory only, rows are capped at 5,000, the table is cleared on a package version change, and a store failure logs and falls back to memory |
 | TTL | 5 minutes default; shorter for real-time data (quotes) |
 | Key format | `{entity}:{param1}:{param2}` colon-separated |
 | Utility | Use `cache.getOrFetch(key, fetcher)` when possible |
@@ -375,7 +375,7 @@ npm run test:watch    # Watch mode during development
 ## 11. Adding a New Module — Checklist
 
 1. Create directory: `src/modules/{name}/`
-2. Create `client.ts` with typed interfaces and cached HTTP functions
+2. Create `client.ts` with typed interfaces and cached HTTP functions (`new TtlCache<T>(ttl, "{name}")` — the namespace is the module directory name)
 3. Create `index.ts` with `create{Name}Module()` factory
 4. Create `__tests__/client.test.ts` with tests for every client function
 5. Register in `index.ts` → `buildAllModules()` (conditionally if needs API key)

@@ -9,8 +9,8 @@ describe("SqliteCacheStore", () => {
   let tmpDir: string;
   const stores: SqliteCacheStore[] = [];
 
-  async function open(dir = tmpDir): Promise<SqliteCacheStore> {
-    const s = await SqliteCacheStore.open(dir);
+  async function open(dir = tmpDir, version = "1.0.0", maxRows?: number): Promise<SqliteCacheStore> {
+    const s = await SqliteCacheStore.open(dir, { version, maxRows });
     stores.push(s);
     return s;
   }
@@ -34,13 +34,14 @@ describe("SqliteCacheStore", () => {
 
   it("round-trips entries and survives reopening", async () => {
     const store = await open();
-    store.set("finnhub:quote:AAPL", '{"c":1}', 123456, "finnhub");
-    expect(store.get("finnhub:quote:AAPL")).toEqual({ value: '{"c":1}', expiresAt: 123456 });
+    const expiresAt = Date.now() + 60_000;
+    store.set("finnhub:quote:AAPL", '{"c":1}', expiresAt, "finnhub");
+    expect(store.get("finnhub:quote:AAPL")).toEqual({ value: '{"c":1}', expiresAt });
     expect(store.get("missing")).toBeUndefined();
     store.close();
 
     const reopened = await open();
-    expect(reopened.get("finnhub:quote:AAPL")).toEqual({ value: '{"c":1}', expiresAt: 123456 });
+    expect(reopened.get("finnhub:quote:AAPL")).toEqual({ value: '{"c":1}', expiresAt });
   });
 
   it("replaces, deletes and purges rows", async () => {
@@ -68,6 +69,29 @@ describe("SqliteCacheStore", () => {
     expect(new TtlCache<{ c: number }>(60_000, "finnhub").get("quote:AAPL")).toEqual({ c: 7 });
   });
 
+  it("starts from an empty cache when the package version changes", async () => {
+    const store = await open();
+    store.set("finnhub:quote:AAPL", '{"c":1}', Date.now() + 60_000, "finnhub");
+    store.close();
+
+    expect((await open(tmpDir, "1.0.0")).get("finnhub:quote:AAPL")).toBeDefined();
+    expect((await open(tmpDir, "2.0.0")).get("finnhub:quote:AAPL")).toBeUndefined();
+  });
+
+  it("purges expired rows on open and trims to the row cap", async () => {
+    const store = await open(tmpDir, "1.0.0", 3);
+    store.set("old", "0", Date.now() - 1, "t");
+    for (let i = 1; i <= 5; i++) store.set(`k${i}`, "v", Date.now() + i * 1000, "t");
+    store.close();
+
+    const reopened = await open(tmpDir, "1.0.0", 3);
+    expect(reopened.get("old")).toBeUndefined();
+    expect(reopened.get("k1")).toBeUndefined();
+    expect(reopened.get("k2")).toBeUndefined();
+    expect(reopened.get("k3")).toBeDefined();
+    expect(reopened.get("k5")).toBeDefined();
+  });
+
   it("refuses a symlinked cache.db", async () => {
     fs.writeFileSync(path.join(tmpDir, "target"), "");
     fs.symlinkSync(path.join(tmpDir, "target"), path.join(tmpDir, CACHE_DB_FILE));
@@ -92,10 +116,21 @@ describe("enablePersistentCache", () => {
 
   it("opens the store, registers it as the shared store and logs the path", async () => {
     const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
-    const store = await enablePersistentCache(tmpDir);
+    const store = await enablePersistentCache(tmpDir, "1.0.0");
     expect(store).toBeInstanceOf(SqliteCacheStore);
     expect(getSharedCacheStore()).toBe(store);
     expect(stderr.mock.calls[0][0]).toContain(`persistent cache enabled at ${path.join(tmpDir, CACHE_DB_FILE)}`);
+  });
+
+  it("closes the previous store when enabled twice", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const first = await enablePersistentCache(tmpDir, "1.0.0");
+    const closeSpy = vi.spyOn(first as SqliteCacheStore, "close");
+    const second = await enablePersistentCache(tmpDir, "1.0.0");
+    // Avoid matchers that pretty-print the closed store's finalized statements.
+    expect(second === first).toBe(false);
+    expect(closeSpy).toHaveBeenCalledOnce();
+    expect(getSharedCacheStore() === second).toBe(true);
   });
 
   it("never throws: an unusable data dir disables the cache with a warning", async () => {
@@ -103,7 +138,7 @@ describe("enablePersistentCache", () => {
     fs.writeFileSync(path.join(tmpDir, "target"), "");
     fs.symlinkSync(path.join(tmpDir, "target"), path.join(tmpDir, CACHE_DB_FILE));
 
-    const store = await enablePersistentCache(tmpDir);
+    const store = await enablePersistentCache(tmpDir, "1.0.0");
     expect(store).toBeNull();
     expect(getSharedCacheStore()).toBeNull();
     expect(stderr.mock.calls[0][0]).toContain("persistent cache disabled");

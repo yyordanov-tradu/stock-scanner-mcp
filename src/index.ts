@@ -118,7 +118,7 @@ async function main() {
     config.enablePersistentCache = false;
   }
   if (config.enablePersistentCache) {
-    await enablePersistentCache(config.dataDir || DEFAULT_DATA_DIR);
+    await enablePersistentCache(config.dataDir || DEFAULT_DATA_DIR, pkg.version);
   }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))
