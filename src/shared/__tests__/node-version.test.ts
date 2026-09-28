@@ -31,6 +31,9 @@ describe("node-version", () => {
     expect(msg).toContain("the workspace module (--enable-workspace) requires Node.js >= 22.13");
     expect(msg).toContain("v20.20.2");
     expect(msg).toContain("Continuing without the workspace module");
+    const cacheMsg = sqliteNodeRequirementMessage("the persistent cache", "--persistent-cache", "20.20.2");
+    expect(cacheMsg).toContain("the persistent cache (--persistent-cache) requires Node.js >= 22.13");
+    expect(cacheMsg).toContain("Continuing without the persistent cache");
   });
 
   it("checkSqliteNodeSupport logs and returns false on old Node, installs the warning filter and returns true otherwise", () => {

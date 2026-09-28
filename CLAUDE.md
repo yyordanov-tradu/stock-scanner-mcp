@@ -52,7 +52,8 @@ stock-scanner-mcp/
 │   │   └── server.ts         # Dynamic HTTP request handler
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
-│       ├── cache.ts          # In-memory TTL cache
+│       ├── cache.ts          # Namespaced TTL cache (memory + optional shared store)
+│       ├── cache-store.ts    # SQLite-backed shared cache store (--persistent-cache)
 │       ├── db.ts             # SQLite connection manager (WAL, busy timeout, symlink guards)
 │       ├── node-version.ts   # Node.js requirement check for node:sqlite
 │       ├── types.ts          # Shared types + result builders
@@ -90,6 +91,9 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 ### CLI Arguments (preferences)
 - `--modules` -- comma-separated list of modules to enable (default: all available)
 - `--default-exchange` -- default exchange for symbol resolution (default: NASDAQ)
+- `--enable-workspace` -- stateful workspace tools (SQLite, Node >= 22.13)
+- `--persistent-cache` -- persist the API response cache to `cache.db` in the data dir (Node >= 22.13)
+- `--data-dir` -- directory for `workspace.db`/`workspace.json`/`cache.db` (default `~/.stock-scanner-mcp`; must be under the home directory; `STOCK_SCANNER_DATA_DIR` env var is the fallback)
 
 ## Module System
 
@@ -130,7 +134,7 @@ Read it before writing any code. Key rules summarized below:
 - All tool handlers wrapped with `withMetadata()` — handlers MUST NEVER throw to MCP client
 - All URL parameters use `encodeURIComponent()`; API keys passed via headers (URL query param auth allowed when API requires it — see development-standards.md §2 Documented Deviations)
 - Response payloads truncated to control token usage
-- In-memory TTL cache (`shared/cache.ts`) for all external API calls
+- TTL cache (`shared/cache.ts`) for all external API calls; every `TtlCache` is constructed with its module name as namespace; persistence is opt-in (`--persistent-cache`) and wired only from entry points
 - Tool descriptions must be LLM-readable, disambiguated from similar tools, honest about limitations, and include value scales for ratings/scores
 - All tools in a module MUST use the same response shape (standard: `JSON.stringify(rows, null, 2)`)
 - Tools returning stock data MUST include both `name` and `description` metadata columns

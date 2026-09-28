@@ -8,8 +8,8 @@ const CACHE_TTL_LATEST = 60 * 60 * 1000; // 1 hour
 const CACHE_TTL_STATIC = 24 * 60 * 60 * 1000; // 24 hours
 const MAX_TIMESERIES_DAYS = 90;
 
-const latestCache = new TtlCache<unknown>(CACHE_TTL_LATEST);
-const staticCache = new TtlCache<unknown>(CACHE_TTL_STATIC);
+const latestCache = new TtlCache<unknown>(CACHE_TTL_LATEST, "frankfurter-latest");
+const staticCache = new TtlCache<unknown>(CACHE_TTL_STATIC, "frankfurter-static");
 
 export interface RatesResponse {
   amount: number;

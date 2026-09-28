@@ -17,11 +17,11 @@ export const DEFAULT_SUBREDDITS = [
 ] as const;
 
 // 5-minute TTL for trending tickers
-export const trendingCache = new TtlCache<TrendingTicker[]>(5 * 60 * 1000);
+export const trendingCache = new TtlCache<TrendingTicker[]>(5 * 60 * 1000, "reddit-trending");
 // 2-minute TTL for mention/sentiment queries
-export const mentionCache = new TtlCache<unknown>(2 * 60 * 1000);
+export const mentionCache = new TtlCache<unknown>(2 * 60 * 1000, "reddit-mentions");
 // 5-minute TTL for watchlist scans (matches trendingCache freshness)
-export const watchlistCache = new TtlCache<WatchlistScanResult>(5 * 60 * 1000);
+export const watchlistCache = new TtlCache<WatchlistScanResult>(5 * 60 * 1000, "reddit-watchlist");
 
 // ── Stop words ───────────────────────────────────────────────────────────────
 

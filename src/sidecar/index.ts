@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { createServer } from "./server.js";
 import { checkSqliteNodeSupport } from "../shared/node-version.js";
+import { openPersistentCache } from "../shared/cache-store.js";
+import { DEFAULT_DATA_DIR } from "../config.js";
 
 function parsePort(args: string[]): number {
   const idx = args.indexOf("--port");
@@ -18,12 +23,17 @@ function parseStringFlag(args: string[], flag: string): string | undefined {
   return undefined;
 }
 
-function main(): void {
+const pkg = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "package.json"), "utf-8")) as { version: string };
+
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const port = parsePort(args);
   const enableWorkspace =
     args.includes("--enable-workspace") && checkSqliteNodeSupport("the workspace module", "--enable-workspace");
+  const persistentCache =
+    args.includes("--persistent-cache") && checkSqliteNodeSupport("the persistent cache", "--persistent-cache");
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
+  const cacheStore = persistentCache ? await openPersistentCache(dataDir ?? DEFAULT_DATA_DIR, pkg.version) : null;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;
   const fredApiKey = process.env.FRED_API_KEY;
@@ -46,6 +56,7 @@ function main(): void {
   if (fredApiKey) enabled.push("fred"); else disabled.push("fred (FRED_API_KEY not set)");
   if (alphaVantageApiKey) enabled.push("alpha-vantage"); else disabled.push("alpha-vantage (ALPHA_VANTAGE_API_KEY not set)");
   if (enableWorkspace) enabled.push("workspace"); else disabled.push("workspace (--enable-workspace not set)");
+  if (persistentCache) enabled.push("persistent-cache"); else disabled.push("persistent-cache (--persistent-cache not set)");
 
   console.error(`[stock-scanner-sidecar] listening on port ${port}`);
   console.error(`  Always-on: tradingview, tradingview-crypto, sec-edgar, options, options-cboe, sentiment, coingecko, frankfurter, reddit`);
@@ -54,6 +65,7 @@ function main(): void {
 
   const shutdown = (): void => {
     console.error("[stock-scanner-sidecar] shutting down...");
+    cacheStore?.close();
     server.close(() => process.exit(0));
     // Force exit after 5s if connections linger
     setTimeout(() => process.exit(0), 5000).unref();
@@ -63,4 +75,7 @@ function main(): void {
   process.on("SIGINT", shutdown);
 }
 
-main();
+main().catch((err) => {
+  console.error("Fatal:", err);
+  process.exit(1);
+});

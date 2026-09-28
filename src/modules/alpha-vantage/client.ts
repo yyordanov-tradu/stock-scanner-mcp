@@ -4,7 +4,7 @@ import { TtlCache } from "../../shared/cache.js";
 const BASE_URL = "https://www.alphavantage.co/query";
 const CACHE_TTL = 60 * 1000; // 1 minute
 
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "alpha-vantage");
 
 function checkAvResponse(data: any) {
   if (!data) {

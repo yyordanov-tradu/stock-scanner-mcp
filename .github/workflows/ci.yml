@@ -53,7 +53,7 @@ jobs:
             exit 1
           fi
           node dist/index.js --help
-          node dist/sidecar/index.js --port 3999 --enable-workspace --data-dir "$HOME/.stock-scanner-smoke" &
+          node dist/sidecar/index.js --port 3999 --enable-workspace --persistent-cache --data-dir "$HOME/.stock-scanner-smoke" &
           SIDECAR_PID=$!
           trap 'kill $SIDECAR_PID 2>/dev/null; rm -rf "$HOME/.stock-scanner-smoke"' EXIT
           up=0
@@ -63,6 +63,7 @@ jobs:
           done
           test "$up" = 1 || { echo "::error::sidecar did not start"; exit 1; }
           curl -sf http://localhost:3999/workspace/profile
+          test -f "$HOME/.stock-scanner-smoke/cache.db"
 
   security-scan:
     runs-on: ubuntu-latest

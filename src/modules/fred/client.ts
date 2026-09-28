@@ -4,7 +4,7 @@ import { TtlCache } from "../../shared/cache.js";
 const BASE_URL = "https://api.stlouisfed.org/fred";
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "fred");
 
 /** High-impact FRED release IDs with human-readable names. */
 export const HIGH_IMPACT_RELEASES: Record<number, string> = {

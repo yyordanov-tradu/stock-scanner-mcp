@@ -6,9 +6,10 @@ import { dirname, join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { parseConfig } from "./config.js";
+import { parseConfig, DEFAULT_DATA_DIR } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
 import { checkSqliteNodeSupport } from "./shared/node-version.js";
+import { openPersistentCache } from "./shared/cache-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,7 +37,8 @@ OPTIONS
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
   --enable-workspace      Enable stateful workspace (watchlists, theses, profile; Node >= 22.13)
-  --data-dir <path>       Directory for workspace storage (default: ~/.stock-scanner-mcp)
+  --persistent-cache      Persist API responses to disk so restarts reuse them (Node >= 22.13)
+  --data-dir <path>       Directory for workspace and cache storage (default: ~/.stock-scanner-mcp)
 
 MODULES (69 tools total)
   tradingview        10 tools Stock scanning, quotes, technicals       (no key)
@@ -111,6 +113,12 @@ async function main() {
     config.enableWorkspace && !checkSqliteNodeSupport("the workspace module", "--enable-workspace");
   if (workspaceUnsupported) {
     config.enableWorkspace = false;
+  }
+  if (config.enablePersistentCache && !checkSqliteNodeSupport("the persistent cache", "--persistent-cache")) {
+    config.enablePersistentCache = false;
+  }
+  if (config.enablePersistentCache) {
+    await openPersistentCache(config.dataDir || DEFAULT_DATA_DIR, pkg.version);
   }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))

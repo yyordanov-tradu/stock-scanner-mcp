@@ -43,7 +43,7 @@ export interface MarketBreadthResult {
 }
 
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-const cache = new TtlCache<MarketBreadthResult>(CACHE_TTL);
+const cache = new TtlCache<MarketBreadthResult>(CACHE_TTL, "market-breadth");
 
 export function aggregateMarketBreadth(
   rows: Array<{ symbol: string; data: Record<string, any> }>,

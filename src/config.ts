@@ -1,9 +1,12 @@
 import * as path from "node:path";
 import * as os from "node:os";
 
+export const DEFAULT_DATA_DIR = path.join(os.homedir(), ".stock-scanner-mcp");
+
 export interface Config {
   defaultExchange: string;
   enableWorkspace: boolean;
+  enablePersistentCache: boolean;
   dataDir?: string;
   enabledModules?: string[];
   env: Record<string, string | undefined>;
@@ -13,6 +16,7 @@ export function parseConfig(args: string[]): Config {
   let defaultExchange = "NASDAQ";
   let enabledModules: string[] | undefined;
   let enableWorkspace = false;
+  let enablePersistentCache = false;
   let dataDir: string | undefined = process.env.STOCK_SCANNER_DATA_DIR;
 
   for (let i = 0; i < args.length; i++) {
@@ -24,13 +28,15 @@ export function parseConfig(args: string[]): Config {
       i++;
     } else if (args[i] === "--enable-workspace") {
       enableWorkspace = true;
+    } else if (args[i] === "--persistent-cache") {
+      enablePersistentCache = true;
     } else if (args[i] === "--data-dir" && args[i + 1]) {
       dataDir = args[i + 1];
       i++;
     }
   }
 
-  if (enableWorkspace && dataDir) {
+  if ((enableWorkspace || enablePersistentCache) && dataDir) {
     const resolved = path.resolve(dataDir);
     const home = os.homedir();
     if (!resolved.startsWith(home + path.sep) && resolved !== home) {
@@ -42,6 +48,7 @@ export function parseConfig(args: string[]): Config {
   return {
     defaultExchange,
     enableWorkspace,
+    enablePersistentCache,
     dataDir,
     enabledModules,
     env: {

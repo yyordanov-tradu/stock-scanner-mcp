@@ -212,10 +212,11 @@ Each thesis supports five fields: `summary`, `bullCase`, `bearCase`, `catalyst`,
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--enable-workspace` | off | Activate the 7 workspace tools |
-| `--data-dir <path>` | `~/.stock-scanner-mcp` | Directory for workspace storage (`workspace.db` + `workspace.json`) |
+| `--data-dir <path>` | `~/.stock-scanner-mcp` | Directory for local storage (`workspace.db` + `workspace.json`, and `cache.db` with `--persistent-cache`) |
+| `--persistent-cache` | off | Also persist the API response cache to `cache.db` in the data directory |
 | `--default-exchange` | `NASDAQ` | Default exchange for ticker resolution |
 
-Data is stored locally in a SQLite database (`workspace.db`, via Node's built-in `node:sqlite`) — no cloud sync, no external calls. If you omit `--enable-workspace`, the server stays fully stateless and writes no local data.
+Data is stored locally in a SQLite database (`workspace.db`, via Node's built-in `node:sqlite`) — no cloud sync, no external calls. If you omit both `--enable-workspace` and `--persistent-cache`, the server stays fully stateless and writes no local data; `--persistent-cache` alone writes only `cache.db` (unencrypted API responses).
 
 **Requirements:** the workspace module needs **Node.js 22.13 or newer**. On older versions the server prints a clear message and starts without the workspace tools (everything else keeps working).
 
@@ -412,6 +413,7 @@ npx -y stock-scanner-mcp --modules tradingview,sec-edgar    # Enable specific mo
 npx -y stock-scanner-mcp --default-exchange NYSE             # Set default exchange
 npx -y stock-scanner-mcp --enable-workspace                  # Turn on local workspace tools
 npx -y stock-scanner-mcp --enable-workspace --data-dir /tmp/market-workspace  # Custom data directory
+npx -y stock-scanner-mcp --persistent-cache                  # Reuse cached API responses across restarts
 npx -y stock-scanner-mcp --help                              # Show all options
 ```
 
@@ -442,6 +444,9 @@ npx stock-scanner-sidecar --port 8080  # Custom port
 # Optional: Enable the stateful Market Workspace via HTTP
 npx stock-scanner-sidecar --enable-workspace --data-dir ./my-data
 
+# Optional: share cached API responses with the MCP server across restarts
+npx stock-scanner-sidecar --persistent-cache --data-dir ./my-data
+
 # Access the OpenAPI spec
 curl http://localhost:3200/openapi.json
 ```
@@ -464,7 +469,7 @@ See [Sidecar HTTP API](https://github.com/yyordanov-tradu/stock-scanner-mcp/wiki
 | FRED | No hard limit | 30 min |
 | Frankfurter (ECB) | No limit | 1 hour |
 
-All modules use in-memory TTL caching to minimize API calls.
+All modules use in-memory TTL caching to minimize API calls. With `--persistent-cache` (Node.js 22.13+), cached responses are also written to `cache.db` in the data directory (default `~/.stock-scanner-mcp`) so that a restarted server — or the sidecar running alongside it — reuses them until they expire. Entries are stored unencrypted, capped at 256 KB each and 5,000 rows, expired rows are purged automatically, and the cache is cleared when the package version changes. Cache keys record what you looked up (symbols, watchlists, search queries), so treat `cache.db` like a local history file. The flag is off by default in the Claude Code plugin; add it to your own MCP config to enable it. Omit the flag to keep the cache in memory only.
 
 ## Development
 
@@ -510,7 +515,8 @@ src/
 │   └── server.ts         # Dynamic HTTP request handler
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
-    ├── cache.ts          # In-memory TTL cache
+    ├── cache.ts          # Namespaced TTL cache (memory, optional shared store)
+    ├── cache-store.ts    # SQLite-backed shared cache store (--persistent-cache)
     ├── db.ts             # SQLite (node:sqlite) connection manager for the workspace
     ├── node-version.ts   # Node.js requirement check for the workspace module
     ├── types.ts          # ToolDefinition, ToolResult, helpers
