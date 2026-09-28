@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { createHash } from "node:crypto";
 import { ZodError } from "zod";
 import type { DatabaseSync } from "node:sqlite";
 import { DatabaseManager, assertNotSymlinkSync, isSqliteBusyError } from "../../shared/db.js";
@@ -25,6 +26,10 @@ export interface StorageOptions {
 export const WORKSPACE_DB_FILE = "workspace.db";
 export const LEGACY_WORKSPACE_FILE = "workspace.json";
 const MIRROR_MTIME_KEY = "mirror_mtime_ms";
+const MIRROR_SHA256_KEY = "mirror_sha256";
+
+const BUSY_MESSAGE =
+  "Conflict: The workspace is locked by another stock-scanner process (a second session or the sidecar). Please retry.";
 
 function findReservedKeys(parsed: unknown): string[] {
   if (typeof parsed !== "object" || parsed === null) return [];
@@ -39,14 +44,25 @@ function findReservedKeys(parsed: unknown): string[] {
   return found;
 }
 
-const BUSY_MESSAGE =
-  "Conflict: The workspace is locked by another stock-scanner process (a second session or the sidecar). Please retry.";
+function sha256(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+function isErrno(e: unknown, code: string): boolean {
+  return e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === code;
+}
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
 export class StorageManager {
   private readonly dbManager: DatabaseManager;
   private readonly legacyPath: string;
   private readonly defaultExchange: string;
   private ready = false;
+  private readying: Promise<void> | null = null;
+  private ignoredLegacyMtime: number | null = null;
 
   constructor(dataDir: string, defaultExchange = "NASDAQ", options: StorageOptions = {}) {
     this.dbManager = new DatabaseManager(dataDir, { fileName: WORKSPACE_DB_FILE, busyTimeoutMs: options.busyTimeoutMs });
@@ -58,52 +74,49 @@ export class StorageManager {
     return this.dbManager.dbPath;
   }
 
-  // First use: create the schema and import workspace.json when the database is empty or
-  // when the JSON file was modified after our last mirror write (an older release ran).
   private async ensureReady(): Promise<void> {
     if (this.ready) return;
-    await this.dbManager.open();
-    this.withBusyMapping(() =>
-      this.dbManager.transaction("IMMEDIATE", (db) => {
-        createWorkspaceSchema(db);
-        const legacyMtime = this.statLegacyMtime();
-        if (legacyMtime === null) return;
+    if (!this.readying) {
+      this.readying = this.dbManager
+        .open()
+        .then(() => {
+          this.withBusyMapping(() => this.dbManager.transaction("IMMEDIATE", createWorkspaceSchema));
+          this.ready = true;
+        })
+        .finally(() => {
+          this.readying = null;
+        });
+    }
+    await this.readying;
+  }
 
-        const current = readProfileVersion(db);
-        const recordedMtime = Number(readMeta(db, MIRROR_MTIME_KEY) ?? 0);
-        if (current !== null && legacyMtime <= recordedMtime) return;
-
-        const legacy = this.readLegacyWorkspace();
-        const version = (current ?? 0) + 1;
-        writeWorkspace(db, legacy, version);
-        writeMeta(db, MIRROR_MTIME_KEY, String(legacyMtime));
-        console.error(
-          current === null
-            ? `[workspace] Imported ${this.legacyPath} into ${this.dbManager.dbPath}. The JSON file is kept up to date as a mirror.`
-            : `[workspace] ${this.legacyPath} is newer than ${this.dbManager.dbPath} (written by an older release?); re-imported it.`,
-        );
-      }),
-    );
-    this.ready = true;
+  private withBusyMapping<T>(fn: () => T): T {
+    try {
+      return fn();
+    } catch (e) {
+      if (isSqliteBusyError(e)) throw new Error(BUSY_MESSAGE);
+      throw e;
+    }
   }
 
   private statLegacyMtime(): number | null {
     assertNotSymlinkSync(this.legacyPath);
     try {
-      return fs.statSync(this.legacyPath).mtimeMs;
+      const stat = fs.statSync(this.legacyPath);
+      if (!stat.isFile()) throw new Error(`Workspace file invalid (${this.legacyPath}): not a regular file`);
+      return stat.mtimeMs;
     } catch (e) {
-      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") return null;
+      if (isErrno(e, "ENOENT")) return null;
       throw e;
     }
   }
 
-  private readLegacyWorkspace(): Workspace {
-    const raw = fs.readFileSync(this.legacyPath, "utf-8");
+  private parseLegacyWorkspace(raw: string): Workspace {
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch (e) {
-      throw new Error(`Workspace file corrupted (${this.legacyPath}): ${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(`Workspace file corrupted (${this.legacyPath}): ${errorMessage(e)}`);
     }
     // zod's record parser silently drops keys like __proto__; reject them explicitly instead.
     const reserved = findReservedKeys(parsed);
@@ -118,17 +131,59 @@ export class StorageManager {
     }
   }
 
-  private withBusyMapping<T>(fn: () => T): T {
-    try {
-      return fn();
-    } catch (e) {
-      if (isSqliteBusyError(e)) throw new Error(BUSY_MESSAGE);
-      throw e;
-    }
+  // Imports workspace.json when the database is empty, or when the file changed after our
+  // last mirror write (an older release or the user edited it). Runs before every load/save
+  // so a long-lived session cannot overwrite edits made by another release in the meantime.
+  private syncFromLegacy(): void {
+    const legacyMtime = this.statLegacyMtime();
+    if (legacyMtime === null) return;
+
+    this.withBusyMapping(() =>
+      this.dbManager.transaction("IMMEDIATE", (db) => {
+        const current = readProfileVersion(db);
+        const recordedMtime = Number(readMeta(db, MIRROR_MTIME_KEY));
+        const upToDate = Number.isFinite(recordedMtime) && legacyMtime <= recordedMtime;
+        if (current !== null && upToDate) return;
+
+        const raw = fs.readFileSync(this.legacyPath, "utf-8");
+        const hash = sha256(raw);
+        if (current !== null && hash === readMeta(db, MIRROR_SHA256_KEY)) {
+          // Touched (backup restore, cloud sync) but identical to what we last wrote.
+          writeMeta(db, MIRROR_MTIME_KEY, String(legacyMtime));
+          return;
+        }
+
+        let legacy: Workspace;
+        try {
+          legacy = this.parseLegacyWorkspace(raw);
+        } catch (e) {
+          if (current === null) throw e;
+          if (this.ignoredLegacyMtime !== legacyMtime) {
+            this.ignoredLegacyMtime = legacyMtime;
+            console.error(
+              `[workspace] Ignoring ${this.legacyPath}: ${errorMessage(e)}. ` +
+                `Using ${this.dbManager.dbPath} as-is; fix or remove the file to stop this warning.`,
+            );
+          }
+          return;
+        }
+
+        const version = (current ?? 0) + 1;
+        writeWorkspace(db, legacy, version);
+        writeMeta(db, MIRROR_MTIME_KEY, String(legacyMtime));
+        writeMeta(db, MIRROR_SHA256_KEY, hash);
+        console.error(
+          current === null
+            ? `[workspace] Imported ${this.legacyPath} into ${this.dbManager.dbPath}. The JSON file is kept up to date as a mirror.`
+            : `[workspace] ${this.legacyPath} changed since the last mirror write (older release or manual edit); re-imported it as version ${version}.`,
+        );
+      }),
+    );
   }
 
   async load(): Promise<LoadResult> {
     await this.ensureReady();
+    this.syncFromLegacy();
     const stored = this.withBusyMapping(() => this.dbManager.transaction("DEFERRED", readWorkspace));
     if (stored) return { data: stored.data, version: stored.version };
     return {
@@ -139,7 +194,12 @@ export class StorageManager {
 
   async save(data: Workspace, expectedVersion: number): Promise<number> {
     await this.ensureReady();
-    return this.withBusyMapping(() =>
+    this.syncFromLegacy();
+
+    const content = JSON.stringify(data, null, 2);
+    const tmpPath = `${this.legacyPath}.${process.pid}.tmp`;
+
+    const next = this.withBusyMapping(() =>
       this.dbManager.transaction("IMMEDIATE", (db) => {
         const current = readProfileVersion(db);
 
@@ -158,34 +218,59 @@ export class StorageManager {
           }
         }
 
-        const next = (current ?? 0) + 1;
-        writeWorkspace(db, data, next);
-        this.writeMirror(db, data);
-        return next;
+        const version = (current ?? 0) + 1;
+        writeWorkspace(db, data, version);
+        this.writeMirrorTemp(tmpPath, content);
+        return version;
       }),
     );
+
+    this.publishMirror(tmpPath, content, next);
+    return next;
   }
 
-  // Keeps workspace.json readable by releases that predate SQLite storage. Runs under the
-  // write lock so mirrors cannot interleave; a mirror failure must not fail the save.
-  private writeMirror(db: DatabaseSync, data: Workspace): void {
-    const tmpPath = `${this.legacyPath}.tmp`;
+  // The mirror keeps workspace.json readable by releases that predate SQLite storage.
+  // Phase 1 (under the write lock): stage the content in a per-process temp file.
+  private writeMirrorTemp(tmpPath: string, content: string): void {
     try {
-      assertNotSymlinkSync(this.legacyPath);
+      assertNotSymlinkSync(tmpPath);
       try {
         fs.unlinkSync(tmpPath);
       } catch {
-        // no stale temp file
+        // no stale temp file from a previous crash
       }
-      fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { encoding: "utf-8", mode: 0o600, flag: "wx" });
-      fs.renameSync(tmpPath, this.legacyPath);
-      writeMeta(db, MIRROR_MTIME_KEY, String(fs.statSync(this.legacyPath).mtimeMs));
+      fs.writeFileSync(tmpPath, content, { encoding: "utf-8", mode: 0o600, flag: "wx" });
     } catch (e) {
-      console.error(`[workspace] Could not update ${this.legacyPath} mirror: ${e instanceof Error ? e.message : String(e)}`);
+      console.error(`[workspace] Could not stage ${this.legacyPath} mirror: ${errorMessage(e)}`);
+    }
+  }
+
+  // Phase 2 (after COMMIT, in its own short write transaction): publish the temp file only if
+  // no other process has committed a newer version since; a failed COMMIT never reaches here,
+  // so the mirror can never hold data the database rejected. Best effort: never fails the save.
+  private publishMirror(tmpPath: string, content: string, version: number): void {
+    try {
+      if (!fs.lstatSync(tmpPath).isFile()) return;
+    } catch {
+      return; // staging failed earlier and was already reported
+    }
+    try {
+      this.dbManager.transaction("IMMEDIATE", (db) => {
+        if (readProfileVersion(db) !== version) {
+          fs.unlinkSync(tmpPath);
+          return;
+        }
+        assertNotSymlinkSync(this.legacyPath);
+        fs.renameSync(tmpPath, this.legacyPath);
+        writeMeta(db, MIRROR_MTIME_KEY, String(fs.statSync(this.legacyPath).mtimeMs));
+        writeMeta(db, MIRROR_SHA256_KEY, sha256(content));
+      });
+    } catch (e) {
+      console.error(`[workspace] Could not update ${this.legacyPath} mirror: ${errorMessage(e)}`);
       try {
         fs.unlinkSync(tmpPath);
       } catch {
-        // nothing to clean up
+        // already renamed or never created
       }
     }
   }

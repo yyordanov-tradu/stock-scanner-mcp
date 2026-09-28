@@ -4,6 +4,7 @@ import {
   isSqliteNodeSupported,
   sqliteNodeRequirementMessage,
   suppressSqliteExperimentalWarning,
+  checkSqliteNodeSupport,
 } from "../node-version.js";
 
 describe("node-version", () => {
@@ -29,7 +30,22 @@ describe("node-version", () => {
     const msg = sqliteNodeRequirementMessage("the workspace module", "--enable-workspace", "20.20.2");
     expect(msg).toContain("the workspace module (--enable-workspace) requires Node.js >= 22.13");
     expect(msg).toContain("v20.20.2");
-    expect(msg).toContain("start without --enable-workspace");
+    expect(msg).toContain("Continuing without the workspace module");
+  });
+
+  it("checkSqliteNodeSupport logs and returns false on old Node, installs the warning filter and returns true otherwise", () => {
+    const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+    const emit = vi.fn();
+    const oldProc = { versions: { node: "20.20.2" }, emitWarning: emit } as unknown as NodeJS.Process;
+    expect(checkSqliteNodeSupport("the workspace module", "--enable-workspace", oldProc)).toBe(false);
+    expect(stderr).toHaveBeenCalledTimes(1);
+    expect(stderr.mock.calls[0][0]).toContain("v20.20.2");
+    expect(oldProc.emitWarning).toBe(emit);
+
+    const newProc = { versions: { node: "22.13.0" }, emitWarning: emit } as unknown as NodeJS.Process;
+    expect(checkSqliteNodeSupport("the workspace module", "--enable-workspace", newProc)).toBe(true);
+    expect(stderr).toHaveBeenCalledTimes(1);
+    expect(newProc.emitWarning).not.toBe(emit);
   });
 
   it("suppresses only the node:sqlite ExperimentalWarning, delegating everything else", () => {

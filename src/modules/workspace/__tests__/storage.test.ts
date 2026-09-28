@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as path from "node:path";
@@ -74,6 +74,7 @@ describe("StorageManager", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     for (const m of managers.splice(0)) m.close();
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
@@ -177,9 +178,22 @@ describe("StorageManager", () => {
     const loaded = await manager.load();
 
     withRawDb((db) => db.exec("DELETE FROM workspace_profile"));
+    await fs.rm(path.join(tmpDir, "workspace.json"));
 
     loaded.data.profile.tradingStyle = "day";
     await expect(manager.save(loaded.data, saved)).rejects.toThrow("reset");
+  });
+
+  it("restores the workspace from the mirror when only the database was reset", async () => {
+    const { data, version } = await manager.load();
+    data.profile.tradingStyle = "mirrored";
+    await manager.save(data, version);
+
+    withRawDb((db) => db.exec("DELETE FROM workspace_profile"));
+
+    const restored = await make().load();
+    expect(restored.version).toBe(1);
+    expect(restored.data.profile.tradingStyle).toBe("mirrored");
   });
 
   it("only one of many concurrent writers with the same snapshot succeeds", async () => {
@@ -267,6 +281,15 @@ describe("StorageManager", () => {
     await manager.save(data, version);
     withRawDb((db) => db.exec("UPDATE workspace_profile SET workflow_cadence = 'hourly'"));
     await expect(manager.load()).rejects.toThrow("schema validation");
+  });
+
+  it("load() rejects thesis rows whose keys are reserved", async () => {
+    const { data, version } = await manager.load();
+    await manager.save(data, version);
+    withRawDb((db) =>
+      db.exec(`INSERT INTO workspace_theses (full, ticker, is_crypto, input, summary, updated_at) VALUES ('constructor', 'X', 0, 'X', 's', '${NOW}')`),
+    );
+    await expect(manager.load()).rejects.toThrow("reserved");
   });
 
   it("load() rejects rows whose keys are reserved instead of silently dropping them", async () => {
@@ -369,6 +392,70 @@ describe("StorageManager", () => {
       expect(Object.keys(reloaded.data.theses)).toEqual(["NASDAQ:AAPL"]);
     });
 
+    it("re-checks workspace.json before every save so a running session cannot overwrite an older release's edit", async () => {
+      const { data, version } = await manager.load();
+      data.profile.tradingStyle = "from-db";
+      const v1 = await manager.save(data, version);
+      const snapshot = await manager.load();
+
+      const edited = legacyWorkspace({ profile: { defaultExchange: "NYSE", tradingStyle: "from-old-release", assetFocus: [], workflowCadence: "daily", updatedAt: NOW } });
+      await touchLegacy(edited, 5_000);
+
+      snapshot.data.profile.tradingStyle = "stale-write";
+      await expect(manager.save(snapshot.data, v1)).rejects.toThrow("Conflict");
+      const reloaded = await manager.load();
+      expect(reloaded.version).toBe(2);
+      expect(reloaded.data.profile.tradingStyle).toBe("from-old-release");
+    });
+
+    it("does not re-import a touched workspace.json whose content is unchanged", async () => {
+      const { data, version } = await manager.load();
+      data.profile.tradingStyle = "from-db";
+      await manager.save(data, version);
+      const legacyPath = path.join(tmpDir, "workspace.json");
+      const t = new Date(Date.now() + 5_000);
+      await fs.utimes(legacyPath, t, t);
+
+      const reloaded = await make().load();
+      expect(reloaded.version).toBe(1);
+      expect(reloaded.data.profile.tradingStyle).toBe("from-db");
+    });
+
+    it("keeps using the database, with one warning, when a newer workspace.json is invalid", async () => {
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { data, version } = await manager.load();
+      data.profile.tradingStyle = "from-db";
+      await manager.save(data, version);
+
+      const legacyPath = path.join(tmpDir, "workspace.json");
+      await fs.writeFile(legacyPath, "{ broken");
+      const t = new Date(Date.now() + 5_000);
+      await fs.utimes(legacyPath, t, t);
+
+      const reloaded = await manager.load();
+      expect(reloaded.version).toBe(1);
+      expect(reloaded.data.profile.tradingStyle).toBe("from-db");
+      await manager.load();
+      const warnings = stderr.mock.calls.filter((c) => String(c[0]).includes("Ignoring"));
+      expect(warnings).toHaveLength(1);
+      expect(String(warnings[0][0])).toContain("corrupted");
+
+      reloaded.data.profile.tradingStyle = "still-writable";
+      await expect(manager.save(reloaded.data, reloaded.version)).resolves.toBe(2);
+    });
+
+    it("rejects a legacy path that is not a regular file", async () => {
+      await fs.mkdir(path.join(tmpDir, "workspace.json"));
+      await expect(manager.load()).rejects.toThrow("not a regular file");
+    });
+
+    it("refuses a database written by a newer schema version", async () => {
+      const { data, version } = await manager.load();
+      await manager.save(data, version);
+      withRawDb((db) => db.exec("PRAGMA user_version = 99"));
+      await expect(make().load()).rejects.toThrow("newer than this version");
+    });
+
     it("does not re-import a mirror it wrote itself", async () => {
       const { data, version } = await manager.load();
       data.profile.tradingStyle = "from-db";
@@ -393,17 +480,48 @@ describe("StorageManager", () => {
       if (POSIX) expect(fsSync.statSync(legacyPath).mode & 0o777).toBe(0o600);
     });
 
-    it("does not fail the save when the mirror cannot be written", async () => {
+    it("never publishes a mirror for a save whose COMMIT failed", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { data, version } = await manager.load();
+      data.profile.tradingStyle = "committed";
+      await manager.save(data, version);
+      const legacyPath = path.join(tmpDir, "workspace.json");
+      const before = await fs.readFile(legacyPath, "utf-8");
+
+      const loaded = await manager.load();
+      loaded.data.profile.tradingStyle = "rejected";
+      const exec = DatabaseSync.prototype.exec;
+      let armed = true;
+      vi.spyOn(DatabaseSync.prototype, "exec").mockImplementation(function (this: DatabaseSync, sql: string) {
+        if (armed && sql.startsWith("COMMIT")) {
+          armed = false;
+          throw new Error("disk I/O error");
+        }
+        return exec.call(this, sql);
+      });
+      await expect(manager.save(loaded.data, loaded.version)).rejects.toThrow("disk I/O error");
+
+      expect(await fs.readFile(legacyPath, "utf-8")).toBe(before);
+      expect((await fs.readdir(tmpDir)).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+      const reloaded = await make().load();
+      expect(reloaded.data.profile.tradingStyle).toBe("committed");
+      expect(reloaded.version).toBe(1);
+    });
+
+    it("does not fail the save when the mirror cannot be staged", async () => {
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
       const legacyPath = path.join(tmpDir, "workspace.json");
       const { data, version } = await manager.load();
       await manager.save(data, version);
+      const before = await fs.readFile(legacyPath, "utf-8");
 
-      await fs.rm(legacyPath);
-      await fs.mkdir(legacyPath);
+      await fs.mkdir(`${legacyPath}.${process.pid}.tmp`);
       const reloaded = await manager.load();
       reloaded.data.profile.tradingStyle = "still-saved";
       await expect(manager.save(reloaded.data, reloaded.version)).resolves.toBe(2);
       expect((await manager.load()).data.profile.tradingStyle).toBe("still-saved");
+      expect(await fs.readFile(legacyPath, "utf-8")).toBe(before);
+      expect(stderr.mock.calls.some((c) => String(c[0]).includes("Could not stage"))).toBe(true);
     });
   });
 });

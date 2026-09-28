@@ -21,18 +21,21 @@ export function sqliteNodeRequirementMessage(
   return (
     `stock-scanner-mcp: ${feature} (${flag}) requires Node.js >= ${min.major}.${min.minor} ` +
     `for the built-in node:sqlite module, but this is Node.js v${version.replace(/^v/, "")}. ` +
-    `Upgrade Node.js or start without ${flag}.`
+    `Continuing without ${feature}; upgrade Node.js to enable it.`
   );
 }
 
-// Entry points call this before any node:sqlite-backed feature is used.
-export function enforceSqliteNodeRequirement(feature: string, flag: string): void {
-  const requirement = sqliteNodeRequirementMessage(feature, flag);
+// Entry points call this before enabling a node:sqlite-backed feature. Returns false (after
+// logging why) when the feature must be skipped, so the rest of the server keeps working —
+// the Claude Code plugin hard-codes --enable-workspace and users cannot edit that.
+export function checkSqliteNodeSupport(feature: string, flag: string, proc: NodeJS.Process = process): boolean {
+  const requirement = sqliteNodeRequirementMessage(feature, flag, proc.versions.node);
   if (requirement) {
     console.error(requirement);
-    process.exit(1);
+    return false;
   }
-  suppressSqliteExperimentalWarning();
+  suppressSqliteExperimentalWarning(proc);
+  return true;
 }
 
 // node:sqlite emits an ExperimentalWarning on load, which would otherwise show up in the

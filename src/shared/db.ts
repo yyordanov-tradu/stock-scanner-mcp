@@ -99,7 +99,8 @@ export class DatabaseManager {
     return this.db !== null;
   }
 
-  transaction<T>(mode: TransactionMode, fn: (db: DatabaseSync) => T): T {
+  // Synchronous only: node:sqlite is synchronous and COMMIT runs as soon as fn returns.
+  transaction<T>(mode: TransactionMode, fn: (db: DatabaseSync) => T extends Promise<unknown> ? never : T): T {
     const db = this.get();
     db.exec(`BEGIN ${mode};`);
     try {

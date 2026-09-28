@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { ZodError } from "zod";
-import { RESERVED_KEYS, Workspace, WorkspaceSchema, Instrument, Watchlist, Thesis, Profile } from "./types.js";
+import { RESERVED_KEYS, Workspace, WorkspaceSchema, Instrument, Watchlist, Thesis } from "./types.js";
 
 export const WORKSPACE_SCHEMA_VERSION = 1;
 
@@ -112,6 +112,12 @@ export interface StoredWorkspace {
 }
 
 export function createWorkspaceSchema(db: DatabaseSync): void {
+  const { user_version: existing } = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  if (existing > WORKSPACE_SCHEMA_VERSION) {
+    throw new Error(
+      `Workspace database schema v${existing} is newer than this version of stock-scanner-mcp supports (v${WORKSPACE_SCHEMA_VERSION}); upgrade the package.`,
+    );
+  }
   db.exec(WORKSPACE_DDL);
   db.exec(`PRAGMA user_version = ${WORKSPACE_SCHEMA_VERSION};`);
 }
@@ -125,7 +131,7 @@ export function writeMeta(db: DatabaseSync, key: string, value: string): void {
   db.prepare("INSERT OR REPLACE INTO workspace_meta (key, value) VALUES (?, ?)").run(key, value);
 }
 
-// StatementSync.all() is untyped (Record<string, SQLOutputValue>); this is the one place we cast.
+// StatementSync results are untyped (Record<string, SQLOutputValue>); row casts are confined to this file.
 function rows<T>(db: DatabaseSync, sql: string): T[] {
   return db.prepare(sql).all() as unknown as T[];
 }
@@ -157,12 +163,13 @@ export function readWorkspace(db: DatabaseSync): StoredWorkspace | null {
     throw invalid("profile.asset_focus is not valid JSON", e);
   }
 
-  const profile: Profile = {
+  // Typed by WorkspaceSchema.parse below, not by casts here.
+  const profile: unknown = {
     defaultExchange: profileRow.default_exchange,
     tradingStyle: orUndefined(profileRow.trading_style),
-    assetFocus: assetFocus as string[],
+    assetFocus,
     preferredTimeframe: orUndefined(profileRow.preferred_timeframe),
-    workflowCadence: profileRow.workflow_cadence as Profile["workflowCadence"],
+    workflowCadence: profileRow.workflow_cadence,
     updatedAt: profileRow.updated_at,
   };
 

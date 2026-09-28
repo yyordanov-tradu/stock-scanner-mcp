@@ -217,7 +217,7 @@ Each thesis supports five fields: `summary`, `bullCase`, `bearCase`, `catalyst`,
 
 Data is stored locally in a SQLite database (`workspace.db`, via Node's built-in `node:sqlite`) — no cloud sync, no external calls. If you omit `--enable-workspace`, the server stays fully stateless and writes no local data.
 
-**Requirements:** the workspace module needs **Node.js 22.13 or newer**. On older versions the server prints a clear message and exits when `--enable-workspace` is set; without the flag it still runs.
+**Requirements:** the workspace module needs **Node.js 22.13 or newer**. On older versions the server prints a clear message and starts without the workspace tools (everything else keeps working).
 
 **Upgrading from a release that stored `workspace.json`:** the first start imports the JSON file into `workspace.db` automatically and leaves the JSON file in place. Every save also refreshes `workspace.json` as a mirror, so rolling back to an older release keeps your data. If the import fails (for example, the JSON is corrupted), nothing is written and the error tells you which file to fix. If `workspace.json` is modified afterwards (for example by an older release, or by restoring a backup), it is re-imported on the next start because the file is newer than the database's last mirror write.
 

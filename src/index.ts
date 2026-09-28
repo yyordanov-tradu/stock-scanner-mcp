@@ -8,7 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { parseConfig } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
-import { enforceSqliteNodeRequirement } from "./shared/node-version.js";
+import { checkSqliteNodeSupport } from "./shared/node-version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,7 +38,7 @@ OPTIONS
   --enable-workspace      Enable stateful workspace (watchlists, theses, profile; Node >= 22.13)
   --data-dir <path>       Directory for workspace storage (default: ~/.stock-scanner-mcp)
 
-MODULES (66 tools total)
+MODULES (69 tools total)
   tradingview        10 tools Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
@@ -107,8 +107,8 @@ async function main() {
   }
 
   const config = parseConfig(args);
-  if (config.enableWorkspace) {
-    enforceSqliteNodeRequirement("the workspace module", "--enable-workspace");
+  if (config.enableWorkspace && !checkSqliteNodeSupport("the workspace module", "--enable-workspace")) {
+    config.enableWorkspace = false;
   }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))

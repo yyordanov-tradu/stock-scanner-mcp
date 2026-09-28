@@ -346,7 +346,7 @@ npm run test:watch    # Watch mode during development
 | `withMetadata()` | `shared/utils.ts` | Error handling + metadata injection |
 | `resolveTicker()` | `shared/resolver.ts` | Ticker normalization (e.g., `AAPL` → `{ ticker: "AAPL", exchange: "NASDAQ" }`) |
 | `DatabaseManager` | `shared/db.ts` | SQLite (`node:sqlite`) connection: lazy open, WAL, busy timeout, symlink guards, `transaction()` helper |
-| `workspaceNodeRequirementMessage()` | `shared/node-version.ts` | Readable Node.js version check for features that need `node:sqlite` |
+| `checkSqliteNodeSupport()` | `shared/node-version.ts` | Logs a readable message and returns `false` when Node.js is too old for a `node:sqlite` feature, so entry points degrade instead of exiting |
 
 **Rule:** Before adding a new utility, check if an existing one covers the use case. Do not duplicate functionality.
 
