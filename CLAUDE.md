@@ -3,7 +3,7 @@
 ## Status
 
 **Version:** 1.18.0 — Published on npm as `stock-scanner-mcp`
-**Modules:** 15 implemented (69 tools total)
+**Modules:** 15 implemented (66 tools total)
 
 Planning docs (historical): `docs/architecture.md`, `docs/plans/` — reference only, not actively maintained
 
@@ -14,7 +14,7 @@ A modular, open-source MCP (Model Context Protocol) server that provides Claude 
 ## Tech Stack
 
 - **Language:** TypeScript
-- **Runtime:** Node.js
+- **Runtime:** Node.js >= 22.13 (the workspace module uses the built-in `node:sqlite`)
 - **Protocol:** MCP over stdio (JSON-RPC)
 - **SDK:** `@modelcontextprotocol/sdk`
 - **Build:** tsup (bundles to ESM)
@@ -44,6 +44,7 @@ stock-scanner-mcp/
 │   │   ├── frankfurter/      # Forex exchange rates — ECB daily rates (no key)
 │   │   ├── market-breadth/   # Market breadth indicators (no key)
 │   │   ├── reddit/           # Reddit trending tickers & sentiment (no key)
+│   │   ├── workspace/        # Stateful watchlists/theses/profile in SQLite (--enable-workspace)
 │   │   └── unified-market/   # Smart provider routing (no key)
 │   ├── sidecar/
 │   │   ├── index.ts          # HTTP sidecar entry point (port 3200)
@@ -52,6 +53,8 @@ stock-scanner-mcp/
 │   └── shared/
 │       ├── http.ts           # HTTP client with timeouts
 │       ├── cache.ts          # In-memory TTL cache
+│       ├── db.ts             # SQLite connection manager (WAL, busy timeout, symlink guards)
+│       ├── node-version.ts   # Node.js requirement check for node:sqlite
 │       ├── types.ts          # Shared types + result builders
 │       ├── resolver.ts       # Ticker resolution (AAPL → NASDAQ:AAPL)
 │       └── utils.ts          # withMetadata() wrapper
@@ -111,6 +114,7 @@ node dist/index.js --modules tradingview,finnhub  # Run specific modules
 | frankfurter | (none) | Always |
 | reddit | (none) | Always |
 | market-breadth | (none) | Always |
+| workspace | (none) | With `--enable-workspace` (needs Node >= 22.13) |
 | unified-market | (none) | Always |
 
 ## Development Standards

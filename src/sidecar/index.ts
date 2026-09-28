@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createServer } from "./server.js";
+import { suppressSqliteExperimentalWarning, workspaceNodeRequirementMessage } from "../shared/node-version.js";
 
 function parsePort(args: string[]): number {
   const idx = args.indexOf("--port");
@@ -21,6 +22,14 @@ function main(): void {
   const args = process.argv.slice(2);
   const port = parsePort(args);
   const enableWorkspace = args.includes("--enable-workspace");
+  if (enableWorkspace) {
+    const requirement = workspaceNodeRequirementMessage();
+    if (requirement) {
+      console.error(requirement);
+      process.exit(1);
+    }
+    suppressSqliteExperimentalWarning();
+  }
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;

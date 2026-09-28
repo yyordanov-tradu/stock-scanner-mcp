@@ -8,6 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { parseConfig } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
+import { suppressSqliteExperimentalWarning, workspaceNodeRequirementMessage } from "./shared/node-version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -106,6 +107,14 @@ async function main() {
   }
 
   const config = parseConfig(args);
+  if (config.enableWorkspace) {
+    const requirement = workspaceNodeRequirementMessage();
+    if (requirement) {
+      console.error(requirement);
+      process.exit(1);
+    }
+    suppressSqliteExperimentalWarning();
+  }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))
     .filter((m): m is ModuleDefinition => m !== null);

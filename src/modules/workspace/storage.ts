@@ -1,152 +1,168 @@
-import * as fs from "node:fs/promises";
+import * as fs from "node:fs";
 import * as path from "node:path";
-import { lock } from "proper-lockfile";
-import { Workspace, WorkspaceSchema } from "./types.js";
+import { ZodError } from "zod";
+import { DatabaseManager, assertNotSymlinkSync, isSqliteBusyError } from "../../shared/db.js";
+import { RESERVED_KEYS, Workspace, WorkspaceSchema } from "./types.js";
+import { createWorkspaceSchema, readProfileVersion, readWorkspace, writeWorkspace } from "./schema.js";
 
 export interface LoadResult {
   data: Workspace;
   lastModified: number;
 }
 
+export interface StorageOptions {
+  busyTimeoutMs?: number;
+}
+
+export const LEGACY_WORKSPACE_FILE = "workspace.json";
+
+function findReservedKeys(parsed: unknown): string[] {
+  if (typeof parsed !== "object" || parsed === null) return [];
+  const found: string[] = [];
+  for (const section of ["watchlists", "theses"] as const) {
+    const record = (parsed as Record<string, unknown>)[section];
+    if (typeof record !== "object" || record === null) continue;
+    for (const key of Object.keys(record)) {
+      if (RESERVED_KEYS.has(key)) found.push(`${section}.${key}`);
+    }
+  }
+  return found;
+}
+
+const BUSY_MESSAGE =
+  "Conflict: The workspace is locked by another stock-scanner process (a second session or the sidecar). Please retry.";
+
 export class StorageManager {
-  private filePath: string;
-  private lockPath: string;
-  private defaultExchange: string;
-  
-  constructor(dataDir: string, defaultExchange = "NASDAQ") {
-    this.filePath = path.join(dataDir, "workspace.json");
-    this.lockPath = path.join(dataDir, ".workspace.lock");
+  private readonly dbManager: DatabaseManager;
+  private readonly legacyPath: string;
+  private readonly defaultExchange: string;
+  private ready = false;
+
+  constructor(dataDir: string, defaultExchange = "NASDAQ", options: StorageOptions = {}) {
+    this.dbManager = new DatabaseManager(dataDir, { busyTimeoutMs: options.busyTimeoutMs });
+    this.legacyPath = path.join(dataDir, LEGACY_WORKSPACE_FILE);
     this.defaultExchange = defaultExchange;
   }
 
-  private async assertNotSymlink(filePath: string): Promise<void> {
+  get dbPath(): string {
+    return this.dbManager.dbPath;
+  }
+
+  private async ensureReady(): Promise<void> {
+    if (this.ready) return;
+    await this.dbManager.open();
+    this.withBusyMapping(() =>
+      this.dbManager.transaction("IMMEDIATE", (db) => {
+        createWorkspaceSchema(db);
+        if (readProfileVersion(db) === null) {
+          const legacy = this.readLegacyWorkspace();
+          if (legacy) {
+            writeWorkspace(db, legacy, 1);
+            console.error(
+              `[workspace] Imported ${this.legacyPath} into ${this.dbManager.dbPath}. ` +
+                `The JSON file is kept up to date as a mirror.`,
+            );
+          }
+        }
+      }),
+    );
+    this.ready = true;
+  }
+
+  private readLegacyWorkspace(): Workspace | null {
+    assertNotSymlinkSync(this.legacyPath);
+    let raw: string;
     try {
-      const stat = await fs.lstat(filePath);
-      if (stat.isSymbolicLink()) {
-        throw new Error(`Refusing to operate on symlink: ${filePath}`);
-      }
-    } catch (e: unknown) {
-      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") {
-        return; // file doesn't exist yet, OK
-      }
+      raw = fs.readFileSync(this.legacyPath, "utf-8");
+    } catch (e) {
+      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw e;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      throw new Error(`Workspace file corrupted (${this.legacyPath}): ${e instanceof Error ? e.message : String(e)}`);
+    }
+    // zod's record parser silently drops keys like __proto__; reject them explicitly instead.
+    const reserved = findReservedKeys(parsed);
+    if (reserved.length > 0) {
+      throw new Error(`Workspace file invalid (${this.legacyPath}): contains reserved key(s) ${reserved.join(", ")}`);
+    }
+    try {
+      return WorkspaceSchema.parse(parsed);
+    } catch (e) {
+      const detail = e instanceof ZodError ? e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : String(e);
+      throw new Error(`Workspace file invalid (${this.legacyPath}): ${detail}`);
+    }
+  }
+
+  private withBusyMapping<T>(fn: () => T): T {
+    try {
+      return fn();
+    } catch (e) {
+      if (isSqliteBusyError(e)) throw new Error(BUSY_MESSAGE);
       throw e;
     }
   }
 
-  async exists(): Promise<boolean> {
-    try {
-      await fs.access(this.filePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async load(): Promise<LoadResult> {
-    await this.assertNotSymlink(this.filePath);
-
-    if (!(await this.exists())) {
-      const defaultData = WorkspaceSchema.parse({
-        profile: { defaultExchange: this.defaultExchange },
-      });
-      return { data: defaultData, lastModified: 0 };
-    }
-
-    const fh = await fs.open(this.filePath, "r");
-    try {
-      const [raw, stat] = await Promise.all([
-        fh.readFile("utf-8"),
-        fh.stat(),
-      ]);
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
-      }
-
-      const data = WorkspaceSchema.parse(parsed);
-      return { data, lastModified: stat.mtimeMs };
-    } finally {
-      await fh.close();
-    }
+    await this.ensureReady();
+    const stored = this.withBusyMapping(() => this.dbManager.transaction("DEFERRED", readWorkspace));
+    if (stored) return { data: stored.data, lastModified: stored.version };
+    return {
+      data: WorkspaceSchema.parse({ profile: { defaultExchange: this.defaultExchange } }),
+      lastModified: 0,
+    };
   }
 
   async save(data: Workspace, expectedLastModified: number): Promise<number> {
-    const dir = path.dirname(this.filePath);
-    await fs.mkdir(dir, { recursive: true });
+    await this.ensureReady();
+    const newVersion = this.withBusyMapping(() =>
+      this.dbManager.transaction("IMMEDIATE", (db) => {
+        const current = readProfileVersion(db);
 
-    // Check lock file BEFORE writing to it
-    await this.assertNotSymlink(this.lockPath);
+        if (expectedLastModified === 0 && current !== null) {
+          throw new Error("Conflict: The workspace was already initialized by another process. Please reload.");
+        }
+        if (expectedLastModified > 0) {
+          if (current === null) {
+            throw new Error("Conflict: The workspace has been reset by another process. Please reload.");
+          }
+          if (current !== expectedLastModified) {
+            throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
+          }
+        }
 
-    // Ensure lock file exists (safe now — verified not a symlink)
-    await fs.writeFile(this.lockPath, "", "utf-8");
+        const next = (current ?? 0) + 1;
+        writeWorkspace(db, data, next);
+        return next;
+      }),
+    );
+    this.writeMirror(data);
+    return newVersion;
+  }
 
-    let release: (() => Promise<void>) | undefined;
-    let tmpPath: string | undefined;
-
+  // Keeps workspace.json readable by releases that predate SQLite storage.
+  private writeMirror(data: Workspace): void {
+    const tmpPath = `${this.legacyPath}.tmp`;
     try {
-      // Acquire lock on the dedicated lock file
-      release = await lock(this.lockPath, {
-        retries: {
-          retries: 5,
-          minTimeout: 100,
-          maxTimeout: 1000,
-        },
-      });
-
-      await this.assertNotSymlink(this.filePath);
-
-      const fileExists = await this.exists();
-
-      // P1 Fix: Bootstrap race check
-      if (expectedLastModified === 0 && fileExists) {
-        throw new Error("Conflict: The workspace was already initialized by another process. Please reload.");
-      }
-
-      // P1 Fix: Normal stale writer check
-      if (expectedLastModified > 0) {
-        if (!fileExists) {
-          throw new Error("Conflict: The workspace file has been deleted. Please reload.");
-        }
-        const stat = await fs.stat(this.filePath);
-        if (stat.mtimeMs > expectedLastModified) {
-          throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
-        }
-      }
-
-      tmpPath = `${this.filePath}.tmp`;
-      const bakPath = `${this.filePath}.bak`;
-      const content = JSON.stringify(data, null, 2);
-
-      // Check tmp/bak paths before writing
-      await this.assertNotSymlink(tmpPath);
-      await this.assertNotSymlink(bakPath);
-
-      // Atomic write
-      await fs.writeFile(tmpPath, content, "utf-8");
-
-      if (fileExists) {
-        await fs.copyFile(this.filePath, bakPath);
-      }
-      
-      await fs.rename(tmpPath, this.filePath);
-      
-      const newStat = await fs.stat(this.filePath);
-      return newStat.mtimeMs;
-    } finally {
-      if (release) {
-        await release();
-      }
-      // Clean up tmp file if it still exists (failed write)
-      if (tmpPath) {
-        try {
-          await fs.unlink(tmpPath);
-        } catch {
-          // tmp file already renamed or never created — ignore
-        }
+      assertNotSymlinkSync(this.legacyPath);
+      assertNotSymlinkSync(tmpPath);
+      fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { encoding: "utf-8", mode: 0o600 });
+      fs.renameSync(tmpPath, this.legacyPath);
+    } catch (e) {
+      console.error(`[workspace] Could not update ${this.legacyPath} mirror: ${e instanceof Error ? e.message : String(e)}`);
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        // nothing to clean up
       }
     }
+  }
+
+  close(): void {
+    this.dbManager.close();
+    this.ready = false;
   }
 }

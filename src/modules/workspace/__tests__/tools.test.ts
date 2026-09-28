@@ -261,7 +261,7 @@ describe("Workspace Tools", () => {
   });
 
   it("workspace_save_thesis rejects new thesis at 200 limit but allows updating existing", async () => {
-    // Pre-populate workspace.json with 200 theses to avoid slow handler loop
+    // Pre-populate a legacy workspace.json with 200 theses (imported on first load) to avoid slow handler loop
     const now = new Date().toISOString();
     const theses: Record<string, unknown> = {};
     for (let i = 0; i < 200; i++) {

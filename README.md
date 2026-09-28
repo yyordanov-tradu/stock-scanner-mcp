@@ -212,10 +212,14 @@ Each thesis supports five fields: `summary`, `bullCase`, `bearCase`, `catalyst`,
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--enable-workspace` | off | Activate the 7 workspace tools |
-| `--data-dir <path>` | `~/.stock-scanner-mcp` | Directory for `workspace.json` storage |
+| `--data-dir <path>` | `~/.stock-scanner-mcp` | Directory for workspace storage (`workspace.db` + `workspace.json`) |
 | `--default-exchange` | `NASDAQ` | Default exchange for ticker resolution |
 
-Data is stored locally in `workspace.json` — no cloud sync, no external calls. If you omit `--enable-workspace`, the server stays fully stateless and writes no local data.
+Data is stored locally in a SQLite database (`workspace.db`, via Node's built-in `node:sqlite`) — no cloud sync, no external calls. If you omit `--enable-workspace`, the server stays fully stateless and writes no local data.
+
+**Requirements:** the workspace module needs **Node.js 22.13 or newer**. On older versions the server prints a clear message and exits when `--enable-workspace` is set; without the flag it still runs.
+
+**Upgrading from a release that stored `workspace.json`:** the first start imports the JSON file into `workspace.db` automatically and leaves the JSON file in place. Every save also refreshes `workspace.json` as a mirror, so rolling back to an older release keeps your data. If the import fails (for example, the JSON is corrupted), nothing is written and the error tells you which file to fix. Changes made while running an older release are not re-imported once `workspace.db` exists; delete `workspace.db` to re-import from the JSON file.
 
 For the full list of workspace tools, see the [tool reference](#workspace--personalized-context-optional-no-api-key) below.
 
@@ -507,6 +511,8 @@ src/
 └── shared/
     ├── http.ts           # HTTP client with timeouts and key sanitization
     ├── cache.ts          # In-memory TTL cache
+    ├── db.ts             # SQLite (node:sqlite) connection manager for the workspace
+    ├── node-version.ts   # Node.js requirement check for the workspace module
     ├── types.ts          # ToolDefinition, ToolResult, helpers
     ├── resolver.ts       # Ticker/exchange resolution
     └── utils.ts          # withMetadata error wrapper

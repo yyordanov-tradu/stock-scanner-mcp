@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Breaking:** the workspace module now stores data in SQLite (`workspace.db`, via Node's built-in `node:sqlite`) instead of a monolithic `workspace.json`. Requires Node.js >= 22.13 when `--enable-workspace` is set; the server prints a clear message and exits on older versions. The `engines` field and CI matrix were raised accordingly (Node 22 and 24).
+- Migration: on first start an existing `workspace.json` is validated and imported in a single transaction; the JSON file is left in place and refreshed as a mirror on every save, so rolling back to an older release keeps your data.
+- Concurrent writers (a second Claude Code session or the sidecar) now get a retryable `Conflict` instead of a raw `database is locked` error; saves use `BEGIN IMMEDIATE`, WAL journaling and a 5s busy timeout.
+- Watchlist instrument `note` fields are now persisted.
+
+### Removed
+- `proper-lockfile` dependency (SQLite transactions replace file locking).
+
+### Fixed
+- The tsup bundle no longer strips the `node:` prefix from built-in imports (`tsup.config.ts`), and CI now smoke-tests the built `dist/` bundles.
+
 ## [1.15.0] - 2026-04-02
 
 ### Added
