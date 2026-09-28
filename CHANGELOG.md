@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `--persistent-cache` (MCP server and sidecar): cached API responses are also stored in `cache.db` in the data directory and reused across restarts and between the server and the sidecar. Every module cache is now namespaced by module name so providers that share key formats (e.g. `quote:AAPL`) can never read each other's entries.
+
 ### Changed
 - **Breaking:** the workspace module now stores data in SQLite (`workspace.db`, via Node's built-in `node:sqlite`) instead of a monolithic `workspace.json`. Requires Node.js >= 22.13 for `--enable-workspace`; on older versions the server logs a clear message and starts without the workspace tools. The old `.workspace.lock` and `workspace.json.bak` files are no longer written. The `engines` field and CI matrix were raised accordingly (Node 22 and 24).
 - Migration: on first start an existing `workspace.json` is validated and imported in a single transaction; the JSON file is left in place and refreshed (best effort) as a mirror after every save, so rolling back to an older release keeps your data. If the JSON file is later modified by something else (for example an older release), it is re-imported before the next read or write.

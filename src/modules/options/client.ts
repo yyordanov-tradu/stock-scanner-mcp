@@ -6,7 +6,7 @@ import { invalidateSession, appendCrumb, getYahooHeaders } from "./yahoo-session
 
 const BASE_URL = "https://query1.finance.yahoo.com/v7/finance/options";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const cache = new TtlCache<OptionChain>(CACHE_TTL);
+const cache = new TtlCache<OptionChain>(CACHE_TTL, "options");
 const DEFAULT_RISK_FREE_RATE = 0.045;
 
 export interface OptionContract {

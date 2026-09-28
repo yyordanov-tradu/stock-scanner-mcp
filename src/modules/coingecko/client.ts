@@ -4,7 +4,7 @@ import { TtlCache } from "../../shared/cache.js";
 const BASE_URL = "https://api.coingecko.com/api/v3";
 const CACHE_TTL = 60 * 1000; // 1 minute
 
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "coingecko");
 
 export interface CoinDetail {
   id: string;

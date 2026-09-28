@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import * as os from "node:os";
 import * as path from "node:path";
-import { parseConfig } from "../config.js";
+import { parseConfig, DEFAULT_DATA_DIR } from "../config.js";
 
 describe("parseConfig", () => {
   afterEach(() => {
@@ -57,6 +57,18 @@ describe("parseConfig", () => {
   it("does NOT validate data-dir when workspace is disabled", () => {
     const config = parseConfig(["--data-dir", "/tmp/evil"]);
     expect(config.enableWorkspace).toBe(false);
+    expect(config.enablePersistentCache).toBe(false);
+  });
+
+  it("parses --persistent-cache and validates data-dir for it", () => {
+    expect(parseConfig(["--persistent-cache"]).enablePersistentCache).toBe(true);
+    expect(() => parseConfig(["--persistent-cache", "--data-dir", "/tmp/evil"])).toThrow("must be under");
+    const validDir = path.join(os.homedir(), "test-scanner-cache");
+    expect(parseConfig(["--persistent-cache", "--data-dir", validDir]).dataDir).toBe(validDir);
+  });
+
+  it("exposes the default data directory under the home directory", () => {
+    expect(DEFAULT_DATA_DIR).toBe(path.join(os.homedir(), ".stock-scanner-mcp"));
   });
 
   it("stores resolved absolute path in dataDir", () => {

@@ -7,7 +7,7 @@ const EFTS_BASE = "https://efts.sec.gov/LATEST/search-index";
 const DATA_BASE = "https://data.sec.gov/api/xbrl/companyfacts";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "sec-edgar");
 
 export interface EdgarSearchParams {
   query: string;

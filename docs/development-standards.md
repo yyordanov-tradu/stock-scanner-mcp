@@ -89,7 +89,7 @@ import { TtlCache } from "../../shared/cache.js";
 
 const BASE_URL = "https://api.example.com";
 const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes (adjust per data freshness needs)
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "{name}");  // namespace = module name
 
 export interface ResponseType { /* typed fields */ }
 
@@ -257,7 +257,9 @@ All HTTP calls MUST go through `shared/http.ts`. Direct `fetch()` calls are proh
 | Rule | Detail |
 |------|--------|
 | Implementation | `TtlCache` from `shared/cache.ts` |
+| Namespace | Required constructor argument, the module name as a literal (`new TtlCache(ttl, "finnhub")`); never derived at runtime |
 | Scope | One cache instance per module (module-level `const`) |
+| Persistence | Opt-in via `--persistent-cache`: entry points call `enablePersistentCache()` (`shared/cache-store.ts`), which registers a SQLite-backed `CacheStore` (`cache.db`) behind the in-memory layer. Values > 256 KB stay in memory only; a store failure logs and falls back to memory |
 | TTL | 5 minutes default; shorter for real-time data (quotes) |
 | Key format | `{entity}:{param1}:{param2}` colon-separated |
 | Utility | Use `cache.getOrFetch(key, fetcher)` when possible |
@@ -345,6 +347,7 @@ npm run test:watch    # Watch mode during development
 | `successResult()` / `errorResult()` | `shared/types.ts` | ToolResult builders |
 | `withMetadata()` | `shared/utils.ts` | Error handling + metadata injection |
 | `resolveTicker()` | `shared/resolver.ts` | Ticker normalization (e.g., `AAPL` → `{ ticker: "AAPL", exchange: "NASDAQ" }`) |
+| `CacheStore` / `SqliteCacheStore` / `enablePersistentCache()` | `shared/cache-store.ts` | Optional second-level cache shared across processes (`cache.db`), wired only from entry points |
 | `DatabaseManager` | `shared/db.ts` | SQLite (`node:sqlite`) connection: lazy open, WAL, busy timeout, symlink guards, `transaction()` helper |
 | `checkSqliteNodeSupport()` | `shared/node-version.ts` | Logs a readable message and returns `false` when Node.js is too old for a `node:sqlite` feature, so entry points degrade instead of exiting |
 

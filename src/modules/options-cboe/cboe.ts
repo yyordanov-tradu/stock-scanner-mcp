@@ -5,7 +5,7 @@ const BASE_URL = "https://cdn.cboe.com/data/us/options/market_statistics/daily";
 
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-const cache = new TtlCache<PutCallEntry[]>(CACHE_TTL);
+const cache = new TtlCache<PutCallEntry[]>(CACHE_TTL, "options-cboe");
 
 export interface PutCallEntry {
   date: string;

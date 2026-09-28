@@ -11,7 +11,7 @@ const CNN_HEADERS = {
 
 // CNN data updates once daily — cache for 1 hour
 const CACHE_TTL = 60 * 60 * 1000;
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "sentiment");
 
 export interface FearGreedIndicator {
   name: string;

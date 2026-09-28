@@ -4,7 +4,7 @@ import { TtlCache } from "../../shared/cache.js";
 const BASE_URL = "https://finnhub.io/api/v1";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-const cache = new TtlCache<unknown>(CACHE_TTL);
+const cache = new TtlCache<unknown>(CACHE_TTL, "finnhub");
 
 export interface NewsArticle {
   category: string;
