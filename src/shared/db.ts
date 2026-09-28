@@ -3,13 +3,15 @@ import * as path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 
 export interface DatabaseOptions {
-  fileName?: string;
+  fileName: string;
   busyTimeoutMs?: number;
 }
 
 export type TransactionMode = "DEFERRED" | "IMMEDIATE";
 
 const DEFAULT_BUSY_TIMEOUT_MS = 5000;
+const SQLITE_BUSY = 5;
+const SQLITE_LOCKED = 6;
 const SQLITE_SIDECAR_SUFFIXES = ["", "-wal", "-shm", "-journal"];
 
 export function assertNotSymlinkSync(filePath: string): void {
@@ -26,7 +28,7 @@ export function assertNotSymlinkSync(filePath: string): void {
 export function isSqliteBusyError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const errcode = (err as Error & { errcode?: number }).errcode;
-  return errcode === 5 || errcode === 6 || /database is locked|SQLITE_BUSY/i.test(err.message);
+  return errcode === SQLITE_BUSY || errcode === SQLITE_LOCKED || /database is locked|SQLITE_BUSY/i.test(err.message);
 }
 
 export class DatabaseManager {
@@ -36,10 +38,12 @@ export class DatabaseManager {
   private db: DatabaseSync | null = null;
   private opening: Promise<DatabaseSync> | null = null;
 
-  constructor(dataDir: string, options: DatabaseOptions = {}) {
+  constructor(dataDir: string, options: DatabaseOptions) {
     this.dataDir = dataDir;
-    this.dbPath = path.join(dataDir, options.fileName ?? "workspace.db");
-    this.busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
+    this.dbPath = path.join(dataDir, options.fileName);
+    const requested = options.busyTimeoutMs;
+    this.busyTimeoutMs =
+      requested !== undefined && Number.isSafeInteger(requested) && requested >= 0 ? requested : DEFAULT_BUSY_TIMEOUT_MS;
   }
 
   async open(): Promise<DatabaseSync> {
@@ -58,7 +62,7 @@ export class DatabaseManager {
       sqlite = await import("node:sqlite");
     } catch (e) {
       throw new Error(
-        `Workspace storage requires the built-in node:sqlite module (Node.js >= 22.13); ` +
+        `This feature requires the built-in node:sqlite module (Node.js >= 22.13); ` +
           `running Node.js ${process.version}. ${e instanceof Error ? e.message : String(e)}`,
       );
     }
@@ -113,6 +117,11 @@ export class DatabaseManager {
   }
 
   close(): void {
+    if (this.opening) {
+      // An open() is in flight: close its connection once it lands.
+      this.opening.then(() => this.close()).catch(() => {});
+      return;
+    }
     if (!this.db) return;
     this.db.close();
     this.db = null;

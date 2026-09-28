@@ -1,8 +1,15 @@
 import type { DatabaseSync } from "node:sqlite";
 import { ZodError } from "zod";
-import { Workspace, WorkspaceSchema, Instrument, Watchlist, Thesis, Profile } from "./types.js";
+import { RESERVED_KEYS, Workspace, WorkspaceSchema, Instrument, Watchlist, Thesis, Profile } from "./types.js";
+
+export const WORKSPACE_SCHEMA_VERSION = 1;
 
 export const WORKSPACE_DDL = `
+  CREATE TABLE IF NOT EXISTS workspace_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS workspace_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     default_exchange TEXT NOT NULL DEFAULT 'NASDAQ',
@@ -106,6 +113,21 @@ export interface StoredWorkspace {
 
 export function createWorkspaceSchema(db: DatabaseSync): void {
   db.exec(WORKSPACE_DDL);
+  db.exec(`PRAGMA user_version = ${WORKSPACE_SCHEMA_VERSION};`);
+}
+
+export function readMeta(db: DatabaseSync, key: string): string | null {
+  const row = db.prepare("SELECT value FROM workspace_meta WHERE key = ?").get(key) as { value: string } | undefined;
+  return row ? row.value : null;
+}
+
+export function writeMeta(db: DatabaseSync, key: string, value: string): void {
+  db.prepare("INSERT OR REPLACE INTO workspace_meta (key, value) VALUES (?, ?)").run(key, value);
+}
+
+// StatementSync.all() is untyped (Record<string, SQLOutputValue>); this is the one place we cast.
+function rows<T>(db: DatabaseSync, sql: string): T[] {
+  return db.prepare(sql).all() as unknown as T[];
 }
 
 export function readProfileVersion(db: DatabaseSync): number | null {
@@ -145,7 +167,7 @@ export function readWorkspace(db: DatabaseSync): StoredWorkspace | null {
   };
 
   const instrumentsByWatchlist = new Map<string, Instrument[]>();
-  for (const row of db.prepare("SELECT * FROM workspace_watchlist_instruments ORDER BY rowid").all() as unknown as InstrumentRow[]) {
+  for (const row of rows<InstrumentRow>(db, "SELECT * FROM workspace_watchlist_instruments ORDER BY rowid")) {
     const list = instrumentsByWatchlist.get(row.watchlist_id) ?? [];
     list.push({
       full: row.full,
@@ -160,7 +182,8 @@ export function readWorkspace(db: DatabaseSync): StoredWorkspace | null {
   }
 
   const watchlists: Record<string, Watchlist> = Object.create(null);
-  for (const row of db.prepare("SELECT * FROM workspace_watchlists ORDER BY rowid").all() as unknown as WatchlistRow[]) {
+  for (const row of rows<WatchlistRow>(db, "SELECT * FROM workspace_watchlists ORDER BY rowid")) {
+    if (RESERVED_KEYS.has(row.id)) throw invalid(`watchlist id "${row.id}" is a reserved key`, row.id);
     watchlists[row.id] = {
       id: row.id,
       name: row.name,
@@ -171,7 +194,8 @@ export function readWorkspace(db: DatabaseSync): StoredWorkspace | null {
   }
 
   const theses: Record<string, Thesis> = Object.create(null);
-  for (const row of db.prepare("SELECT * FROM workspace_theses ORDER BY rowid").all() as unknown as ThesisRow[]) {
+  for (const row of rows<ThesisRow>(db, "SELECT * FROM workspace_theses ORDER BY rowid")) {
+    if (RESERVED_KEYS.has(row.full)) throw invalid(`thesis key "${row.full}" is a reserved key`, row.full);
     theses[row.full] = {
       full: row.full,
       ticker: row.ticker,

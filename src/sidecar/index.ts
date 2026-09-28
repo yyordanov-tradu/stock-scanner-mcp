@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createServer } from "./server.js";
-import { suppressSqliteExperimentalWarning, workspaceNodeRequirementMessage } from "../shared/node-version.js";
+import { enforceSqliteNodeRequirement } from "../shared/node-version.js";
 
 function parsePort(args: string[]): number {
   const idx = args.indexOf("--port");
@@ -23,12 +23,7 @@ function main(): void {
   const port = parsePort(args);
   const enableWorkspace = args.includes("--enable-workspace");
   if (enableWorkspace) {
-    const requirement = workspaceNodeRequirementMessage();
-    if (requirement) {
-      console.error(requirement);
-      process.exit(1);
-    }
-    suppressSqliteExperimentalWarning();
+    enforceSqliteNodeRequirement("the workspace module", "--enable-workspace");
   }
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";

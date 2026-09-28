@@ -9,8 +9,8 @@ describe("DatabaseManager", () => {
   let tmpDir: string;
   const managers: DatabaseManager[] = [];
 
-  function make(options?: ConstructorParameters<typeof DatabaseManager>[1]): DatabaseManager {
-    const m = new DatabaseManager(tmpDir, options);
+  function make(options: Partial<ConstructorParameters<typeof DatabaseManager>[1]> = {}): DatabaseManager {
+    const m = new DatabaseManager(tmpDir, { fileName: "workspace.db", ...options });
     managers.push(m);
     return m;
   }
@@ -26,7 +26,7 @@ describe("DatabaseManager", () => {
 
   it("creates the data dir and database lazily on open() with WAL and foreign keys", async () => {
     const nested = path.join(tmpDir, "a", "b");
-    const m = new DatabaseManager(nested);
+    const m = new DatabaseManager(nested, { fileName: "workspace.db" });
     managers.push(m);
     expect(fs.existsSync(nested)).toBe(false);
     expect(m.isOpen()).toBe(false);
@@ -112,8 +112,23 @@ describe("DatabaseManager", () => {
     m.close();
     expect(m.isOpen()).toBe(false);
     expect(() => m.get()).toThrow("not open");
+    await m.open();
+    expect(m.isOpen()).toBe(true);
+  });
+
+  it("close() during an in-flight open() closes the connection once it lands", async () => {
+    const m = make();
+    const opening = m.open();
+    m.close();
+    await opening;
+    await new Promise((r) => setImmediate(r));
+    expect(m.isOpen()).toBe(false);
+  });
+
+  it("falls back to the default busy timeout for invalid values", async () => {
+    const m = make({ busyTimeoutMs: Number.NaN });
     const db = await m.open();
-    expect(db.isOpen).toBe(true);
+    expect((db.prepare("PRAGMA busy_timeout").get() as { timeout: number }).timeout).toBe(5000);
   });
 });
 

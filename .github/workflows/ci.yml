@@ -48,19 +48,21 @@ jobs:
 
       - name: Smoke-test built bundles
         run: |
-          if grep -q 'from "sqlite"' dist/*.js dist/sidecar/*.js; then
-            echo "::error::bundle contains a bare 'sqlite' import (node: prefix was stripped)"
+          if grep -rEq 'import\("sqlite"\)|from "sqlite"' dist/; then
+            echo "::error::bundle contains a bare 'sqlite' specifier (node: prefix was stripped)"
             exit 1
           fi
           node dist/index.js --help
           node dist/sidecar/index.js --port 3999 --enable-workspace --data-dir "$HOME/.stock-scanner-smoke" &
           SIDECAR_PID=$!
+          trap 'kill $SIDECAR_PID 2>/dev/null; rm -rf "$HOME/.stock-scanner-smoke"' EXIT
+          up=0
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            curl -sf http://localhost:3999/health && break
+            if curl -sf http://localhost:3999/health; then up=1; break; fi
             sleep 1
           done
+          test "$up" = 1 || { echo "::error::sidecar did not start"; exit 1; }
           curl -sf http://localhost:3999/workspace/profile
-          kill $SIDECAR_PID
 
   security-scan:
     runs-on: ubuntu-latest

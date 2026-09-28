@@ -8,7 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { parseConfig } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
-import { suppressSqliteExperimentalWarning, workspaceNodeRequirementMessage } from "./shared/node-version.js";
+import { enforceSqliteNodeRequirement } from "./shared/node-version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,7 +35,7 @@ OPTIONS
   --help, -h              Show this help message
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
-  --enable-workspace      Enable stateful workspace (watchlists, theses, profile)
+  --enable-workspace      Enable stateful workspace (watchlists, theses, profile; Node >= 22.13)
   --data-dir <path>       Directory for workspace storage (default: ~/.stock-scanner-mcp)
 
 MODULES (66 tools total)
@@ -108,12 +108,7 @@ async function main() {
 
   const config = parseConfig(args);
   if (config.enableWorkspace) {
-    const requirement = workspaceNodeRequirementMessage();
-    if (requirement) {
-      console.error(requirement);
-      process.exit(1);
-    }
-    suppressSqliteExperimentalWarning();
+    enforceSqliteNodeRequirement("the workspace module", "--enable-workspace");
   }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))

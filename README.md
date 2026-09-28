@@ -50,7 +50,7 @@ This gives you **49 tools** immediately with no API keys. API keys are optional 
 > ```
 > This gives you **42 stateless tools** with no local data storage.
 
-Restart Claude Desktop after saving. Claude Code picks up the config automatically.
+Restart Claude Desktop after saving. Claude Code picks up the config automatically. Requires Node.js 22.13 or newer when `--enable-workspace` is set (any current Node.js otherwise).
 
 > **Claude Code shortcut — install as a plugin instead of Steps 1 and 2.** If you use Claude Code, skip the manual config above and install everything with two commands:
 > ```
@@ -219,7 +219,7 @@ Data is stored locally in a SQLite database (`workspace.db`, via Node's built-in
 
 **Requirements:** the workspace module needs **Node.js 22.13 or newer**. On older versions the server prints a clear message and exits when `--enable-workspace` is set; without the flag it still runs.
 
-**Upgrading from a release that stored `workspace.json`:** the first start imports the JSON file into `workspace.db` automatically and leaves the JSON file in place. Every save also refreshes `workspace.json` as a mirror, so rolling back to an older release keeps your data. If the import fails (for example, the JSON is corrupted), nothing is written and the error tells you which file to fix. Changes made while running an older release are not re-imported once `workspace.db` exists; delete `workspace.db` to re-import from the JSON file.
+**Upgrading from a release that stored `workspace.json`:** the first start imports the JSON file into `workspace.db` automatically and leaves the JSON file in place. Every save also refreshes `workspace.json` as a mirror, so rolling back to an older release keeps your data. If the import fails (for example, the JSON is corrupted), nothing is written and the error tells you which file to fix. If `workspace.json` is modified afterwards (for example by an older release, or by restoring a backup), it is re-imported on the next start because the file is newer than the database's last mirror write.
 
 For the full list of workspace tools, see the [tool reference](#workspace--personalized-context-optional-no-api-key) below.
 
