@@ -22,6 +22,8 @@ describe("Workspace Tools", () => {
   });
 
   afterEach(async () => {
+    const { TtlCache } = await import("../../../shared/cache.js");
+    TtlCache.setDb(null);
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -261,28 +263,20 @@ describe("Workspace Tools", () => {
   });
 
   it("workspace_save_thesis rejects new thesis at 200 limit but allows updating existing", async () => {
-    // Pre-populate workspace.json with 200 theses to avoid slow handler loop
+    // Pre-populate database with 200 theses to avoid slow handler loop
     const now = new Date().toISOString();
-    const theses: Record<string, unknown> = {};
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(path.join(tmpDir, "workspace.db"));
+    db.exec("BEGIN TRANSACTION;");
+    const stmt = db.prepare(`
+      INSERT INTO workspace_theses (full, ticker, exchange, is_crypto, input, summary, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
     for (let i = 0; i < 200; i++) {
-      const key = `NASDAQ:SYM${i}`;
-      theses[key] = {
-        full: key,
-        ticker: `SYM${i}`,
-        exchange: "NASDAQ",
-        isCrypto: false,
-        input: `SYM${i}`,
-        summary: `Thesis for SYM${i}`,
-        updatedAt: now,
-      };
+      stmt.run(`NASDAQ:SYM${i}`, `SYM${i}`, "NASDAQ", 0, `SYM${i}`, `Thesis for SYM${i}`, now);
     }
-    const workspace = {
-      schemaVersion: 1,
-      profile: { defaultExchange: "NASDAQ", assetFocus: [], workflowCadence: "daily", updatedAt: now },
-      watchlists: {},
-      theses,
-    };
-    await fs.writeFile(path.join(tmpDir, "workspace.json"), JSON.stringify(workspace, null, 2), "utf-8");
+    db.exec("COMMIT;");
+    db.close();
 
     const saveTool = getTool("workspace_save_thesis");
 
