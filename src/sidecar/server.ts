@@ -78,7 +78,7 @@ function parseBody(req: http.IncomingMessage): Promise<unknown> {
   });
 }
 
-function buildTools(config: SidecarConfig): Map<string, ToolDefinition> {
+function buildTools(config: SidecarConfig): { tools: Map<string, ToolDefinition>; modules: ModuleDefinition[] } {
   const mockConfig = {
     env: {
       FINNHUB_API_KEY: config.finnhubApiKey,
@@ -103,11 +103,11 @@ function buildTools(config: SidecarConfig): Map<string, ToolDefinition> {
     }
   }
 
-  return toolsMap;
+  return { tools: toolsMap, modules: enabled };
 }
 
 export function createServer(config: SidecarConfig): http.Server {
-  const tools = buildTools(config);
+  const { tools, modules } = buildTools(config);
 
   const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (req.method === "OPTIONS") {
@@ -271,5 +271,9 @@ export function createServer(config: SidecarConfig): http.Server {
   });
 
   server.listen(config.port);
+  server.on("close", () => {
+    for (const mod of modules) mod.close?.();
+  });
+
   return server;
 }

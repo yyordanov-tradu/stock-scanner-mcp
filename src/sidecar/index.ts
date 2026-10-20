@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createServer } from "./server.js";
+import { checkSqliteNodeSupport } from "../shared/node-version.js";
 
 function parsePort(args: string[]): number {
   const idx = args.indexOf("--port");
@@ -20,7 +21,8 @@ function parseStringFlag(args: string[], flag: string): string | undefined {
 function main(): void {
   const args = process.argv.slice(2);
   const port = parsePort(args);
-  const enableWorkspace = args.includes("--enable-workspace");
+  const enableWorkspace =
+    args.includes("--enable-workspace") && checkSqliteNodeSupport("the workspace module", "--enable-workspace");
   const dataDir = parseStringFlag(args, "--data-dir") ?? process.env.STOCK_SCANNER_DATA_DIR;
   const defaultExchange = parseStringFlag(args, "--default-exchange") ?? "NASDAQ";
   const finnhubApiKey = process.env.FINNHUB_API_KEY;

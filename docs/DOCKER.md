@@ -40,7 +40,7 @@ services:
 If you are building your own image, ensure the `dist` and `skills` directories are included.
 
 ```dockerfile
-FROM node:20-slim
+FROM node:22-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
