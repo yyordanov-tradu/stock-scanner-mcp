@@ -1,7 +1,6 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
-import { lock } from "proper-lockfile";
-import { Workspace, WorkspaceSchema } from "./types.js";
+import { DatabaseManager } from "../../shared/db.js";
+import { TtlCache } from "../../shared/cache.js";
+import { Workspace, WorkspaceSchema, Profile, Watchlist, Instrument, Thesis } from "./types.js";
 
 export interface LoadResult {
   data: Workspace;
@@ -9,144 +8,229 @@ export interface LoadResult {
 }
 
 export class StorageManager {
-  private filePath: string;
-  private lockPath: string;
+  private dbManager: DatabaseManager;
   private defaultExchange: string;
   
   constructor(dataDir: string, defaultExchange = "NASDAQ") {
-    this.filePath = path.join(dataDir, "workspace.json");
-    this.lockPath = path.join(dataDir, ".workspace.lock");
+    this.dbManager = new DatabaseManager(dataDir);
     this.defaultExchange = defaultExchange;
-  }
-
-  private async assertNotSymlink(filePath: string): Promise<void> {
-    try {
-      const stat = await fs.lstat(filePath);
-      if (stat.isSymbolicLink()) {
-        throw new Error(`Refusing to operate on symlink: ${filePath}`);
-      }
-    } catch (e: unknown) {
-      if (e instanceof Error && "code" in e && (e as NodeJS.ErrnoException).code === "ENOENT") {
-        return; // file doesn't exist yet, OK
-      }
-      throw e;
-    }
+    TtlCache.setDb(this.dbManager.getRawDb());
   }
 
   async exists(): Promise<boolean> {
-    try {
-      await fs.access(this.filePath);
-      return true;
-    } catch {
-      return false;
-    }
+    const db = this.dbManager.getRawDb();
+    const row = db.prepare("SELECT 1 FROM workspace_profile LIMIT 1").get();
+    return !!row;
   }
 
   async load(): Promise<LoadResult> {
-    await this.assertNotSymlink(this.filePath);
-
-    if (!(await this.exists())) {
-      const defaultData = WorkspaceSchema.parse({
-        profile: { defaultExchange: this.defaultExchange },
-      });
-      return { data: defaultData, lastModified: 0 };
+    const db = this.dbManager.getRawDb();
+    
+    // 1. Load Profile
+    let profile: Profile;
+    const profileRow = db.prepare("SELECT * FROM workspace_profile WHERE id = 1").get() as any;
+    if (profileRow) {
+      profile = {
+        defaultExchange: profileRow.default_exchange,
+        tradingStyle: profileRow.trading_style || undefined,
+        assetFocus: JSON.parse(profileRow.asset_focus),
+        preferredTimeframe: profileRow.preferred_timeframe || undefined,
+        workflowCadence: profileRow.workflow_cadence as "daily" | "weekly",
+        updatedAt: profileRow.updated_at,
+      };
+    } else {
+      profile = {
+        defaultExchange: this.defaultExchange,
+        assetFocus: [],
+        workflowCadence: "daily",
+        updatedAt: new Date(0).toISOString(),
+      };
     }
 
-    const fh = await fs.open(this.filePath, "r");
-    try {
-      const [raw, stat] = await Promise.all([
-        fh.readFile("utf-8"),
-        fh.stat(),
-      ]);
+    const lastModified = new Date(profile.updatedAt).getTime();
 
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        throw new Error(`Workspace file corrupted: ${e instanceof Error ? e.message : String(e)}`);
+    // 2. Load Watchlists & Instruments
+    const watchlists: Record<string, Watchlist> = {};
+    const wlRows = db.prepare("SELECT * FROM workspace_watchlists").all() as any[];
+    const instRows = db.prepare("SELECT * FROM workspace_watchlist_instruments").all() as any[];
+
+    // Group instruments by watchlist_id
+    const instMap = new Map<string, Instrument[]>();
+    for (const inst of instRows) {
+      if (!instMap.has(inst.watchlist_id)) {
+        instMap.set(inst.watchlist_id, []);
       }
-
-      const data = WorkspaceSchema.parse(parsed);
-      return { data, lastModified: stat.mtimeMs };
-    } finally {
-      await fh.close();
+      instMap.get(inst.watchlist_id)!.push({
+        full: inst.full,
+        ticker: inst.ticker,
+        exchange: inst.exchange || undefined,
+        isCrypto: inst.is_crypto === 1,
+        input: inst.input,
+        addedAt: inst.added_at,
+      });
     }
+
+    for (const wl of wlRows) {
+      watchlists[wl.id] = {
+        id: wl.id,
+        name: wl.name,
+        instruments: instMap.get(wl.id) || [],
+        createdAt: wl.created_at,
+        updatedAt: wl.updated_at,
+      };
+    }
+
+    // 3. Load Theses
+    const theses: Record<string, Thesis> = {};
+    const thRows = db.prepare("SELECT * FROM workspace_theses").all() as any[];
+    for (const th of thRows) {
+      theses[th.full] = {
+        full: th.full,
+        ticker: th.ticker,
+        exchange: th.exchange || undefined,
+        isCrypto: th.is_crypto === 1,
+        input: th.input,
+        summary: th.summary,
+        bullCase: th.bull_case || undefined,
+        bearCase: th.bear_case || undefined,
+        catalyst: th.catalyst || undefined,
+        invalidation: th.invalidation || undefined,
+        timeframe: th.timeframe || undefined,
+        nextReviewDate: th.next_review_date || undefined,
+        confidence: th.confidence !== null ? th.confidence : undefined,
+        updatedAt: th.updated_at,
+        archivedAt: th.archived_at || undefined,
+      };
+    }
+
+    const data = WorkspaceSchema.parse({
+      schemaVersion: 1,
+      profile,
+      watchlists,
+      theses,
+    });
+
+    return { data, lastModified };
   }
 
   async save(data: Workspace, expectedLastModified: number): Promise<number> {
-    const dir = path.dirname(this.filePath);
-    await fs.mkdir(dir, { recursive: true });
+    const db = this.dbManager.getRawDb();
 
-    // Check lock file BEFORE writing to it
-    await this.assertNotSymlink(this.lockPath);
-
-    // Ensure lock file exists (safe now — verified not a symlink)
-    await fs.writeFile(this.lockPath, "", "utf-8");
-
-    let release: (() => Promise<void>) | undefined;
-    let tmpPath: string | undefined;
+    // Begin transaction for safety and atomicity
+    db.exec("BEGIN TRANSACTION;");
 
     try {
-      // Acquire lock on the dedicated lock file
-      release = await lock(this.lockPath, {
-        retries: {
-          retries: 5,
-          minTimeout: 100,
-          maxTimeout: 1000,
-        },
-      });
+      // Stale writer check
+      const profileRow = db.prepare("SELECT updated_at FROM workspace_profile WHERE id = 1").get() as any;
+      const currentMtime = profileRow ? new Date(profileRow.updated_at).getTime() : 0;
 
-      await this.assertNotSymlink(this.filePath);
-
-      const fileExists = await this.exists();
-
-      // P1 Fix: Bootstrap race check
-      if (expectedLastModified === 0 && fileExists) {
+      if (expectedLastModified === 0 && profileRow) {
         throw new Error("Conflict: The workspace was already initialized by another process. Please reload.");
       }
 
-      // P1 Fix: Normal stale writer check
       if (expectedLastModified > 0) {
-        if (!fileExists) {
+        if (!profileRow) {
           throw new Error("Conflict: The workspace file has been deleted. Please reload.");
         }
-        const stat = await fs.stat(this.filePath);
-        if (stat.mtimeMs > expectedLastModified) {
+        if (currentMtime > expectedLastModified) {
           throw new Error("Conflict: The workspace has been modified by another process. Please reload and try again.");
         }
       }
 
-      tmpPath = `${this.filePath}.tmp`;
-      const bakPath = `${this.filePath}.bak`;
-      const content = JSON.stringify(data, null, 2);
-
-      // Check tmp/bak paths before writing
-      await this.assertNotSymlink(tmpPath);
-      await this.assertNotSymlink(bakPath);
-
-      // Atomic write
-      await fs.writeFile(tmpPath, content, "utf-8");
-
-      if (fileExists) {
-        await fs.copyFile(this.filePath, bakPath);
+      let newMtime = Date.now();
+      if (profileRow && currentMtime >= newMtime) {
+        newMtime = currentMtime + 1;
       }
-      
-      await fs.rename(tmpPath, this.filePath);
-      
-      const newStat = await fs.stat(this.filePath);
-      return newStat.mtimeMs;
-    } finally {
-      if (release) {
-        await release();
-      }
-      // Clean up tmp file if it still exists (failed write)
-      if (tmpPath) {
-        try {
-          await fs.unlink(tmpPath);
-        } catch {
-          // tmp file already renamed or never created — ignore
+      const newUpdatedAt = new Date(newMtime).toISOString();
+
+      // 1. Save Profile
+      const p = data.profile;
+      const profileStmt = db.prepare(`
+        INSERT OR REPLACE INTO workspace_profile (id, default_exchange, trading_style, asset_focus, preferred_timeframe, workflow_cadence, updated_at)
+        VALUES (1, ?, ?, ?, ?, ?, ?)
+      `);
+      profileStmt.run(
+        p.defaultExchange,
+        p.tradingStyle || null,
+        JSON.stringify(p.assetFocus),
+        p.preferredTimeframe || null,
+        p.workflowCadence,
+        newUpdatedAt
+      );
+
+      // 2. Save Watchlists & Instruments
+      // Clear existing watchlist data (foreign key ON DELETE CASCADE will clear instruments)
+      db.prepare("DELETE FROM workspace_watchlists").run();
+
+      const watchlistInsert = db.prepare(`
+        INSERT INTO workspace_watchlists (id, name, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+      `);
+      const instrumentInsert = db.prepare(`
+        INSERT INTO workspace_watchlist_instruments (watchlist_id, full, ticker, exchange, is_crypto, input, added_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const wl of Object.values(data.watchlists)) {
+        watchlistInsert.run(wl.id, wl.name, wl.createdAt, wl.updatedAt);
+        for (const inst of wl.instruments) {
+          instrumentInsert.run(
+            wl.id,
+            inst.full,
+            inst.ticker,
+            inst.exchange || null,
+            inst.isCrypto ? 1 : 0,
+            inst.input,
+            inst.addedAt
+          );
         }
       }
+
+      // 3. Save Theses
+      db.prepare("DELETE FROM workspace_theses").run();
+
+      const thesisInsert = db.prepare(`
+        INSERT INTO workspace_theses (full, ticker, exchange, is_crypto, input, summary, bull_case, bear_case, catalyst, invalidation, timeframe, next_review_date, confidence, updated_at, archived_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const th of Object.values(data.theses)) {
+        thesisInsert.run(
+          th.full,
+          th.ticker,
+          th.exchange || null,
+          th.isCrypto ? 1 : 0,
+          th.input,
+          th.summary,
+          th.bullCase || null,
+          th.bearCase || null,
+          th.catalyst || null,
+          th.invalidation || null,
+          th.timeframe || null,
+          th.nextReviewDate || null,
+          th.confidence !== undefined ? th.confidence : null,
+          th.updatedAt,
+          th.archivedAt || null
+        );
+      }
+
+      db.exec("COMMIT;");
+      return newMtime;
+    } catch (e) {
+      db.exec("ROLLBACK;");
+      throw e;
     }
+  }
+
+  // Exposed for testing database state directly
+  getRawDb() {
+    return this.dbManager.getRawDb();
+  }
+
+  close() {
+    if (TtlCache.getDb() === this.dbManager.getRawDb()) {
+      TtlCache.setDb(null);
+    }
+    this.dbManager.close();
   }
 }
