@@ -345,6 +345,8 @@ npm run test:watch    # Watch mode during development
 | `successResult()` / `errorResult()` | `shared/types.ts` | ToolResult builders |
 | `withMetadata()` | `shared/utils.ts` | Error handling + metadata injection |
 | `resolveTicker()` | `shared/resolver.ts` | Ticker normalization (e.g., `AAPL` → `{ ticker: "AAPL", exchange: "NASDAQ" }`) |
+| `DatabaseManager` | `shared/db.ts` | SQLite (`node:sqlite`) connection: lazy open, WAL, busy timeout, symlink guards, `transaction()` helper |
+| `checkSqliteNodeSupport()` | `shared/node-version.ts` | Logs a readable message and returns `false` when Node.js is too old for a `node:sqlite` feature, so entry points degrade instead of exiting |
 
 **Rule:** Before adding a new utility, check if an existing one covers the use case. Do not duplicate functionality.
 
@@ -354,7 +356,8 @@ npm run test:watch    # Watch mode during development
 
 | Aspect | Detail |
 |--------|--------|
-| Build tool | tsup (not tsc directly) |
+| Build tool | tsup (not tsc directly); `tsup.config.ts` sets `removeNodeProtocol: false` so `node:sqlite` survives bundling |
+| Node.js | `>=22.13` (`engines`); CI runs 22 and 24; `node:sqlite` must only be imported dynamically (`await import("node:sqlite")`) so `--help` and non-workspace runs never load it |
 | Format | ESM only (`"type": "module"` in package.json) |
 | Entry (MCP) | `src/index.ts` → `dist/index.js` |
 | Entry (skills CLI) | `src/install-skills.ts` → `dist/install-skills.js` |

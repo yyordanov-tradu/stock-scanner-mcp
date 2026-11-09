@@ -8,6 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { parseConfig } from "./config.js";
 import { runInstallSkills } from "./skills-installer.js";
+import { checkSqliteNodeSupport } from "./shared/node-version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,10 +35,10 @@ OPTIONS
   --help, -h              Show this help message
   --modules <list>        Comma-separated modules to enable (default: all available)
   --default-exchange <ex> Default exchange for symbol resolution (default: NASDAQ)
-  --enable-workspace      Enable stateful workspace (watchlists, theses, profile)
+  --enable-workspace      Enable stateful workspace (watchlists, theses, profile; Node >= 22.13)
   --data-dir <path>       Directory for workspace storage (default: ~/.stock-scanner-mcp)
 
-MODULES (66 tools total)
+MODULES (69 tools total)
   tradingview        10 tools Stock scanning, quotes, technicals       (no key)
   tradingview-crypto 4 tools  Crypto pair scanning and technicals      (no key)
   sec-edgar          6 tools  SEC filings, insider trades, holdings    (no key)
@@ -106,6 +107,11 @@ async function main() {
   }
 
   const config = parseConfig(args);
+  const workspaceUnsupported =
+    config.enableWorkspace && !checkSqliteNodeSupport("the workspace module", "--enable-workspace");
+  if (workspaceUnsupported) {
+    config.enableWorkspace = false;
+  }
   const allModules = MODULE_CATALOG
     .map(entry => entry.factory(config))
     .filter((m): m is ModuleDefinition => m !== null);
@@ -152,7 +158,8 @@ async function main() {
     } else if (config.enabledModules && !config.enabledModules.includes(entry.name)) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (excluded by --modules)`);
     } else if (entry.name === "workspace" && !config.enableWorkspace) {
-      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (--enable-workspace not set)`);
+      const reason = workspaceUnsupported ? "Node.js >= 22.13 required" : "--enable-workspace not set";
+      console.error(`  \u2298 ${entry.name.padEnd(18)} skipped (${reason})`);
     } else if (entry.envVar) {
       console.error(`  \u2717 ${entry.name.padEnd(18)} skipped (${entry.envVar} not set)`);
     }

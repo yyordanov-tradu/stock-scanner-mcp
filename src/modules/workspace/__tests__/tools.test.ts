@@ -3,16 +3,17 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createWorkspaceModule } from "../index.js";
-import type { ToolResult, ToolDefinition } from "../../../shared/types.js";
+import type { ToolResult, ToolDefinition, ModuleDefinition } from "../../../shared/types.js";
 
 describe("Workspace Tools", () => {
   let tmpDir: string;
+  let mod: ModuleDefinition;
   let workspaceTools: ToolDefinition[];
   let getTool: (name: string) => ToolDefinition;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "workspace-tools-test-"));
-    const mod = createWorkspaceModule(tmpDir);
+    mod = createWorkspaceModule(tmpDir);
     workspaceTools = mod.tools;
     getTool = (name: string) => {
       const tool = workspaceTools.find((t) => t.name === name);
@@ -22,6 +23,7 @@ describe("Workspace Tools", () => {
   });
 
   afterEach(async () => {
+    mod.close?.();
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -241,11 +243,11 @@ describe("Workspace Tools", () => {
     expect(profile.updatedAt <= after).toBe(true);
   });
 
-  it("module metadata is correct", () => {
-    const mod = createWorkspaceModule(tmpDir);
+  it("module metadata is correct and exposes a close hook", () => {
     expect(mod.name).toBe("workspace");
     expect(mod.requiredEnvVars).toEqual([]);
     expect(mod.tools.length).toBe(7);
+    expect(typeof mod.close).toBe("function");
   });
 
   it("workspace_create_watchlist rejects at 50-watchlist limit", async () => {
@@ -261,7 +263,7 @@ describe("Workspace Tools", () => {
   });
 
   it("workspace_save_thesis rejects new thesis at 200 limit but allows updating existing", async () => {
-    // Pre-populate workspace.json with 200 theses to avoid slow handler loop
+    // Pre-populate a legacy workspace.json with 200 theses (imported on first load) to avoid slow handler loop
     const now = new Date().toISOString();
     const theses: Record<string, unknown> = {};
     for (let i = 0; i < 200; i++) {
