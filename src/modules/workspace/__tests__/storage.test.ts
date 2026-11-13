@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs/promises";
+import * as fsSync from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { StorageManager } from "../storage.js";
@@ -14,10 +15,16 @@ describe("StorageManager", () => {
   });
 
   afterEach(async () => {
+    // Close db connections before removing dir
+    try {
+      manager.close();
+    } catch {}
+    const { TtlCache } = await import("../../../shared/cache.js");
+    TtlCache.setDb(null);
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it("loads default data if file does not exist", async () => {
+  it("loads default data if database does not exist", async () => {
     const { data, lastModified } = await manager.load();
     expect(data.schemaVersion).toBe(1);
     expect(data.profile.workflowCadence).toBe("daily");
@@ -28,8 +35,12 @@ describe("StorageManager", () => {
   it("propagates defaultExchange from constructor on bootstrap", async () => {
     const nyseDir = path.join(tmpDir, "nyse");
     const nyseManager = new StorageManager(nyseDir, "NYSE");
-    const { data } = await nyseManager.load();
-    expect(data.profile.defaultExchange).toBe("NYSE");
+    try {
+      const { data } = await nyseManager.load();
+      expect(data.profile.defaultExchange).toBe("NYSE");
+    } finally {
+      nyseManager.close();
+    }
   });
 
   it("does NOT overwrite existing defaultExchange on load", async () => {
@@ -42,10 +53,13 @@ describe("StorageManager", () => {
 
     // Create a new manager with a different constructor default
     const newManager = new StorageManager(tmpDir, "LSE");
-    const reloaded = await newManager.load();
-    
-    // Should still be NYSE from the file
-    expect(reloaded.data.profile.defaultExchange).toBe("NYSE");
+    try {
+      const reloaded = await newManager.load();
+      // Should still be NYSE from the database
+      expect(reloaded.data.profile.defaultExchange).toBe("NYSE");
+    } finally {
+      newManager.close();
+    }
   });
 
   it("saves and reloads data", async () => {
@@ -76,42 +90,24 @@ describe("StorageManager", () => {
     await expect(manager.save(clientB.data, clientB.lastModified)).rejects.toThrow("Conflict");
   });
 
-  it("load() rejects when workspace.json is a symlink", async () => {
-    const targetFile = path.join(tmpDir, "target.json");
-    await fs.writeFile(targetFile, JSON.stringify({ schemaVersion: 1 }), "utf-8");
-
-    const workspacePath = path.join(tmpDir, "workspace.json");
-    await fs.symlink(targetFile, workspacePath);
-
-    await expect(manager.load()).rejects.toThrow("symlink");
-  });
-
-  it("save() rejects when lock file is a symlink", async () => {
-    const targetFile = path.join(tmpDir, "target.lock");
+  it("load() rejects when workspace.db is a symlink", async () => {
+    const targetFile = path.join(tmpDir, "target.db");
     await fs.writeFile(targetFile, "", "utf-8");
 
-    const lockPath = path.join(tmpDir, ".workspace.lock");
-    await fs.symlink(targetFile, lockPath);
+    // Close default manager first to release file lock on workspace.db
+    manager.close();
 
-    const { data, lastModified } = await manager.load();
-    await expect(manager.save(data, lastModified)).rejects.toThrow("symlink");
+    const workspacePath = path.join(tmpDir, "workspace.db");
+    if (fsSync.existsSync(workspacePath)) {
+      await fs.unlink(workspacePath);
+    }
+    await fs.symlink(targetFile, workspacePath);
+
+    // Re-create manager, should reject symlink in constructor/load
+    expect(() => new StorageManager(tmpDir)).toThrow("symlink");
   });
 
-  it("assertNotSymlink passes when file does not exist (ENOENT)", async () => {
-    const freshDir = path.join(tmpDir, "fresh");
-    const freshManager = new StorageManager(freshDir);
-    const { data } = await freshManager.load();
-    expect(data.schemaVersion).toBe(1);
-  });
-
-  it("load() throws descriptive error for corrupted JSON", async () => {
-    const workspacePath = path.join(tmpDir, "workspace.json");
-    await fs.writeFile(workspacePath, "{ not valid json !!!", "utf-8");
-
-    await expect(manager.load()).rejects.toThrow("corrupted");
-  });
-
-  it("load() returns consistent data and lastModified from same file state", async () => {
+  it("load() returns consistent data and lastModified from same database state", async () => {
     const { data, lastModified } = await manager.load();
     data.profile.tradingStyle = "swing";
     const newMtime = await manager.save(data, lastModified);
@@ -121,34 +117,21 @@ describe("StorageManager", () => {
     expect(reloaded.lastModified).toBe(newMtime);
   });
 
-  it("load() throws ZodError for schema-invalid JSON", async () => {
-    const workspacePath = path.join(tmpDir, "workspace.json");
-    await fs.writeFile(
-      workspacePath,
-      JSON.stringify({ schemaVersion: "not-a-number" }),
-      "utf-8"
-    );
-
-    await expect(manager.load()).rejects.toThrow();
-    try {
-      await manager.load();
-    } catch (e: any) {
-      expect(e.name).toBe("ZodError");
-    }
-  });
-
-  it("save() detects file deleted between load and save", async () => {
-    // Bootstrap the file
+  it("save() detects database deleted between load and save", async () => {
     const { data, lastModified } = await manager.load();
-    data.profile.tradingStyle = "swing";
     const mtime = await manager.save(data, lastModified);
 
-    // Load with valid mtime, then delete the file before saving
     const loaded = await manager.load();
-    await fs.unlink(path.join(tmpDir, "workspace.json"));
+    manager.close();
+    await fs.unlink(path.join(tmpDir, "workspace.db"));
 
-    loaded.data.profile.tradingStyle = "day";
-    await expect(manager.save(loaded.data, mtime)).rejects.toThrow("deleted");
+    const newManager = new StorageManager(tmpDir);
+    try {
+      loaded.data.profile.tradingStyle = "day";
+      await expect(newManager.save(loaded.data, mtime)).rejects.toThrow("deleted");
+    } finally {
+      newManager.close();
+    }
   });
 
   it("P1 Fix: detects bootstrap race (two first writers)", async () => {
