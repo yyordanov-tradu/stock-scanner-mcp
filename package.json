@@ -93,7 +93,7 @@
     "@emnapi/wasi-threads": "^2.0.0",
     "@types/node": "^26.0.1",
     "@types/proper-lockfile": "^4.1.4",
-    "tsup": "^8.0.0",
+    "tsup": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.1"
