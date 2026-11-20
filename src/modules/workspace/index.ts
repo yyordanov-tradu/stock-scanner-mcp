@@ -12,6 +12,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
     name: "workspace",
     description: "Stateful market workspace for watchlists, profiles, and theses.",
     requiredEnvVars: [],
+    close: () => storage.close(),
     // Response shape convention: all tools use successResult(JSON.stringify(data, null, 2)).
     // Read tools return domain data directly (profile object, watchlists record, thesis lookup).
     // Write tools return { success, message, ...context } envelopes so the LLM confirms the operation.
@@ -38,7 +39,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
         readOnly: false,
         openWorld: false,
         handler: withMetadata(async ({ tradingStyle, assetFocus, workflowCadence }) => {
-          const { data, lastModified } = await storage.load();
+          const { data, version } = await storage.load();
 
           if (tradingStyle !== undefined) data.profile.tradingStyle = tradingStyle;
           if (assetFocus !== undefined) data.profile.assetFocus = assetFocus;
@@ -47,7 +48,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           data.profile.updatedAt = new Date().toISOString();
 
           try {
-            await storage.save(data, lastModified);
+            await storage.save(data, version);
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("Conflict:")) {
               return errorResult(e.message, "CONFLICT");
@@ -85,7 +86,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
           }
 
-          const { data, lastModified } = await storage.load();
+          const { data, version } = await storage.load();
 
           if (Object.keys(data.watchlists).length >= 50) {
             return errorResult("Maximum of 50 watchlists reached.");
@@ -104,7 +105,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           };
 
           try {
-            await storage.save(data, lastModified);
+            await storage.save(data, version);
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("Conflict:")) {
               return errorResult(e.message, "CONFLICT");
@@ -131,7 +132,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             return errorResult(`Invalid watchlist name: '${name}' is a reserved keyword.`);
           }
 
-          const { data, lastModified } = await storage.load();
+          const { data, version } = await storage.load();
 
           if (!data.watchlists[name]) {
             return errorResult(`Watchlist '${name}' does not exist.`);
@@ -159,7 +160,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           data.watchlists[name].updatedAt = new Date().toISOString();
 
           try {
-            await storage.save(data, lastModified);
+            await storage.save(data, version);
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("Conflict:")) {
               return errorResult(e.message, "CONFLICT");
@@ -212,7 +213,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
             return errorResult(`Invalid symbol: '${symbol}' resolves to a reserved keyword.`);
           }
 
-          const { data, lastModified } = await storage.load();
+          const { data, version } = await storage.load();
           const resolved = resolveTicker(symbol, data.profile.defaultExchange);
 
           const existing = data.theses[resolved.full];
@@ -237,7 +238,7 @@ export function createWorkspaceModule(dataDir: string, defaultExchange = "NASDAQ
           };
 
           try {
-            await storage.save(data, lastModified);
+            await storage.save(data, version);
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("Conflict:")) {
               return errorResult(e.message, "CONFLICT");

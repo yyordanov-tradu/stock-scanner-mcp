@@ -27,6 +27,7 @@ export interface ModuleDefinition {
   description: string;
   requiredEnvVars: string[];
   tools: ToolDefinition[];
+  close?: () => void;
 }
 
 export function errorResult(message: string, code = "INTERNAL_ERROR"): ToolResult {
